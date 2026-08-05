@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth";
 import { defaultContestRules, contestRulesSchema } from "@/lib/validators";
 import { slugify } from "@/lib/contests";
 import { getProblem } from "@/lib/problems";
+import { recordAdminAction } from "@/lib/admin-audit";
 
 export const runtime = "nodejs";
 
@@ -105,6 +106,13 @@ export async function POST(req: Request) {
       },
       include: { problems: true },
     });
+    await recordAdminAction({
+      actorId: admin.id,
+      action: "CONTEST_CREATED",
+      targetType: "CONTEST",
+      targetId: contest.id,
+      details: { title: contest.title, status: contest.status },
+    });
 
     return NextResponse.json({ ok: true, contest });
   } catch (err) {
@@ -119,4 +127,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, message: "Create failed" }, { status: 500 });
   }
 }
+
 

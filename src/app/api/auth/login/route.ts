@@ -19,6 +19,17 @@ export async function POST(req: Request) {
     if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
       return NextResponse.json({ ok: false, message: "Invalid email or password" }, { status: 401 });
     }
+    if (user.status === "SUSPENDED") {
+      return NextResponse.json(
+        { ok: false, message: "This account has been suspended. Contact an administrator." },
+        { status: 403 }
+      );
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
 
     await setSessionCookie({
       id: user.id,
@@ -45,3 +56,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, message: "Login failed" }, { status: 500 });
   }
 }
+

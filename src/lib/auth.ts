@@ -81,7 +81,27 @@ export async function getSession(): Promise<SessionUser | null> {
 export async function requireUser(): Promise<SessionUser> {
   const session = await getSession();
   if (!session) throw new Error("UNAUTHORIZED");
-  return session;
+  const user = await prisma.user.findUnique({
+    where: { id: session.id },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      university: true,
+      role: true,
+      status: true,
+      emailVerified: true,
+    },
+  });
+  if (!user || user.status !== "ACTIVE") throw new Error("UNAUTHORIZED");
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    university: user.university,
+    role: user.role,
+    emailVerified: Boolean(user.emailVerified),
+  };
 }
 
 export async function requireAdmin(): Promise<SessionUser> {
@@ -109,3 +129,4 @@ export async function refreshSessionFromDb(userId: string) {
 }
 
 export { COOKIE as SESSION_COOKIE };
+

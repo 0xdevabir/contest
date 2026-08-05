@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { contestRulesSchema, defaultContestRules } from "@/lib/validators";
 import { getProblem } from "@/lib/problems";
+import { recordAdminAction } from "@/lib/admin-audit";
 
 export const runtime = "nodejs";
 
@@ -47,7 +48,7 @@ export async function GET(_req: Request, { params }: Params) {
 
 export async function PATCH(req: Request, { params }: Params) {
   try {
-    await requireAdmin();
+    const admin = await requireAdmin();
     const { id } = await params;
     const body = await req.json();
     const parsed = patchSchema.safeParse(body);
@@ -142,6 +143,17 @@ export async function PATCH(req: Request, { params }: Params) {
         include: { problems: { orderBy: { order: "asc" } } },
       });
     });
+    await recordAdminAction({
+      actorId: admin.id,
+      action: data.action ? `CONTEST_${data.action.toUpperCase().replace("-", "_")}` : "CONTEST_UPDATED",
+      targetType: "CONTEST",
+      targetId: id,
+      details: {
+        title: contest.title,
+        changed: Object.keys(data).filter((key) => key !== "problemIds"),
+        problemCount: data.problemIds?.length,
+      },
+    });
 
     return NextResponse.json({ ok: true, contest });
   } catch (err) {
@@ -156,7 +168,7 @@ export async function PATCH(req: Request, { params }: Params) {
 
 export async function DELETE(_req: Request, { params }: Params) {
   try {
-    await requireAdmin();
+    const admin = await requireAdmin();
     const { id } = await params;
     const contest = await prisma.contest.findUnique({
       where: { id },
@@ -172,6 +184,13 @@ export async function DELETE(_req: Request, { params }: Params) {
       );
     }
     await prisma.contest.delete({ where: { id } });
+    await recordAdminAction({
+      actorId: admin.id,
+      action: "CONTEST_DELETED",
+      targetType: "CONTEST",
+      targetId: id,
+      details: { status: contest.status },
+    });
     return NextResponse.json({ ok: true });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
@@ -181,4 +200,5 @@ export async function DELETE(_req: Request, { params }: Params) {
     return NextResponse.json({ ok: false, message: "Delete failed" }, { status: 500 });
   }
 }
+
 

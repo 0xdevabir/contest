@@ -12,6 +12,11 @@ enum Role {
   ADMIN
 }
 
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
 enum University {
   DIU
   NSU
@@ -51,7 +56,9 @@ model User {
   studentId     String?
   department    String?
   role          Role       @default(USER)
+  status        UserStatus @default(ACTIVE)
   emailVerified DateTime?
+  lastLoginAt   DateTime?
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
@@ -60,9 +67,27 @@ model User {
   solvedProblems      SolvedProblem[]
   contestRegs         ContestRegistration[]
   contestsCreated     Contest[]              @relation("ContestCreator")
+  adminAuditLogs      AdminAuditLog[]         @relation("AdminAuditActor")
 
   @@index([university])
   @@index([role])
+  @@index([status])
+}
+
+model AdminAuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  action     String
+  targetType String
+  targetId   String?
+  details    Json     @default("{}")
+  createdAt  DateTime @default(now())
+
+  actor User @relation("AdminAuditActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([createdAt])
+  @@index([actorId])
+  @@index([targetType, targetId])
 }
 
 model AuthToken {
@@ -161,3 +186,4 @@ model SolvedProblem {
   @@index([userId])
   @@index([problemId])
 }
+
