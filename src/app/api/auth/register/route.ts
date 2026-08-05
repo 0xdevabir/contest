@@ -13,8 +13,10 @@ export async function POST(req: Request) {
     const body = await req.json();
     const parsed = registerSchema.safeParse(body);
     if (!parsed.success) {
+      const first =
+        parsed.error.issues[0]?.message || "Invalid registration data";
       return NextResponse.json(
-        { ok: false, message: "Invalid registration data", issues: parsed.error.flatten() },
+        { ok: false, message: first, issues: parsed.error.flatten() },
         { status: 400 }
       );
     }
@@ -71,10 +73,14 @@ export async function POST(req: Request) {
       message: "Account created. Check your email to verify.",
     });
   } catch (err) {
-    console.error(err);
+    console.error("register failed", err);
+    const code =
+      err && typeof err === "object" && "code" in err ? String(err.code) : undefined;
     return NextResponse.json(
-      { ok: false, message: "Registration failed. Is DATABASE_URL configured?" },
+      { ok: false, message: "Registration failed. Please try again.", code },
       { status: 500 }
     );
   }
 }
+
+

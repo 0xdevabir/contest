@@ -52,9 +52,24 @@ export function RegisterForm() {
         </p>
       </div>
 
-      <Field label="Full name" name="name" required />
-      <Field label="Email" name="email" type="email" required />
-      <Field label="Password (min 8)" name="password" type="password" required minLength={8} />
+      <Field
+        label="Name"
+        name="name"
+        required
+        autoComplete="name"
+        hint="Your real name — shown on leaderboards. Not a username."
+        minLength={2}
+        maxLength={80}
+      />
+      <Field label="Email" name="email" type="email" required autoComplete="email" />
+      <Field
+        label="Password (min 8)"
+        name="password"
+        type="password"
+        required
+        minLength={8}
+        autoComplete="new-password"
+      />
 
       <label className="block text-sm">
         <span className="text-[var(--muted)]">University</span>
@@ -97,17 +112,31 @@ function Field(props: {
   type?: string;
   required?: boolean;
   minLength?: number;
+  maxLength?: number;
+  autoComplete?: string;
+  hint?: string;
 }) {
   return (
     <label className="block text-sm">
-      <span className="text-[var(--muted)]">{props.label}</span>
+      <span className="text-[var(--muted)]">
+        {props.label}
+        {props.required && <span className="text-[var(--danger)]"> *</span>}
+      </span>
       <input
         name={props.name}
         type={props.type || "text"}
         required={props.required}
         minLength={props.minLength}
+        maxLength={props.maxLength}
+        autoComplete={props.autoComplete}
+        autoCapitalize={props.name === "name" ? "words" : undefined}
+        placeholder={props.name === "name" ? "e.g. Md Abir Hossain" : undefined}
         className="mt-1 w-full rounded-lg border border-[var(--line)] bg-black/30 px-3 py-2 outline-none focus:border-[var(--accent-dim)]"
       />
+      {props.hint && (
+        <span className="mt-1 block text-xs text-[var(--muted-dim)]">{props.hint}</span>
+      )}
     </label>
   );
 }
+

@@ -1,7 +1,20 @@
 import { z } from "zod";
 
+/** Real display name — not a unique @handle. Shown on leaderboards, emails, etc. */
+export const personNameSchema = z
+  .string()
+  .trim()
+  .min(2, "Name is required")
+  .max(80, "Name is too long")
+  .refine((v) => /[\p{L}]/u.test(v), {
+    message: "Name must include letters",
+  })
+  .refine((v) => /^[\p{L}\p{M}'’.\-\s]+$/u.test(v), {
+    message: "Use your real name (letters and spaces). Not a username like “devabir07”.",
+  });
+
 export const registerSchema = z.object({
-  name: z.string().trim().min(2).max(80),
+  name: personNameSchema,
   email: z.string().trim().email().max(120),
   password: z.string().min(8).max(100),
   university: z.enum(["DIU", "NSU", "AIUB", "BRAC"]),
@@ -44,3 +57,4 @@ export const defaultContestRules: ContestRules = {
   languages: ["c"],
   notes: "",
 };
+
