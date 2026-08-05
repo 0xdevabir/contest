@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import type { Role, University } from "@prisma/client";
 import { prisma } from "./db";
 
-const COOKIE = "contest_hub_session";
+const COOKIE = "diu_contesthub_session";
 const MAX_AGE = 60 * 60 * 24 * 14; // 14 days
 
 export type SessionUser = {
@@ -129,4 +129,5 @@ export async function refreshSessionFromDb(userId: string) {
 }
 
 export { COOKIE as SESSION_COOKIE };
+
 

@@ -4,6 +4,7 @@ import { getProblem } from "@/lib/problems";
 import { compileAndJudge, runCustom } from "@/lib/judge";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { isContestOpen } from "@/lib/contests";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -101,19 +102,56 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Contest gate
-  if (body.contestId && session) {
-    const contest = await prisma.contest.findUnique({ where: { id: body.contestId } });
-    if (!contest || contest.status !== "LIVE") {
+  // Contest gate — must be LIVE, problem must belong to contest, user must be registered
+  if (body.contestId) {
+    if (!session) {
+      return NextResponse.json({ ok: false, message: "Login required for contest submissions" }, { status: 401 });
+    }
+
+    const contest = await prisma.contest.findUnique({
+      where: { id: body.contestId },
+      include: { problems: { select: { problemId: true } } },
+    });
+
+    if (!contest || !isContestOpen(contest.status, contest.startsAt, contest.endsAt)) {
       return NextResponse.json({ ok: false, message: "Contest is not live" }, { status: 400 });
     }
+
+    // Verify the submitted problem is actually part of this contest
+    const inContest = contest.problems.some((p) => p.problemId === body.problemId);
+    if (!inContest) {
+      return NextResponse.json(
+        { ok: false, message: "This problem is not part of the contest" },
+        { status: 403 }
+      );
+    }
+
     const reg = await prisma.contestRegistration.findUnique({
-      where: {
-        contestId_userId: { contestId: body.contestId, userId: session.id },
-      },
+      where: { contestId_userId: { contestId: body.contestId, userId: session.id } },
     });
     if (!reg) {
       return NextResponse.json({ ok: false, message: "Register for the contest first" }, { status: 403 });
+    }
+
+    // Enforce maxSubmissionsPerProblem if configured
+    const rules = contest.rules as Record<string, unknown> | null;
+    const maxSubs = typeof rules?.maxSubmissionsPerProblem === "number"
+      ? rules.maxSubmissionsPerProblem
+      : 0;
+    if (maxSubs > 0) {
+      const subCount = await prisma.submission.count({
+        where: {
+          userId: session.id,
+          problemId: body.problemId,
+          contestId: body.contestId,
+        },
+      });
+      if (subCount >= maxSubs) {
+        return NextResponse.json(
+          { ok: false, message: `Submission limit (${maxSubs}) reached for this problem` },
+          { status: 429 }
+        );
+      }
     }
   }
 
@@ -141,3 +179,5 @@ export async function POST(req: NextRequest) {
     saved: Boolean(session),
   });
 }
+
+
