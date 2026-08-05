@@ -11,7 +11,7 @@ export function BrandMark({ size = 32 }: { size?: number }) {
         className="absolute inset-0 rounded-[9px] opacity-70"
         style={{
           background:
-            "linear-gradient(150deg, rgba(62,207,142,0.16), transparent 55%)",
+            "linear-gradient(150deg, var(--accent-surface-strong), transparent 55%)",
         }}
       />
       <svg
@@ -39,3 +39,4 @@ export function Wordmark({ className = "" }: { className?: string }) {
     </span>
   );
 }
+

@@ -48,7 +48,7 @@ export function SetsIndexClient({ sets }: { sets: SetItem[] }) {
                 <li key={p.id}>
                   <Link
                     href={`/problems/${p.id}`}
-                    className="flex items-center justify-between gap-4 px-5 py-3 transition-colors hover:bg-white/[0.03]"
+                    className="flex items-center justify-between gap-4 px-5 py-3 transition-colors hover:bg-[var(--hover)]"
                   >
                     <div className="min-w-0">
                       <span className="font-mono text-xs text-[var(--muted)]">

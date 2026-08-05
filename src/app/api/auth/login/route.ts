@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { setSessionCookie } from "@/lib/auth";
+import { THEME_COOKIE, normalizeThemeMode } from "@/lib/theme";
 import { verifyPassword } from "@/lib/password";
 import { loginSchema } from "@/lib/validators";
 
@@ -40,7 +41,7 @@ export async function POST(req: Request) {
       emailVerified: !!user.emailVerified,
     });
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       ok: true,
       user: {
         id: user.id,
@@ -51,9 +52,19 @@ export async function POST(req: Request) {
         emailVerified: !!user.emailVerified,
       },
     });
+
+    // Carry the saved theme to this device so the first paint after login is
+    // already correct instead of flashing the default.
+    res.cookies.set(THEME_COOKIE, normalizeThemeMode(user.theme), {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: "lax",
+    });
+    return res;
   } catch (err) {
     console.error(err);
     return NextResponse.json({ ok: false, message: "Login failed" }, { status: 500 });
   }
 }
+
 

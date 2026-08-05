@@ -281,7 +281,7 @@ export default function HomePage() {
               <li key={u.code}>
                 <Link
                   href={`/leaderboard?uni=${u.code}`}
-                  className="flex items-center justify-between gap-4 px-6 py-5 transition-colors hover:bg-white/[0.025]"
+                  className="flex items-center justify-between gap-4 px-6 py-5 transition-colors hover:bg-[var(--hover)]"
                 >
                   <div className="min-w-0">
                     <p className="font-display text-base font-bold">{u.shortName}</p>

@@ -94,7 +94,7 @@ export default async function AdminProblemsPage({ searchParams }: Props) {
             href={`/admin/problems?difficulty=${encodeURIComponent(tier)}`}
             className={`rounded-xl border p-3 transition-colors ${
               difficulty === tier
-                ? "border-[var(--accent-dim)] bg-[rgba(62,207,142,0.07)]"
+                ? "border-[var(--accent-dim)] bg-[var(--accent-surface)]"
                 : "border-[var(--line)] bg-[var(--bg-panel)] hover:border-[var(--line-strong)]"
             }`}
           >
@@ -167,7 +167,7 @@ export default async function AdminProblemsPage({ searchParams }: Props) {
                 </tr>
               ) : (
                 rows.map((problem) => (
-                  <tr key={problem.id} className="hover:bg-white/[0.02]">
+                  <tr key={problem.id} className="hover:bg-[var(--hover)]">
                     <td className="px-4 py-3.5">
                       <p className="font-medium">{problem.title}</p>
                       <p className="mt-0.5 font-mono text-[10px] text-[var(--muted)]">

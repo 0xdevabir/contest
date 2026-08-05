@@ -68,7 +68,7 @@ export default async function ContestsPage() {
       />
 
       {dbError && (
-        <p className="mt-6 rounded-lg border border-[var(--warn)]/40 bg-[rgba(240,180,41,0.08)] p-3 text-sm text-[var(--warn)]">
+        <p className="mt-6 rounded-lg border border-[var(--warn)]/40 bg-[var(--warn-surface)] p-3 text-sm text-[var(--warn)]">
           Database not connected. Configure Neon <code>DATABASE_URL</code> first.
         </p>
       )}

@@ -100,7 +100,7 @@ export function ProblemSolvers({
                 <li
                   key={solver.userId}
                   className={`flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-5 ${
-                    mine ? "bg-[rgba(62,207,142,0.06)]" : ""
+                    mine ? "bg-[var(--accent-surface)]" : ""
                   }`}
                 >
                   <span className="tnum w-6 shrink-0 text-xs text-[var(--muted-dim)]">

@@ -114,7 +114,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
               name="q"
               defaultValue={params.q}
               placeholder="Name, email, or student ID…"
-              className="w-full rounded-lg border border-[var(--line)] bg-[#0a0f16] py-2 pl-9 pr-3 text-xs outline-none focus:border-[var(--accent-dim)]"
+              className="w-full rounded-lg border border-[var(--line)] bg-[var(--bg-elevated)] py-2 pl-9 pr-3 text-xs outline-none focus:border-[var(--accent-dim)]"
             />
           </label>
           <Filter name="university" value={params.university} label="University">
@@ -155,10 +155,10 @@ export default async function AdminUsersPage({ searchParams }: Props) {
             </thead>
             <tbody className="divide-y divide-[var(--line)]">
               {users.map((user) => (
-                <tr key={user.id} className="hover:bg-white/[0.02]">
+                <tr key={user.id} className="hover:bg-[var(--hover)]">
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-3">
-                      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white/[0.05] font-semibold">
+                      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[var(--hover)] font-semibold">
                         {initials(user.name)}
                       </span>
                       <div className="min-w-0">
@@ -170,7 +170,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
                             {user.name}
                           </Link>
                           {user.id === session?.id && (
-                            <span className="rounded bg-white/[0.05] px-1.5 py-0.5 text-[9px] text-[var(--muted)]">
+                            <span className="rounded bg-[var(--hover)] px-1.5 py-0.5 text-[9px] text-[var(--muted)]">
                               YOU
                             </span>
                           )}
@@ -267,7 +267,7 @@ function Filter({
       <select
         name={name}
         defaultValue={value || ""}
-        className="w-full rounded-lg border border-[var(--line)] bg-[#0a0f16] px-3 py-2 text-xs outline-none"
+        className="w-full rounded-lg border border-[var(--line)] bg-[var(--bg-elevated)] px-3 py-2 text-xs outline-none"
       >
         <option value="">All {label.toLowerCase()}</option>
         {children}

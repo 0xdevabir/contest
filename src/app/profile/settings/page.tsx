@@ -41,7 +41,6 @@ export default async function ProfileSettingsPage() {
             university: user.university,
             studentId: user.studentId ?? "",
             department: user.department ?? "",
-            theme: user.theme,
             editorFontSize: user.editorFontSize,
             profilePublic: user.profilePublic,
             showEmail: user.showEmail,
@@ -51,3 +50,4 @@ export default async function ProfileSettingsPage() {
     </div>
   );
 }
+

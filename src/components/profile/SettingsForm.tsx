@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { useTheme, type ThemeMode } from "@/components/ThemeProvider";
+import { ThemePicker } from "@/components/ThemePicker";
 import { UNIVERSITIES } from "@/lib/universities";
 
 type Initial = {
@@ -12,7 +12,6 @@ type Initial = {
   university: string;
   studentId: string;
   department: string;
-  theme: "SYSTEM" | "DARK" | "LIGHT";
   editorFontSize: number;
   profilePublic: boolean;
   showEmail: boolean;
@@ -20,7 +19,6 @@ type Initial = {
 
 export function SettingsForm({ initial }: { initial: Initial }) {
   const router = useRouter();
-  const { setTheme } = useTheme();
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -30,14 +28,14 @@ export function SettingsForm({ initial }: { initial: Initial }) {
   async function saveProfile(fd: FormData) {
     setMsg(null);
     setErr(null);
-    const theme = String(fd.get("theme") || "DARK") as "SYSTEM" | "DARK" | "LIGHT";
+    // Theme is not part of this payload — ThemePicker saves on click so the
+    // change is visible immediately.
     const body = {
       name: String(fd.get("name") || ""),
       bio: String(fd.get("bio") || ""),
       university: String(fd.get("university") || ""),
       studentId: String(fd.get("studentId") || "") || null,
       department: String(fd.get("department") || "") || null,
-      theme,
       editorFontSize: Number(fd.get("editorFontSize") || 14),
       profilePublic: fd.get("profilePublic") === "on",
       showEmail: fd.get("showEmail") === "on",
@@ -52,7 +50,6 @@ export function SettingsForm({ initial }: { initial: Initial }) {
       setErr(data.message || "Could not save.");
       return;
     }
-    setTheme(theme.toLowerCase() as ThemeMode);
     try {
       localStorage.setItem("diu_editor_font", String(body.editorFontSize));
     } catch {
@@ -155,27 +152,26 @@ export function SettingsForm({ initial }: { initial: Initial }) {
 
         <div className="border-t border-[var(--line-soft)] pt-5">
           <h3 className="font-display text-base font-bold">Appearance</h3>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <label className="block">
-              <span className="field-label">Theme</span>
-              <select name="theme" defaultValue={initial.theme} className="field mt-1.5">
-                <option value="DARK">Dark</option>
-                <option value="LIGHT">Light</option>
-                <option value="SYSTEM">System</option>
-              </select>
-            </label>
-            <label className="block">
-              <span className="field-label">Editor font size</span>
-              <input
-                name="editorFontSize"
-                type="number"
-                min={12}
-                max={20}
-                defaultValue={initial.editorFontSize}
-                className="field mt-1.5"
-              />
-            </label>
+          <p className="mt-1 text-xs text-[var(--muted)]">
+            Themes apply the moment you pick one and are saved to your account.
+          </p>
+          <div className="mt-4">
+            <span className="field-label">Theme</span>
+            <div className="mt-1.5">
+              <ThemePicker />
+            </div>
           </div>
+          <label className="mt-4 block sm:max-w-xs">
+            <span className="field-label">Editor font size</span>
+            <input
+              name="editorFontSize"
+              type="number"
+              min={12}
+              max={20}
+              defaultValue={initial.editorFontSize}
+              className="field mt-1.5"
+            />
+          </label>
         </div>
 
         <div className="border-t border-[var(--line-soft)] pt-5">
@@ -267,3 +263,4 @@ export function SettingsForm({ initial }: { initial: Initial }) {
     </div>
   );
 }
+

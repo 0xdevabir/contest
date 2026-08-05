@@ -120,7 +120,7 @@ function StatusBadge({ status }: { status: string }) {
     <span
       className={`rounded border px-2 py-1 font-mono text-[9px] font-semibold ${
         status === "LIVE"
-          ? "border-[var(--accent-dim)] bg-[rgba(62,207,142,0.1)] text-[var(--accent)]"
+          ? "border-[var(--accent-dim)] bg-[var(--accent-surface)] text-[var(--accent)]"
           : status === "SCHEDULED"
             ? "border-[var(--warn)]/30 text-[var(--warn)]"
             : "border-[var(--line)] text-[var(--muted)]"

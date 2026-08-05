@@ -7,6 +7,7 @@ import { Menu, X } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
 import { NavAuth } from "@/components/NavAuth";
 import { BrandMark, Wordmark } from "@/components/BrandMark";
+import { ThemeMenu } from "@/components/ThemePicker";
 import { BRAND } from "@/lib/brand";
 
 const FOOTER_LINKS: { heading: string; links: { href: string; label: string }[] }[] = [
@@ -109,10 +110,12 @@ export function SiteChrome({
             <Link href="/leaderboard" className="link-quiet">
               Leaderboard
             </Link>
+            <ThemeMenu />
             <NavAuth user={user} />
           </nav>
 
           <div className="flex items-center gap-2 md:hidden">
+            <ThemeMenu />
             {!user ? (
               <Link href="/login" className="btn btn-ghost !px-3 !py-2 !text-xs">
                 Log in
@@ -143,7 +146,7 @@ export function SiteChrome({
           <>
             <button
               type="button"
-              className="fixed inset-0 top-[calc(3.25rem+env(safe-area-inset-top))] z-40 bg-black/55 md:hidden"
+              className="fixed inset-0 top-[calc(3.25rem+env(safe-area-inset-top))] z-40 bg-[var(--overlay)] md:hidden"
               aria-label="Close menu"
               onClick={() => setMenuOpen(false)}
             />
@@ -161,8 +164,8 @@ export function SiteChrome({
                       href={link.href}
                       className={`rounded-lg px-3 py-3 text-sm ${
                         active
-                          ? "bg-[rgba(62,207,142,0.1)] text-[var(--accent)]"
-                          : "text-[var(--text)] hover:bg-white/[0.04]"
+                          ? "bg-[var(--accent-surface)] text-[var(--accent)]"
+                          : "text-[var(--text)] hover:bg-[var(--hover)]"
                       }`}
                     >
                       {link.label}
@@ -172,7 +175,7 @@ export function SiteChrome({
                 {user?.role === "ADMIN" && (
                   <Link
                     href="/admin"
-                    className="rounded-lg px-3 py-3 text-sm text-[var(--accent)] hover:bg-white/[0.04]"
+                    className="rounded-lg px-3 py-3 text-sm text-[var(--accent)] hover:bg-[var(--hover)]"
                   >
                     Admin
                   </Link>
@@ -201,7 +204,7 @@ export function SiteChrome({
 
       <footer
         aria-labelledby="footer-heading"
-        className="mt-12 border-t border-[var(--line)] bg-black/25 pb-[env(safe-area-inset-bottom)] sm:mt-16"
+        className="mt-12 border-t border-[var(--line)] bg-[var(--sunken)] pb-[env(safe-area-inset-bottom)] sm:mt-16"
       >
         <h2 id="footer-heading" className="sr-only">
           Site footer
@@ -264,5 +267,6 @@ function MobileLogout() {
     </button>
   );
 }
+
 
 

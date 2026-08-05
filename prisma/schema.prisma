@@ -17,12 +17,6 @@ enum UserStatus {
   SUSPENDED
 }
 
-enum ThemePreference {
-  SYSTEM
-  DARK
-  LIGHT
-}
-
 enum University {
   DIU
   NSU
@@ -67,8 +61,8 @@ model User {
   lastLoginAt   DateTime?
   /// Short public blurb on the profile.
   bio           String     @default("")
-  /// UI theme preference — applied client-side; SYSTEM follows OS.
-  theme         ThemePreference @default(DARK)
+  /// UI theme id from src/lib/theme.ts, or "system" to follow the OS.
+  theme         String     @default("dark")
   /// Monaco editor font size in px (12–20).
   editorFontSize Int       @default(14)
   /// When false, /u/[id] returns 404 to strangers.
@@ -202,5 +196,6 @@ model SolvedProblem {
   @@index([userId])
   @@index([problemId])
 }
+
 
 

@@ -143,7 +143,7 @@ export default async function ProfileOverviewPage() {
               <li key={s.problemId}>
                 <Link
                   href={`/problems/${s.problemId}`}
-                  className="flex items-center justify-between gap-4 px-5 py-3.5 transition-colors hover:bg-white/[0.02]"
+                  className="flex items-center justify-between gap-4 px-5 py-3.5 transition-colors hover:bg-[var(--hover)]"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{s.title}</p>

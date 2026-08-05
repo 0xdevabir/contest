@@ -1,5 +1,8 @@
 import { ImageResponse } from "next/og";
 import { BRAND } from "@/lib/brand";
+import { THEMES } from "@/lib/theme";
+
+const P = THEMES.dark.palette;
 
 export const runtime = "edge";
 export const alt = `${BRAND.name} — ${BRAND.tagline}`;
@@ -17,9 +20,8 @@ export default function OpengraphImage() {
           flexDirection: "column",
           justifyContent: "space-between",
           padding: "72px 80px",
-          background:
-            "linear-gradient(135deg, #0a0e15 0%, #11161f 60%, #0a0e15 100%)",
-          color: "#e6edf3",
+          background: `linear-gradient(135deg, ${P.bg} 0%, ${P.bgPanel} 60%, ${P.bg} 100%)`,
+          color: P.text,
           fontFamily: "system-ui, sans-serif",
         }}
       >
@@ -29,11 +31,11 @@ export default function OpengraphImage() {
               width: "52px",
               height: "52px",
               borderRadius: "12px",
-              background: "#3ecf8e",
+              background: P.accent,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#080b10",
+              color: P.accentContrast,
               fontSize: "28px",
               fontWeight: 800,
             }}
@@ -60,7 +62,7 @@ export default function OpengraphImage() {
           <div
             style={{
               fontSize: "26px",
-              color: "#9aa6b2",
+              color: P.muted,
               maxWidth: "900px",
               lineHeight: 1.4,
             }}
@@ -75,7 +77,7 @@ export default function OpengraphImage() {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            color: "#6b7785",
+            color: P.mutedDim,
             fontSize: "20px",
             fontFamily: "ui-monospace, monospace",
           }}
@@ -88,3 +90,4 @@ export default function OpengraphImage() {
     size,
   );
 }
+

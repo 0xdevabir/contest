@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { BrandMark, Wordmark } from "@/components/BrandMark";
+import { ThemeMenu } from "@/components/ThemePicker";
 
 type NavItem = {
   href: string;
@@ -72,7 +73,7 @@ export function AdminSidebar({ adminName }: { adminName: string }) {
 
   return (
     <>
-      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-[var(--line)] bg-[#0d131c] px-4 py-3 lg:hidden">
+      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-[var(--line)] bg-[var(--bg-elevated)] px-4 py-3 lg:hidden">
         <div className="flex items-center gap-2.5">
           <BrandMark size={24} />
           <div>
@@ -95,7 +96,7 @@ export function AdminSidebar({ adminName }: { adminName: string }) {
       {open && (
         <button
           type="button"
-          className="fixed inset-0 z-40 bg-black/55 lg:hidden"
+          className="fixed inset-0 z-40 bg-[var(--overlay)] lg:hidden"
           aria-label="Close menu"
           onClick={() => setOpen(false)}
         />
@@ -103,13 +104,13 @@ export function AdminSidebar({ adminName }: { adminName: string }) {
 
       <aside
         id="admin-sidebar"
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-[var(--line)] bg-[#0d131c] transition-transform duration-200 lg:static lg:z-auto lg:min-h-screen lg:w-64 lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-[var(--line)] bg-[var(--bg-elevated)] transition-transform duration-200 lg:static lg:z-auto lg:min-h-screen lg:w-64 lg:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="hidden border-b border-[var(--line)] px-5 py-5 lg:block">
           <Link href="/admin" className="flex items-center gap-2.5">
-            <span className="grid size-9 place-items-center rounded-lg border border-[var(--accent-dim)] bg-[rgba(62,207,142,0.1)] text-[var(--accent)]">
+            <span className="grid size-9 place-items-center rounded-lg border border-[var(--accent-dim)] bg-[var(--accent-surface)] text-[var(--accent)]">
               <ShieldCheck size={18} aria-hidden />
             </span>
             <div>
@@ -142,8 +143,8 @@ export function AdminSidebar({ adminName }: { adminName: string }) {
                         aria-current={active ? "page" : undefined}
                         className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
                           active
-                            ? "bg-[rgba(62,207,142,0.11)] text-[var(--accent)]"
-                            : "text-[var(--muted)] hover:bg-white/[0.04] hover:text-[var(--text)]"
+                            ? "bg-[var(--accent-surface)] text-[var(--accent)]"
+                            : "text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
                         }`}
                       >
                         <Icon size={17} strokeWidth={1.8} aria-hidden />
@@ -157,16 +158,18 @@ export function AdminSidebar({ adminName }: { adminName: string }) {
           ))}
         </nav>
 
-        <div className="border-t border-[var(--line)] p-3">
+        <div className="flex items-center justify-between gap-2 border-t border-[var(--line)] p-3">
           <Link
             href="/"
-            className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-[var(--muted)] transition-colors hover:bg-white/[0.04] hover:text-[var(--text)]"
+            className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-[var(--muted)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text)]"
           >
             <ArrowLeft size={15} aria-hidden />
             Back to site
           </Link>
+          <ThemeMenu />
         </div>
       </aside>
     </>
   );
 }
+

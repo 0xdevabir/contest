@@ -72,7 +72,7 @@ export default async function ProfileProgressPage() {
                     <li key={p.id}>
                       <Link
                         href={`/problems/${p.id}`}
-                        className="flex items-center justify-between gap-3 px-5 py-2.5 text-sm transition-colors hover:bg-white/[0.02]"
+                        className="flex items-center justify-between gap-3 px-5 py-2.5 text-sm transition-colors hover:bg-[var(--hover)]"
                       >
                         <span className="truncate">{p.title}</span>
                         <span className="font-mono text-[10px] text-[var(--accent)]">AC</span>

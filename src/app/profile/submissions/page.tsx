@@ -60,7 +60,7 @@ export default async function ProfileSubmissionsPage({ searchParams }: Props) {
               </thead>
               <tbody className="divide-y divide-[var(--line)]">
                 {items.map((row) => (
-                  <tr key={row.id} className="hover:bg-white/[0.015]">
+                  <tr key={row.id} className="hover:bg-[var(--hover)]">
                     <td className="whitespace-nowrap px-4 py-3 font-mono text-[11px] text-[var(--muted)]">
                       {row.createdAt.toLocaleString(undefined, {
                         month: "short",

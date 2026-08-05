@@ -89,12 +89,12 @@ export default async function SubmissionDetailPage({ params }: Props) {
       )}
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[1.5fr_1fr]">
-        <section className="overflow-hidden rounded-xl border border-[var(--line)] bg-[#080c12]">
+        <section className="overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--bg)]">
           <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-3">
             <h2 className="font-display text-sm font-bold">Source code</h2>
             <span className="font-mono text-[10px] text-[var(--muted)]">main.c</span>
           </div>
-          <pre className="max-h-[650px] overflow-auto p-4 font-mono text-xs leading-6 text-[#d8e2ee]">
+          <pre className="max-h-[650px] overflow-auto p-4 font-mono text-xs leading-6 text-[var(--text)]">
             <code>{submission.code}</code>
           </pre>
         </section>

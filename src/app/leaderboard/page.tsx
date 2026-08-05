@@ -66,7 +66,7 @@ export default async function LeaderboardPage({ searchParams }: Props) {
       </div>
 
       {dbError && (
-        <p className="mt-6 rounded-lg border border-[var(--warn)]/40 bg-[rgba(240,180,41,0.08)] p-3 text-sm text-[var(--warn)]">
+        <p className="mt-6 rounded-lg border border-[var(--warn)]/40 bg-[var(--warn-surface)] p-3 text-sm text-[var(--warn)]">
           Database not connected yet. Set <code>DATABASE_URL</code> in{" "}
           <code>.env</code> and run <code>npm run db:push</code>.
         </p>
@@ -91,7 +91,7 @@ export default async function LeaderboardPage({ searchParams }: Props) {
               </tr>
             )}
             {rows.map((r) => (
-              <tr key={r.userId} className="transition-colors hover:bg-white/[0.02]">
+              <tr key={r.userId} className="transition-colors hover:bg-[var(--hover)]">
                 {/* Accent only on the podium — colouring every rank makes the
                     column read as decoration instead of signal. */}
                 <td
@@ -133,7 +133,7 @@ function UniChip({
       href={href}
       className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
         active
-          ? "border-[var(--accent)] bg-[rgba(62,207,142,0.12)] text-[var(--accent)]"
+          ? "border-[var(--accent)] bg-[var(--accent-surface)] text-[var(--accent)]"
           : "border-[var(--line)] text-[var(--muted)] hover:border-[var(--accent-dim)]"
       }`}
     >

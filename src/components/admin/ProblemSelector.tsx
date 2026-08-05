@@ -54,7 +54,7 @@ export function ProblemSelector({
 
   return (
     <div className="grid gap-4 xl:grid-cols-2">
-      <section className="rounded-xl border border-[var(--line)] bg-black/15">
+      <section className="rounded-xl border border-[var(--line)] bg-[var(--sunken)]">
         <div className="border-b border-[var(--line)] p-3">
           <div className="flex items-center gap-2">
             <label className="relative min-w-0 flex-1">
@@ -69,7 +69,7 @@ export function ProblemSelector({
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search 700 problems…"
-                className="w-full rounded-lg border border-[var(--line)] bg-[#0a0f16] py-2 pl-9 pr-3 text-xs outline-none focus:border-[var(--accent-dim)]"
+                className="w-full rounded-lg border border-[var(--line)] bg-[var(--bg-elevated)] py-2 pl-9 pr-3 text-xs outline-none focus:border-[var(--accent-dim)]"
               />
             </label>
             <label>
@@ -77,7 +77,7 @@ export function ProblemSelector({
               <select
                 value={setFilter}
                 onChange={(event) => setSetFilter(event.target.value)}
-                className="rounded-lg border border-[var(--line)] bg-[#0a0f16] px-2 py-2 text-xs outline-none"
+                className="rounded-lg border border-[var(--line)] bg-[var(--bg-elevated)] px-2 py-2 text-xs outline-none"
               >
                 <option value="all">All sets</option>
                 {Array.from({ length: 20 }, (_, index) => (
@@ -94,7 +94,7 @@ export function ProblemSelector({
             const added = selected.includes(problem.id);
             return (
               <div key={problem.id} className="flex items-center gap-3 px-3 py-2.5">
-                <span className="grid size-8 shrink-0 place-items-center rounded-md bg-white/[0.04] font-mono text-[10px] text-[var(--muted)]">
+                <span className="grid size-8 shrink-0 place-items-center rounded-md bg-[var(--hover)] font-mono text-[10px] text-[var(--muted)]">
                   {problem.set}.{problem.question}
                 </span>
                 <div className="min-w-0 flex-1">
@@ -126,7 +126,7 @@ export function ProblemSelector({
         </div>
       </section>
 
-      <section className="rounded-xl border border-[var(--line)] bg-black/15">
+      <section className="rounded-xl border border-[var(--line)] bg-[var(--sunken)]">
         <div className="flex items-center justify-between border-b border-[var(--line)] px-3 py-3">
           <div>
             <h3 className="text-xs font-semibold">Contest order</h3>
@@ -134,7 +134,7 @@ export function ProblemSelector({
               Labels are assigned A, B, C…
             </p>
           </div>
-          <span className="rounded-md bg-white/[0.04] px-2 py-1 font-mono text-[10px] text-[var(--muted)]">
+          <span className="rounded-md bg-[var(--hover)] px-2 py-1 font-mono text-[10px] text-[var(--muted)]">
             {selected.length}/50
           </span>
         </div>
@@ -144,7 +144,7 @@ export function ProblemSelector({
             if (!problem) return null;
             return (
               <div key={id} className="flex items-center gap-3 px-3 py-2.5">
-                <span className="grid size-7 shrink-0 place-items-center rounded-md bg-[rgba(62,207,142,0.1)] font-mono text-xs font-semibold text-[var(--accent)]">
+                <span className="grid size-7 shrink-0 place-items-center rounded-md bg-[var(--accent-surface)] font-mono text-xs font-semibold text-[var(--accent)]">
                   {String.fromCharCode(65 + index)}
                 </span>
                 <div className="min-w-0 flex-1">

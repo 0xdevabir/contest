@@ -70,7 +70,7 @@ export default async function AdminContestsPage({ searchParams }: Props) {
             href={`/admin/contests?status=${item.value}`}
             className={`rounded-xl border p-4 transition-colors ${
               status === item.value
-                ? "border-[var(--accent-dim)] bg-[rgba(62,207,142,0.07)]"
+                ? "border-[var(--accent-dim)] bg-[var(--accent-surface)]"
                 : "border-[var(--line)] bg-[var(--bg-panel)] hover:border-[var(--accent-dim)]"
             }`}
           >
@@ -95,7 +95,7 @@ export default async function AdminContestsPage({ searchParams }: Props) {
               name="q"
               defaultValue={q}
               placeholder="Search by title or slug…"
-              className="w-full rounded-lg border border-[var(--line)] bg-[#0a0f16] py-2 pl-9 pr-3 text-xs outline-none focus:border-[var(--accent-dim)]"
+              className="w-full rounded-lg border border-[var(--line)] bg-[var(--bg-elevated)] py-2 pl-9 pr-3 text-xs outline-none focus:border-[var(--accent-dim)]"
             />
           </label>
           <div className="flex gap-1 overflow-x-auto">
@@ -105,7 +105,7 @@ export default async function AdminContestsPage({ searchParams }: Props) {
                 href={`/admin/contests${item.value ? `?status=${item.value}` : ""}`}
                 className={`shrink-0 rounded-md px-3 py-2 text-xs ${
                   (status || "") === item.value
-                    ? "bg-white/[0.07] text-[var(--text)]"
+                    ? "bg-[var(--hover)] text-[var(--text)]"
                     : "text-[var(--muted)] hover:text-[var(--text)]"
                 }`}
               >
@@ -128,7 +128,7 @@ export default async function AdminContestsPage({ searchParams }: Props) {
             contests.map((contest) => (
               <article
                 key={contest.id}
-                className="grid gap-4 px-4 py-4 transition-colors hover:bg-white/[0.02] lg:grid-cols-[minmax(0,1fr)_auto_auto]"
+                className="grid gap-4 px-4 py-4 transition-colors hover:bg-[var(--hover)] lg:grid-cols-[minmax(0,1fr)_auto_auto]"
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
@@ -184,10 +184,10 @@ export default async function AdminContestsPage({ searchParams }: Props) {
 
 function StatusBadge({ status }: { status: ContestStatus }) {
   const classes = {
-    LIVE: "border-[var(--accent-dim)] bg-[rgba(62,207,142,0.1)] text-[var(--accent)]",
-    SCHEDULED: "border-[var(--warn)]/30 bg-[rgba(240,180,41,0.08)] text-[var(--warn)]",
-    DRAFT: "border-[var(--line)] bg-white/[0.03] text-[var(--muted)]",
-    ENDED: "border-[var(--line)] bg-black/20 text-[var(--muted)]",
+    LIVE: "border-[var(--accent-dim)] bg-[var(--accent-surface)] text-[var(--accent)]",
+    SCHEDULED: "border-[var(--warn)]/30 bg-[var(--warn-surface)] text-[var(--warn)]",
+    DRAFT: "border-[var(--line)] bg-[var(--hover)] text-[var(--muted)]",
+    ENDED: "border-[var(--line)] bg-[var(--sunken)] text-[var(--muted)]",
   };
   return (
     <span className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-semibold ${classes[status]}`}>

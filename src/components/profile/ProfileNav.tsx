@@ -38,8 +38,8 @@ export function ProfileNav({ name }: { name: string }) {
               href={href}
               className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
                 active
-                  ? "bg-[rgba(62,207,142,0.12)] text-[var(--accent)]"
-                  : "text-[var(--muted)] hover:bg-white/[0.03] hover:text-[var(--text)]"
+                  ? "bg-[var(--accent-surface)] text-[var(--accent)]"
+                  : "text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
               }`}
             >
               <Icon size={15} aria-hidden />
@@ -49,7 +49,7 @@ export function ProfileNav({ name }: { name: string }) {
         })}
         <Link
           href="/leaderboard"
-          className="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm text-[var(--muted)] transition-colors hover:bg-white/[0.03] hover:text-[var(--text)]"
+          className="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm text-[var(--muted)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text)]"
         >
           <Activity size={15} aria-hidden />
           Leaderboard

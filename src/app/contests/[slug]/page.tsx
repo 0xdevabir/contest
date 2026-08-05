@@ -167,7 +167,7 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
             <div>Scoreboard freeze: {rules.freezeMinutes} min</div>
           </dl>
           {rules.notes && (
-            <p className="mt-3 rounded-lg border border-[var(--line)] bg-black/20 p-3 text-sm text-[var(--muted)]">
+            <p className="mt-3 rounded-lg border border-[var(--line)] bg-[var(--sunken)] p-3 text-sm text-[var(--muted)]">
               {rules.notes}
             </p>
           )}
@@ -192,7 +192,7 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
                       ? `/problems/${p.problemId}?contest=${contest.id}`
                       : `/contests/${contest.slug}`
                   }
-                  className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-white/[0.03]"
+                  className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-[var(--hover)]"
                 >
                   <span>
                     <span className="font-mono text-[var(--accent)]">{p.label}</span>

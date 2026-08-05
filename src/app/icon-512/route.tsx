@@ -1,4 +1,7 @@
 import { ImageResponse } from "next/og";
+import { THEMES } from "@/lib/theme";
+
+const P = THEMES.dark.palette;
 
 export const runtime = "edge";
 
@@ -12,13 +15,13 @@ export async function GET() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#080b10",
-          color: "#3ecf8e",
+          background: P.bg,
+          color: P.accent,
           fontSize: 240,
           fontWeight: 800,
           fontFamily: "system-ui, sans-serif",
           borderRadius: 92,
-          border: "20px solid #3ecf8e",
+          border: `20px solid ${P.accent}`,
         }}
       >
         C
@@ -27,3 +30,4 @@ export async function GET() {
     { width: 512, height: 512 },
   );
 }
+

@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import type { ThemePreference, University } from "@prisma/client";
+import type { University } from "@prisma/client";
 import { getSession, setSessionCookie } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { THEME_COOKIE, THEME_IDS } from "@/lib/theme";
 
 export const runtime = "nodejs";
 
@@ -12,7 +13,7 @@ const patchSchema = z.object({
   university: z.enum(["DIU", "NSU", "AIUB", "BRAC"]).optional(),
   studentId: z.string().trim().max(40).nullable().optional(),
   department: z.string().trim().max(80).nullable().optional(),
-  theme: z.enum(["SYSTEM", "DARK", "LIGHT"]).optional(),
+  theme: z.enum(["system", ...THEME_IDS] as [string, ...string[]]).optional(),
   editorFontSize: z.number().int().min(12).max(20).optional(),
   profilePublic: z.boolean().optional(),
   showEmail: z.boolean().optional(),
@@ -50,7 +51,7 @@ export async function PATCH(req: Request) {
         : {}),
       ...(data.studentId !== undefined ? { studentId: data.studentId || null } : {}),
       ...(data.department !== undefined ? { department: data.department || null } : {}),
-      ...(data.theme !== undefined ? { theme: data.theme as ThemePreference } : {}),
+      ...(data.theme !== undefined ? { theme: data.theme } : {}),
       ...(data.editorFontSize !== undefined ? { editorFontSize: data.editorFontSize } : {}),
       ...(data.profilePublic !== undefined ? { profilePublic: data.profilePublic } : {}),
       ...(data.showEmail !== undefined ? { showEmail: data.showEmail } : {}),
@@ -78,7 +79,7 @@ export async function PATCH(req: Request) {
 
   const res = NextResponse.json({ ok: true, theme: updated.theme });
   if (data.theme) {
-    res.cookies.set("diu_theme", data.theme.toLowerCase(), {
+    res.cookies.set(THEME_COOKIE, data.theme, {
       path: "/",
       maxAge: 60 * 60 * 24 * 365,
       sameSite: "lax",
@@ -86,3 +87,4 @@ export async function PATCH(req: Request) {
   }
   return res;
 }
+

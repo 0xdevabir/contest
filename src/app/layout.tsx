@@ -4,8 +4,9 @@ import { cookies } from "next/headers";
 import { getSession } from "@/lib/auth";
 import { SiteChrome } from "@/components/SiteChrome";
 import { SmoothScroll } from "@/components/SmoothScroll";
-import { ThemeProvider, type ThemeMode } from "@/components/ThemeProvider";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import { BRAND } from "@/lib/brand";
+import { THEMES, THEME_COOKIE, normalizeThemeMode, themeCss } from "@/lib/theme";
 import "./globals.css";
 
 const syne = Syne({
@@ -105,7 +106,6 @@ export const metadata: Metadata = {
     title: BRAND.name,
   },
   other: {
-    "theme-color": "#080b10",
     "application-name": BRAND.name,
     "mobile-web-app-capable": "yes",
     "apple-mobile-web-app-title": BRAND.name,
@@ -116,7 +116,9 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#080b10",
+  // Static default; ThemeProvider rewrites the meta tag once the active theme
+  // is known on the client.
+  themeColor: THEMES.dark.palette.bg,
 };
 
 export default async function RootLayout({
@@ -132,13 +134,12 @@ export default async function RootLayout({
   }
 
   const jar = await cookies();
-  const themeCookie = jar.get("diu_theme")?.value;
-  const initialTheme: ThemeMode =
-    themeCookie === "light" || themeCookie === "dark" || themeCookie === "system"
-      ? themeCookie
-      : "dark";
-  const htmlTheme =
-    initialTheme === "system" ? undefined : initialTheme;
+  // The user's stored preference wins; the cookie is what the very first paint
+  // has to go on, so it is set on both login and every theme change.
+  const initialTheme = normalizeThemeMode(
+    user?.theme ?? jar.get(THEME_COOKIE)?.value
+  );
+  const htmlTheme = initialTheme === "system" ? undefined : initialTheme;
 
   // JSON-LD: organization + website + software application. Helps Google
   // build a richer SERP card (sitelinks, software app rich result, etc.).
@@ -234,6 +235,10 @@ export default async function RootLayout({
 
   return (
     <html lang="en" data-theme={htmlTheme} suppressHydrationWarning>
+      <head>
+        {/* Every colour token in the app, generated from src/lib/theme.ts. */}
+        <style id="theme-tokens" dangerouslySetInnerHTML={{ __html: themeCss() }} />
+      </head>
       <body
         className={`${syne.variable} ${plexSans.variable} ${plexMono.variable} antialiased`}
         style={
@@ -248,7 +253,7 @@ export default async function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        <ThemeProvider initial={initialTheme}>
+        <ThemeProvider initial={initialTheme} signedIn={!!user}>
           <SmoothScroll />
           <SiteChrome user={user}>{children}</SiteChrome>
         </ThemeProvider>
@@ -256,5 +261,6 @@ export default async function RootLayout({
     </html>
   );
 }
+
 
 

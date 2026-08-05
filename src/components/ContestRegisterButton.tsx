@@ -27,7 +27,7 @@ export function ContestRegisterButton({
 
   if (registered) {
     return (
-      <span className="rounded-lg bg-[rgba(62,207,142,0.12)] px-3 py-2 font-mono text-xs text-[var(--accent)]">
+      <span className="rounded-lg bg-[var(--accent-surface)] px-3 py-2 font-mono text-xs text-[var(--accent)]">
         Registered
       </span>
     );

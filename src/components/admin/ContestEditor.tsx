@@ -27,7 +27,7 @@ export type ContestEditorValue = {
 };
 
 const inputClass =
-  "mt-1.5 w-full rounded-lg border border-[var(--line)] bg-[#0a0f16] px-3 py-2.5 text-sm outline-none transition-colors placeholder:text-[var(--muted)]/60 focus:border-[var(--accent-dim)]";
+  "mt-1.5 w-full rounded-lg border border-[var(--line)] bg-[var(--bg-elevated)] px-3 py-2.5 text-sm outline-none transition-colors placeholder:text-[var(--muted)]/60 focus:border-[var(--accent-dim)]";
 
 export function ContestEditor({
   problems,
@@ -242,7 +242,7 @@ export function ContestEditor({
         <ProblemSelector problems={problems} selected={selected} onChange={setSelected} />
       </EditorSection>
 
-      <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--line)] bg-[#111821]/95 p-3 shadow-2xl backdrop-blur mb-[env(safe-area-inset-bottom)]">
+      <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--line)] bg-[var(--bg-panel)]/95 p-3 shadow-2xl backdrop-blur mb-[env(safe-area-inset-bottom)]">
         <div aria-live="polite" className="min-h-5 min-w-0 flex-1 text-xs">
           {error && <span className="text-[var(--danger)]">{error}</span>}
           {success && (
@@ -283,7 +283,7 @@ function EditorSection({
   return (
     <section className="rounded-xl border border-[var(--line)] bg-[var(--bg-panel)] p-4 sm:p-5">
       <div className="mb-5 flex items-start gap-3">
-        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-white/[0.04] text-[var(--accent)]">
+        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[var(--hover)] text-[var(--accent)]">
           <Icon size={16} aria-hidden="true" />
         </span>
         <div>
@@ -336,7 +336,7 @@ function Toggle({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-[var(--line)] bg-black/15 p-3">
+    <label className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-[var(--line)] bg-[var(--sunken)] p-3">
       <span>
         <span className="block text-xs font-medium">{label}</span>
         <span className="mt-0.5 block text-[10px] text-[var(--muted)]">{description}</span>

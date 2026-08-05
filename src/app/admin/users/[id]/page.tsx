@@ -101,14 +101,14 @@ export default async function AdminUserDetailPage({ params }: Props) {
 
       <header className="mt-4 flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-4">
-          <span className="grid size-14 place-items-center rounded-2xl bg-white/[0.05] font-display text-lg font-bold">
+          <span className="grid size-14 place-items-center rounded-2xl bg-[var(--hover)] font-display text-lg font-bold">
             {initials(user.name)}
           </span>
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="font-display text-3xl font-bold">{user.name}</h1>
               {user.id === session?.id && (
-                <span className="rounded bg-white/[0.05] px-1.5 py-0.5 text-[10px] text-[var(--muted)]">
+                <span className="rounded bg-[var(--hover)] px-1.5 py-0.5 text-[10px] text-[var(--muted)]">
                   YOU
                 </span>
               )}
@@ -172,7 +172,7 @@ export default async function AdminUserDetailPage({ params }: Props) {
                   <Link
                     key={sub.id}
                     href={`/admin/submissions/${sub.id}`}
-                    className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-white/[0.02]"
+                    className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-[var(--hover)]"
                   >
                     <VerdictBadge verdict={sub.verdict} />
                     <div className="min-w-0 flex-1">
@@ -233,7 +233,7 @@ export default async function AdminUserDetailPage({ params }: Props) {
                 <Link
                   key={reg.contestId}
                   href={`/admin/contests/${reg.contest.id}`}
-                  className="flex items-center justify-between gap-3 px-5 py-3 transition-colors hover:bg-white/[0.02]"
+                  className="flex items-center justify-between gap-3 px-5 py-3 transition-colors hover:bg-[var(--hover)]"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{reg.contest.title}</p>
@@ -328,9 +328,9 @@ function Pill({
 }) {
   const styles =
     tone === "accent"
-      ? "border-[var(--accent-dim)] text-[var(--accent)] bg-[rgba(62,207,142,0.08)]"
+      ? "border-[var(--accent-dim)] text-[var(--accent)] bg-[var(--accent-surface)]"
       : tone === "warn"
-        ? "border-[var(--warn)]/40 text-[var(--warn)] bg-[rgba(240,180,41,0.08)]"
+        ? "border-[var(--warn)]/40 text-[var(--warn)] bg-[var(--warn-surface)]"
         : "border-[var(--line)] text-[var(--muted)]";
   return (
     <span className={`rounded-md border px-2 py-0.5 font-mono uppercase ${styles}`}>{children}</span>
@@ -343,8 +343,8 @@ function VerdictBadge({ verdict }: { verdict: string }) {
     <span
       className={`grid h-6 min-w-8 place-items-center rounded border px-1.5 font-mono text-[10px] font-semibold ${
         ok
-          ? "border-[var(--accent-dim)] bg-[rgba(62,207,142,0.09)] text-[var(--accent)]"
-          : "border-[var(--line)] bg-white/[0.03] text-[var(--warn)]"
+          ? "border-[var(--accent-dim)] bg-[var(--accent-surface)] text-[var(--accent)]"
+          : "border-[var(--line)] bg-[var(--hover)] text-[var(--warn)]"
       }`}
     >
       {verdict}

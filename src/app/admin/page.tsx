@@ -19,7 +19,7 @@ export default async function AdminPage() {
   } catch {
     return (
       <div className="mx-auto max-w-6xl px-5 py-10">
-        <div className="rounded-xl border border-[var(--warn)]/30 bg-[rgba(240,180,41,0.07)] p-5">
+        <div className="rounded-xl border border-[var(--warn)]/30 bg-[var(--warn-surface)] p-5">
           <h1 className="font-display text-xl font-bold text-[var(--warn)]">
             Database connection unavailable
           </h1>
@@ -276,7 +276,7 @@ function Dashboard({ data }: { data: DashboardData }) {
                 <Link
                   key={contest.id}
                   href={`/admin/contests/${contest.id}`}
-                  className="flex items-center justify-between gap-4 px-5 py-3.5 transition-colors hover:bg-white/[0.025]"
+                  className="flex items-center justify-between gap-4 px-5 py-3.5 transition-colors hover:bg-[var(--hover)]"
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -341,10 +341,10 @@ function Dashboard({ data }: { data: DashboardData }) {
             <Link
               key={user.id}
               href={`/admin/users/${user.id}`}
-              className="px-4 py-4 transition-colors hover:bg-white/[0.02]"
+              className="px-4 py-4 transition-colors hover:bg-[var(--hover)]"
             >
               <div className="flex items-center gap-2">
-                <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white/[0.05] text-xs font-semibold">
+                <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--hover)] text-xs font-semibold">
                   {initials(user.name)}
                 </span>
                 <div className="min-w-0">
@@ -387,7 +387,7 @@ function MetricCard({
     <article
       className={`rounded-xl border p-4 ${
         emphasis
-          ? "border-[var(--accent-dim)] bg-[rgba(62,207,142,0.07)]"
+          ? "border-[var(--accent-dim)] bg-[var(--accent-surface)]"
           : "border-[var(--line)] bg-[var(--bg-panel)]"
       }`}
     >
@@ -450,8 +450,8 @@ function VerdictBadge({ verdict }: { verdict: string }) {
     <span
       className={`grid h-6 min-w-8 place-items-center rounded border px-1.5 font-mono text-[10px] font-semibold ${
         accepted
-          ? "border-[var(--accent-dim)] bg-[rgba(62,207,142,0.09)] text-[var(--accent)]"
-          : "border-[var(--line)] bg-white/[0.03] text-[var(--warn)]"
+          ? "border-[var(--accent-dim)] bg-[var(--accent-surface)] text-[var(--accent)]"
+          : "border-[var(--line)] bg-[var(--hover)] text-[var(--warn)]"
       }`}
     >
       {verdict}

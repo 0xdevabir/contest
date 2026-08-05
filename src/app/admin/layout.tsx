@@ -18,9 +18,9 @@ export default async function AdminLayout({
   if (session.role !== "ADMIN") redirect("/");
 
   return (
-    <div className="flex min-h-screen bg-[#080b10]">
+    <div className="flex min-h-screen bg-[var(--bg)]">
       <AdminSidebar adminName={session.name} />
-      <div className="min-w-0 flex-1 overflow-x-hidden bg-[#0a0f16]">{children}</div>
+      <div className="min-w-0 flex-1 overflow-x-hidden bg-[var(--bg-elevated)]">{children}</div>
     </div>
   );
 }

@@ -62,7 +62,7 @@ export default async function AdminAnalyticsPage({ searchParams }: Props) {
               href={`/admin/analytics?range=${value}`}
               className={`rounded-md px-3 py-1.5 ${
                 range === value
-                  ? "bg-white/[0.07] text-[var(--text)]"
+                  ? "bg-[var(--hover)] text-[var(--text)]"
                   : "text-[var(--muted)]"
               }`}
             >

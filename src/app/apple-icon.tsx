@@ -1,4 +1,7 @@
 import { ImageResponse } from "next/og";
+import { THEMES } from "@/lib/theme";
+
+const P = THEMES.dark.palette;
 
 export const runtime = "edge";
 export const size = { width: 180, height: 180 };
@@ -14,8 +17,8 @@ export default function AppleIcon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#080b10",
-          color: "#3ecf8e",
+          background: P.bg,
+          color: P.accent,
           fontSize: "120px",
           fontWeight: 800,
         }}

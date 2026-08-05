@@ -47,13 +47,13 @@ export function ProblemList({ problems }: Props) {
             <li key={p.id}>
               <Link
                 href={`/problems/${p.id}`}
-                className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-white/[0.03]"
+                className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-[var(--hover)]"
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 font-mono text-xs text-[var(--muted)]">
                     <span>Q{p.question}</span>
                     {isSolved && (
-                      <span className="rounded bg-[rgba(62,207,142,0.15)] px-1.5 py-0.5 text-[10px] text-[var(--accent)]">
+                      <span className="rounded bg-[var(--accent-surface-strong)] px-1.5 py-0.5 text-[10px] text-[var(--accent)]">
                         SOLVED
                       </span>
                     )}

@@ -86,9 +86,9 @@ function toneText(tone: Tone) {
 }
 
 function toneBorder(tone: Tone) {
-  if (tone === "good") return "border-[rgba(62,207,142,0.35)] bg-[rgba(62,207,142,0.07)]";
-  if (tone === "bad") return "border-[rgba(240,113,120,0.35)] bg-[rgba(240,113,120,0.07)]";
-  return "border-[rgba(240,180,41,0.35)] bg-[rgba(240,180,41,0.07)]";
+  if (tone === "good") return "border-[var(--accent-border)] bg-[var(--accent-surface)]";
+  if (tone === "bad") return "border-[var(--danger-border)] bg-[var(--danger-surface)]";
+  return "border-[var(--warn-border)] bg-[var(--warn-surface)]";
 }
 
 function ToneIcon({ tone }: { tone: Tone }) {
@@ -323,7 +323,7 @@ export function ProblemWorkspace({
           aria-selected={mobilePane === "question"}
           className={`rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
             mobilePane === "question"
-              ? "bg-[rgba(62,207,142,0.12)] text-[var(--accent)]"
+              ? "bg-[var(--accent-surface)] text-[var(--accent)]"
               : "text-[var(--muted)]"
           }`}
           onClick={() => setMobilePane("question")}
@@ -336,7 +336,7 @@ export function ProblemWorkspace({
           aria-selected={mobilePane === "code"}
           className={`rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
             mobilePane === "code"
-              ? "bg-[rgba(62,207,142,0.12)] text-[var(--accent)]"
+              ? "bg-[var(--accent-surface)] text-[var(--accent)]"
               : "text-[var(--muted)]"
           }`}
           onClick={() => setMobilePane("code")}
@@ -360,7 +360,7 @@ export function ProblemWorkspace({
             <span aria-hidden>·</span>
             <span>Question {problem.question}</span>
             {solved && (
-              <span className="ml-1 inline-flex items-center gap-1 rounded-md bg-[rgba(62,207,142,0.15)] px-2 py-0.5 text-[11px] font-medium text-[var(--accent)]">
+              <span className="ml-1 inline-flex items-center gap-1 rounded-md bg-[var(--accent-surface-strong)] px-2 py-0.5 text-[11px] font-medium text-[var(--accent)]">
                 <Check size={11} aria-hidden />
                 Solved
               </span>
@@ -406,7 +406,7 @@ export function ProblemWorkspace({
                   <h2 className="eyebrow">Example input</h2>
                   <CopyButton text={problem.sampleInput} label="example input" />
                 </div>
-                <pre className="mt-1.5 overflow-x-auto rounded-lg bg-black/35 p-3 font-mono text-xs">
+                <pre className="mt-1.5 overflow-x-auto rounded-lg bg-[var(--sunken)] p-3 font-mono text-xs">
                   {problem.sampleInput || "(nothing to read)"}
                 </pre>
               </div>
@@ -415,7 +415,7 @@ export function ProblemWorkspace({
                   <h2 className="eyebrow">Expected output</h2>
                   <CopyButton text={problem.sampleOutput} label="expected output" />
                 </div>
-                <pre className="mt-1.5 overflow-x-auto rounded-lg bg-black/35 p-3 font-mono text-xs">
+                <pre className="mt-1.5 overflow-x-auto rounded-lg bg-[var(--sunken)] p-3 font-mono text-xs">
                   {problem.sampleOutput || "(nothing to print)"}
                 </pre>
               </div>
@@ -423,7 +423,7 @@ export function ProblemWorkspace({
           )}
 
           {problem.openEnded && (
-            <p className="rounded-lg border border-[var(--warn)]/30 bg-[rgba(240,180,41,0.08)] p-3 text-[13px] text-[var(--warn)]">
+            <p className="rounded-lg border border-[var(--warn-border)] bg-[var(--warn-surface)] p-3 text-[13px] text-[var(--warn)]">
               This one is open-ended: there is no fixed answer to check. Write your program, press
               Run, and read the output yourself.
             </p>
@@ -583,7 +583,7 @@ export function ProblemWorkspace({
                   type="button"
                   className={
                     tab === "sample"
-                      ? "rounded-md bg-[rgba(62,207,142,0.14)] px-2 py-1 font-medium text-[var(--accent)]"
+                      ? "rounded-md bg-[var(--accent-surface-strong)] px-2 py-1 font-medium text-[var(--accent)]"
                       : "rounded-md px-2 py-1 text-[var(--muted)] hover:text-[var(--text)]"
                   }
                   onClick={() => {
@@ -597,7 +597,7 @@ export function ProblemWorkspace({
                   type="button"
                   className={
                     tab === "custom"
-                      ? "rounded-md bg-[rgba(62,207,142,0.14)] px-2 py-1 font-medium text-[var(--accent)]"
+                      ? "rounded-md bg-[var(--accent-surface-strong)] px-2 py-1 font-medium text-[var(--accent)]"
                       : "rounded-md px-2 py-1 text-[var(--muted)] hover:text-[var(--text)]"
                   }
                   onClick={() => setTab("custom")}
@@ -608,7 +608,7 @@ export function ProblemWorkspace({
             </div>
             <textarea
               aria-label="Input given to your program when you press Run"
-              className="mt-2 h-16 w-full resize-y rounded-lg border border-[var(--line)] bg-black/30 p-2 font-mono text-xs outline-none focus:border-[var(--accent-dim)]"
+              className="mt-2 h-16 w-full resize-y rounded-lg border border-[var(--line)] bg-[var(--sunken)] p-2 font-mono text-xs outline-none focus:border-[var(--accent-dim)]"
               value={stdin}
               onChange={(e) => {
                 setTab("custom");
@@ -668,7 +668,7 @@ export function ProblemWorkspace({
           )}
 
           {result && !result.ok && !result.verdict && (
-            <div className="rounded-lg border border-[var(--warn)]/40 bg-[rgba(240,180,41,0.08)] p-3 text-xs text-[var(--warn)]">
+            <div className="rounded-lg border border-[var(--warn-border)] bg-[var(--warn-surface)] p-3 text-xs text-[var(--warn)]">
               <p>{result.message || "Something went wrong."}</p>
               {/sign in/i.test(result.message || "") && (
                 <p className="mt-2">
@@ -719,7 +719,7 @@ export function ProblemWorkspace({
               {result.compileStderr && (
                 <div>
                   <div className="eyebrow">Compiler message</div>
-                  <pre className="mt-1 overflow-x-auto rounded-lg bg-black/40 p-2 font-mono text-[11px] text-[var(--danger)]">
+                  <pre className="mt-1 overflow-x-auto rounded-lg bg-[var(--sunken)] p-2 font-mono text-[11px] text-[var(--danger)]">
                     {result.compileStderr}
                   </pre>
                 </div>
@@ -728,7 +728,7 @@ export function ProblemWorkspace({
               {result.stdout != null && (
                 <div>
                   <div className="eyebrow">What your program printed</div>
-                  <pre className="mt-1 overflow-x-auto rounded-lg bg-black/40 p-2 font-mono text-[11px]">
+                  <pre className="mt-1 overflow-x-auto rounded-lg bg-[var(--sunken)] p-2 font-mono text-[11px]">
                     {result.stdout || "(nothing)"}
                   </pre>
                 </div>
@@ -759,13 +759,13 @@ export function ProblemWorkspace({
                       <div className="mt-2.5 grid gap-2 sm:grid-cols-2">
                         <div>
                           <div className="text-[10px] text-[var(--muted)]">Expected</div>
-                          <pre className="mt-0.5 overflow-x-auto rounded-md bg-black/30 p-1.5 font-mono">
+                          <pre className="mt-0.5 overflow-x-auto rounded-md bg-[var(--sunken)] p-1.5 font-mono">
                             {r.expected}
                           </pre>
                         </div>
                         <div>
                           <div className="text-[10px] text-[var(--muted)]">Your output</div>
-                          <pre className="mt-0.5 overflow-x-auto rounded-md bg-black/30 p-1.5 font-mono">
+                          <pre className="mt-0.5 overflow-x-auto rounded-md bg-[var(--sunken)] p-1.5 font-mono">
                             {r.stdout || "(nothing)"}
                           </pre>
                         </div>
@@ -798,6 +798,7 @@ export function ProblemWorkspace({
     </div>
   );
 }
+
 
 
 

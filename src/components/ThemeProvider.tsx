@@ -5,81 +5,129 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from "react";
-
-export type ThemeMode = "system" | "dark" | "light";
+import {
+  DEFAULT_THEME,
+  THEMES,
+  THEME_COOKIE,
+  THEME_STORAGE_KEY,
+  isThemeMode,
+  normalizeThemeMode,
+  resolveTheme,
+  type Theme,
+  type ThemeId,
+  type ThemeMode,
+} from "@/lib/theme";
 
 type ThemeCtx = {
-  theme: ThemeMode;
-  resolved: "dark" | "light";
-  setTheme: (t: ThemeMode) => void;
+  /** What the user picked — may be `system`. */
+  mode: ThemeMode;
+  /** The theme actually painted. */
+  themeId: ThemeId;
+  theme: Theme;
+  /** Convenience for anything that only cares about dark vs light. */
+  scheme: "dark" | "light";
+  setTheme: (mode: ThemeMode) => void;
 };
 
 const Ctx = createContext<ThemeCtx | null>(null);
 
-function resolve(theme: ThemeMode): "dark" | "light" {
-  if (theme === "dark" || theme === "light") return theme;
-  if (typeof window === "undefined") return "dark";
-  return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+function prefersLight(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(prefers-color-scheme: light)").matches;
 }
 
-function apply(theme: ThemeMode) {
+function persist(mode: ThemeMode) {
   const root = document.documentElement;
-  if (theme === "system") {
-    root.removeAttribute("data-theme");
-  } else {
-    root.setAttribute("data-theme", theme);
-  }
+  if (mode === "system") root.removeAttribute("data-theme");
+  else root.setAttribute("data-theme", mode);
+
   try {
-    localStorage.setItem("diu_theme", theme);
-    document.cookie = `diu_theme=${theme};path=/;max-age=31536000;samesite=lax`;
+    localStorage.setItem(THEME_STORAGE_KEY, mode);
+    document.cookie = `${THEME_COOKIE}=${mode};path=/;max-age=31536000;samesite=lax`;
   } catch {
-    /* private mode */
+    /* private mode — the cookie set by the server still covers SSR */
   }
+}
+
+/** Keeps the browser chrome (mobile address bar) in step with the theme. */
+function syncMetaThemeColor(color: string) {
+  let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (!meta) {
+    meta = document.createElement("meta");
+    meta.name = "theme-color";
+    document.head.appendChild(meta);
+  }
+  meta.content = color;
 }
 
 export function ThemeProvider({
   initial,
+  signedIn = false,
   children,
 }: {
   initial?: ThemeMode;
+  /** Only signed-in users get their choice written back to the database. */
+  signedIn?: boolean;
   children: ReactNode;
 }) {
-  const [theme, setThemeState] = useState<ThemeMode>(initial ?? "dark");
-  const [resolved, setResolved] = useState<"dark" | "light">(() =>
-    initial === "light" || initial === "dark" ? initial : "dark"
-  );
+  const [mode, setMode] = useState<ThemeMode>(() => normalizeThemeMode(initial));
+  const [systemLight, setSystemLight] = useState(false);
 
+  // localStorage wins over the cookie on first paint: it is the most recent
+  // choice on this device even if the session cookie is stale.
   useEffect(() => {
-    let start: ThemeMode = initial ?? "dark";
+    let start = normalizeThemeMode(initial);
     try {
-      const stored = localStorage.getItem("diu_theme") as ThemeMode | null;
-      if (stored === "system" || stored === "dark" || stored === "light") start = stored;
+      const stored = localStorage.getItem(THEME_STORAGE_KEY);
+      if (isThemeMode(stored)) start = stored;
     } catch {
       /* ignore */
     }
-    setThemeState(start);
-    apply(start);
-    setResolved(resolve(start));
+    setSystemLight(prefersLight());
+    setMode(start);
+    persist(start);
   }, [initial]);
 
   useEffect(() => {
-    if (theme !== "system") return;
     const mq = window.matchMedia("(prefers-color-scheme: light)");
-    const onChange = () => setResolved(resolve("system"));
+    const onChange = () => setSystemLight(mq.matches);
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
-  }, [theme]);
-
-  const setTheme = useCallback((t: ThemeMode) => {
-    setThemeState(t);
-    apply(t);
-    setResolved(resolve(t));
   }, []);
 
-  return <Ctx.Provider value={{ theme, resolved, setTheme }}>{children}</Ctx.Provider>;
+  const themeId = resolveTheme(mode, systemLight);
+  const theme = THEMES[themeId] ?? THEMES[DEFAULT_THEME];
+
+  useEffect(() => {
+    syncMetaThemeColor(theme.palette.bg);
+  }, [theme]);
+
+  const setTheme = useCallback(
+    (next: ThemeMode) => {
+      setMode(next);
+      persist(next);
+      if (!signedIn) return;
+      // Fire and forget: the cookie already made the choice durable, this just
+      // carries it to the user's other devices.
+      void fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ theme: next }),
+      }).catch(() => {});
+    },
+    [signedIn]
+  );
+
+  const value = useMemo<ThemeCtx>(
+    () => ({ mode, themeId, theme, scheme: theme.scheme, setTheme }),
+    [mode, themeId, theme, setTheme]
+  );
+
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
 export function useTheme() {

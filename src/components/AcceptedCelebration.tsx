@@ -3,8 +3,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
-
-const CONFETTI_COLORS = ["#3ecf8e", "#8fe3bd", "#f5c66b", "#6fb3ff", "#e8ecf1"];
+import { useTheme } from "@/components/ThemeProvider";
 
 type Piece = {
   left: number;
@@ -18,7 +17,7 @@ type Piece = {
   round: boolean;
 };
 
-function buildConfetti(count: number): Piece[] {
+function buildConfetti(count: number, colors: string[]): Piece[] {
   return Array.from({ length: count }, (_, i) => {
     const round = i % 5 === 0;
     return {
@@ -27,7 +26,7 @@ function buildConfetti(count: number): Piece[] {
       duration: 2 + Math.random() * 1.6,
       drift: (Math.random() - 0.5) * 240,
       spin: (Math.random() > 0.5 ? 1 : -1) * (360 + Math.random() * 540),
-      color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+      color: colors[i % colors.length],
       width: round ? 6 : 5 + Math.random() * 4,
       height: round ? 6 : 9 + Math.random() * 6,
       round,
@@ -54,8 +53,12 @@ export function AcceptedCelebration({
   timeMs,
   nextHref,
 }: Props) {
+  const { theme } = useTheme();
   const cardRef = useRef<HTMLDivElement | null>(null);
-  const confetti = useMemo(() => (open ? buildConfetti(40) : []), [open]);
+  const confetti = useMemo(
+    () => (open ? buildConfetti(40, theme.confetti) : []),
+    [open, theme]
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -76,7 +79,7 @@ export function AcceptedCelebration({
 
   return (
     <div
-      className="animate-overlay-in fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm"
+      className="animate-overlay-in fixed inset-0 z-[70] flex items-center justify-center bg-[var(--overlay)] px-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="accepted-title"
@@ -117,7 +120,7 @@ export function AcceptedCelebration({
 
         <div className="relative mx-auto flex h-16 w-16 items-center justify-center" aria-hidden>
           <span className="animate-seal-ring absolute inset-0 rounded-full border border-[var(--accent)]" />
-          <span className="animate-seal-in flex h-16 w-16 items-center justify-center rounded-full border border-[var(--accent)]/40 bg-[rgba(62,207,142,0.12)]">
+          <span className="animate-seal-in flex h-16 w-16 items-center justify-center rounded-full border border-[var(--accent)]/40 bg-[var(--accent-surface)]">
             <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none">
               <path
                 d="M5 12.5 10 17.5 19 7.5"
@@ -175,3 +178,4 @@ export function AcceptedCelebration({
     </div>
   );
 }
+

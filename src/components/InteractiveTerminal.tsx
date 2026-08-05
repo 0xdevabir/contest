@@ -11,6 +11,7 @@ import {
 import type { Terminal } from "@xterm/xterm";
 import type { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
+import { useTheme } from "@/components/ThemeProvider";
 
 export type TerminalHandle = {
   run: (code: string) => void;
@@ -24,23 +25,12 @@ type Props = {
 
 type Phase = "idle" | "connecting" | "compiling" | "running";
 
-const THEME = {
-  background: "#0b0f14",
-  foreground: "#d7e0ea",
-  cursor: "#3ecf8e",
-  selectionBackground: "rgba(62,207,142,0.25)",
-  black: "#0b0f14",
-  red: "#ff6b6b",
-  green: "#3ecf8e",
-  yellow: "#f0b429",
-  blue: "#5aa9e6",
-  magenta: "#c792ea",
-  cyan: "#56b6c2",
-  white: "#d7e0ea",
-};
-
 export const InteractiveTerminal = forwardRef<TerminalHandle, Props>(
   function InteractiveTerminal({ timeLimitMs, onRunningChange }, ref) {
+    const { theme } = useTheme();
+    // Read inside effects without making them depend on the object identity.
+    const paletteRef = useRef(theme.terminal);
+    paletteRef.current = theme.terminal;
     const hostRef = useRef<HTMLDivElement | null>(null);
     const termRef = useRef<Terminal | null>(null);
     const fitRef = useRef<FitAddon | null>(null);
@@ -74,7 +64,7 @@ export const InteractiveTerminal = forwardRef<TerminalHandle, Props>(
           fontSize: 13,
           fontFamily:
             'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
-          theme: THEME,
+          theme: paletteRef.current,
           scrollback: 5000,
         });
         const fit = new Fit();
@@ -82,7 +72,7 @@ export const InteractiveTerminal = forwardRef<TerminalHandle, Props>(
         term.open(hostRef.current);
         fit.fit();
 
-        term.writeln("\x1b[38;5;245mReady. Press Run to compile and execute.\x1b[0m");
+        term.writeln("\x1b[90mReady. Press Run to compile and execute.\x1b[0m");
 
         term.onData((data) => {
           const ws = wsRef.current;
@@ -115,6 +105,12 @@ export const InteractiveTerminal = forwardRef<TerminalHandle, Props>(
         termRef.current = null;
       };
     }, []);
+
+    // Repaint an already-open terminal when the user switches theme.
+    useEffect(() => {
+      const term = termRef.current;
+      if (term) term.options.theme = theme.terminal;
+    }, [theme]);
 
     const stop = useCallback(() => {
       const ws = wsRef.current;
@@ -174,7 +170,7 @@ export const InteractiveTerminal = forwardRef<TerminalHandle, Props>(
             case "status":
               if (msg.phase === "compiling") {
                 setRunning("compiling");
-                term.writeln("\x1b[38;5;245mCompiling…\x1b[0m");
+                term.writeln("\x1b[90mCompiling…\x1b[0m");
               } else if (msg.phase === "running") {
                 setRunning("running");
               }
@@ -204,7 +200,7 @@ export const InteractiveTerminal = forwardRef<TerminalHandle, Props>(
               if (msg.timedOut) {
                 term.writeln(`\x1b[31m[time limit exceeded after ${timeLimitMs}ms]\x1b[0m`);
               } else if (code === 0) {
-                term.writeln(`\x1b[38;5;245m[finished in ${msg.ms}ms]\x1b[0m`);
+                term.writeln(`\x1b[90m[finished in ${msg.ms}ms]\x1b[0m`);
               } else {
                 term.writeln(`\x1b[31m[exited with code ${code} after ${msg.ms}ms]\x1b[0m`);
               }
@@ -269,3 +265,4 @@ export const InteractiveTerminal = forwardRef<TerminalHandle, Props>(
     );
   }
 );
+

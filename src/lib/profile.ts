@@ -1,5 +1,6 @@
-import type { ThemePreference, University, Verdict } from "@prisma/client";
+import type { University, Verdict } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { normalizeThemeMode, type ThemeMode } from "@/lib/theme";
 import { getCategories, getMeta, getProblem } from "@/lib/problems";
 import type { Difficulty } from "@/lib/types";
 
@@ -34,7 +35,7 @@ export type PublicProfile = {
   emailVerified: boolean;
   createdAt: Date;
   lastLoginAt: Date | null;
-  theme: ThemePreference;
+  theme: ThemeMode;
   editorFontSize: number;
   profilePublic: boolean;
   showEmail: boolean;
@@ -199,7 +200,7 @@ export async function getPublicProfile(
     emailVerified: Boolean(user.emailVerified),
     createdAt: user.createdAt,
     lastLoginAt: isOwner ? user.lastLoginAt : null,
-    theme: user.theme,
+    theme: normalizeThemeMode(user.theme),
     editorFontSize: user.editorFontSize,
     profilePublic: user.profilePublic,
     showEmail: user.showEmail,
@@ -245,3 +246,4 @@ export async function getUserSubmissions(
     }),
   };
 }
+

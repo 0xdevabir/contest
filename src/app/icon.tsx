@@ -1,4 +1,7 @@
 import { ImageResponse } from "next/og";
+import { THEMES } from "@/lib/theme";
+
+const P = THEMES.dark.palette;
 
 export const runtime = "edge";
 export const size = { width: 32, height: 32 };
@@ -14,8 +17,8 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#3ecf8e",
-          color: "#080b10",
+          background: P.accent,
+          color: P.accentContrast,
           fontSize: "22px",
           fontWeight: 800,
           borderRadius: "6px",

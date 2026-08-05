@@ -83,7 +83,7 @@ export default async function AdminSystemPage() {
               className="rounded-xl border border-[var(--line)] bg-[var(--bg-panel)] p-4"
             >
               <div className="flex items-start justify-between gap-4">
-                <span className="grid size-9 place-items-center rounded-lg bg-white/[0.04] text-[var(--muted)]">
+                <span className="grid size-9 place-items-center rounded-lg bg-[var(--hover)] text-[var(--muted)]">
                   <Icon size={17} aria-hidden="true" />
                 </span>
                 {check.ready ? (

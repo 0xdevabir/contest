@@ -1,4 +1,7 @@
 import { ImageResponse } from "next/og";
+import { THEMES } from "@/lib/theme";
+
+const P = THEMES.dark.palette;
 
 export const runtime = "edge";
 
@@ -12,13 +15,13 @@ function icon(size: number) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#080b10",
-          color: "#3ecf8e",
+          background: P.bg,
+          color: P.accent,
           fontSize: Math.round(size * 0.48),
           fontWeight: 800,
           fontFamily: "system-ui, sans-serif",
           borderRadius: Math.round(size * 0.18),
-          border: `${Math.max(2, Math.round(size * 0.04))}px solid #3ecf8e`,
+          border: `${Math.max(2, Math.round(size * 0.04))}px solid ${P.accent}`,
         }}
       >
         C

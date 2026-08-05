@@ -80,7 +80,7 @@ export function JudgePreview() {
       aria-label="Preview of the C judge running a submitted solution"
       className="panel min-w-0 overflow-hidden"
     >
-      <div className="flex items-center justify-between border-b border-[var(--line)] bg-black/25 pr-4">
+      <div className="flex items-center justify-between border-b border-[var(--line)] bg-[var(--sunken)] pr-4">
         <div className="flex" role="tablist" aria-label="Editor tabs">
           <span
             role="tab"
@@ -129,7 +129,7 @@ export function JudgePreview() {
         </code>
       </pre>
 
-      <div className="border-t border-[var(--line)] bg-black/25">
+      <div className="border-t border-[var(--line)] bg-[var(--sunken)]">
         <div className="flex items-center justify-between px-4 py-3 sm:px-5">
           <span className="flex items-center gap-2 font-mono text-xs font-semibold text-[var(--accent)]">
             <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />

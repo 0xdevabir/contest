@@ -2,6 +2,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import type { Role, University } from "@prisma/client";
 import { prisma } from "./db";
+import { normalizeThemeMode, type ThemeMode } from "./theme";
 
 const COOKIE = "diu_contesthub_session";
 const MAX_AGE = 60 * 60 * 24 * 14; // 14 days
@@ -13,7 +14,20 @@ export type SessionUser = {
   university: University;
   role: Role;
   emailVerified: boolean;
+  /** Read fresh from the DB so the theme follows the account across devices. */
+  theme: ThemeMode;
 };
+
+const SESSION_SELECT = {
+  id: true,
+  email: true,
+  name: true,
+  university: true,
+  role: true,
+  status: true,
+  emailVerified: true,
+  theme: true,
+} as const;
 
 function secretKey() {
   const secret = process.env.AUTH_SECRET;
@@ -21,7 +35,10 @@ function secretKey() {
   return new TextEncoder().encode(secret);
 }
 
-export async function createSessionToken(user: SessionUser): Promise<string> {
+/** The theme is never a JWT claim — it is always read fresh from the row. */
+type SessionClaims = Omit<SessionUser, "theme">;
+
+export async function createSessionToken(user: SessionClaims): Promise<string> {
   const key = secretKey();
   if (!key) throw new Error("AUTH_SECRET is not set");
   return new SignJWT({
@@ -38,7 +55,7 @@ export async function createSessionToken(user: SessionUser): Promise<string> {
     .sign(key);
 }
 
-export async function setSessionCookie(user: SessionUser) {
+export async function setSessionCookie(user: SessionClaims) {
   const token = await createSessionToken(user);
   const jar = await cookies();
   jar.set(COOKIE, token, {
@@ -67,15 +84,7 @@ export async function getSession(): Promise<SessionUser | null> {
     if (!id) return null;
     const user = await prisma.user.findUnique({
       where: { id },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        university: true,
-        role: true,
-        status: true,
-        emailVerified: true,
-      },
+      select: SESSION_SELECT,
     });
     if (!user || user.status !== "ACTIVE") return null;
     return {
@@ -85,6 +94,7 @@ export async function getSession(): Promise<SessionUser | null> {
       university: user.university,
       role: user.role,
       emailVerified: Boolean(user.emailVerified),
+      theme: normalizeThemeMode(user.theme),
     };
   } catch {
     return null;
@@ -96,15 +106,7 @@ export async function requireUser(): Promise<SessionUser> {
   if (!session) throw new Error("UNAUTHORIZED");
   const user = await prisma.user.findUnique({
     where: { id: session.id },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      university: true,
-      role: true,
-      status: true,
-      emailVerified: true,
-    },
+    select: SESSION_SELECT,
   });
   if (!user || user.status !== "ACTIVE") throw new Error("UNAUTHORIZED");
   return {
@@ -114,6 +116,7 @@ export async function requireUser(): Promise<SessionUser> {
     university: user.university,
     role: user.role,
     emailVerified: Boolean(user.emailVerified),
+    theme: normalizeThemeMode(user.theme),
   };
 }
 
@@ -136,12 +139,14 @@ export async function refreshSessionFromDb(userId: string) {
     university: user.university,
     role: user.role,
     emailVerified: !!user.emailVerified,
+    theme: normalizeThemeMode(user.theme),
   };
   await setSessionCookie(session);
   return session;
 }
 
 export { COOKIE as SESSION_COOKIE };
+
 
 
 
