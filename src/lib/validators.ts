@@ -32,7 +32,8 @@ export const forgotSchema = z.object({
 });
 
 export const resetSchema = z.object({
-  token: z.string().min(10),
+  email: z.string().trim().email(),
+  code: z.string().trim().regex(/^\d{8}$/, "Enter the 8-digit code"),
   password: z.string().min(8).max(100),
 });
 
@@ -57,4 +58,5 @@ export const defaultContestRules: ContestRules = {
   languages: ["c"],
   notes: "",
 };
+
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { consumeAuthToken, hashPassword } from "@/lib/password";
+import { consumePasswordResetCode, hashPassword } from "@/lib/password";
 import { resetSchema } from "@/lib/validators";
 
 export const runtime = "nodejs";
@@ -13,14 +13,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, message: "Invalid reset data" }, { status: 400 });
     }
 
-    const userId = await consumeAuthToken(parsed.data.token, "PASSWORD_RESET");
-    if (!userId) {
-      return NextResponse.json({ ok: false, message: "Invalid or expired token" }, { status: 400 });
+    const email = parsed.data.email.toLowerCase();
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true },
+    });
+    if (!user || !(await consumePasswordResetCode(user.id, parsed.data.code))) {
+      return NextResponse.json(
+        { ok: false, message: "Invalid or expired code" },
+        { status: 400 }
+      );
     }
 
     const passwordHash = await hashPassword(parsed.data.password);
     await prisma.user.update({
-      where: { id: userId },
+      where: { id: user.id },
       data: { passwordHash },
     });
 
@@ -30,3 +37,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, message: "Reset failed" }, { status: 500 });
   }
 }
+
