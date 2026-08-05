@@ -37,9 +37,9 @@ export default async function ContestsPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-      <h1 className="font-display text-3xl font-700">Contests</h1>
+      <h1 className="font-display text-3xl font-extrabold">Contests</h1>
       <p className="mt-2 text-[var(--muted)]">
-        Live and upcoming contests. Admins configure duration, freeze, and rules before go-live.
+        Join contests while they are live. New contests appear here when an admin activates them.
       </p>
 
       {dbError && (
@@ -50,7 +50,12 @@ export default async function ContestsPage() {
 
       <div className="mt-8 space-y-4">
         {!dbError && contests.length === 0 && (
-          <p className="text-sm text-[var(--muted)]">No contests yet.</p>
+          <div className="panel px-5 py-10 text-center">
+            <h2 className="font-display text-lg font-semibold">No live contests</h2>
+            <p className="mt-2 text-sm text-[var(--muted)]">
+              Check back when an admin activates the next contest.
+            </p>
+          </div>
         )}
         {contests.map((c) => (
           <article key={c.id} className="panel p-5">
@@ -59,7 +64,7 @@ export default async function ContestsPage() {
                 <p className="font-mono text-xs text-[var(--accent)]">
                   {contestStatusLabel(c.status)}
                 </p>
-                <h2 className="mt-1 font-display text-xl font-600">
+                <h2 className="mt-1 font-display text-xl font-semibold">
                   <Link href={`/contests/${c.slug}`} className="hover:text-[var(--accent)]">
                     {c.title}
                   </Link>
@@ -76,7 +81,7 @@ export default async function ContestsPage() {
                 <Link href={`/contests/${c.slug}`} className="btn btn-ghost !py-2 !text-xs">
                   View
                 </Link>
-                {(c.status === "SCHEDULED" || c.status === "LIVE") && (
+                {c.status === "LIVE" && (
                   <ContestRegisterButton
                     contestId={c.id}
                     registered={myRegs.has(c.id)}
@@ -93,11 +98,19 @@ export default async function ContestsPage() {
 }
 
 async function loadContests() {
+  const now = new Date();
   return prisma.contest.findMany({
-    where: { status: { not: "DRAFT" } },
-    orderBy: [{ status: "asc" }, { startsAt: "desc" }],
+    where: {
+      status: "LIVE",
+      AND: [
+        { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
+        { OR: [{ endsAt: null }, { endsAt: { gt: now } }] },
+      ],
+    },
+    orderBy: { startsAt: "desc" },
     include: {
       _count: { select: { problems: true, registrations: true } },
     },
   });
 }
+

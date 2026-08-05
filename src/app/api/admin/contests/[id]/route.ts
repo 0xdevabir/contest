@@ -19,7 +19,7 @@ const patchSchema = z.object({
   status: z.enum(["DRAFT", "SCHEDULED", "LIVE", "ENDED"]).optional(),
   rules: contestRulesSchema.partial().optional(),
   problemIds: z.array(z.string()).min(1).max(50).optional(),
-  action: z.enum(["go-live", "end", "schedule"]).optional(),
+  action: z.enum(["go-live", "deactivate", "end", "schedule"]).optional(),
 });
 
 export async function GET(_req: Request, { params }: Params) {
@@ -94,6 +94,10 @@ export async function PATCH(req: Request, { params }: Params) {
       startsAt = new Date();
       const duration = data.durationMinutes ?? existing.durationMinutes;
       endsAt = new Date(startsAt.getTime() + duration * 60_000);
+    } else if (data.action === "deactivate") {
+      status = "DRAFT";
+      startsAt = null;
+      endsAt = null;
     } else if (data.action === "end") {
       status = "ENDED";
       endsAt = new Date();
@@ -200,5 +204,6 @@ export async function DELETE(_req: Request, { params }: Params) {
     return NextResponse.json({ ok: false, message: "Delete failed" }, { status: 500 });
   }
 }
+
 
 

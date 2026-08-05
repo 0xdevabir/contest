@@ -26,15 +26,14 @@ export async function POST(_req: Request, { params }: Params) {
       return NextResponse.json({ ok: false, message: "Contest not found" }, { status: 404 });
     }
 
-    if (contest.status === "ENDED" || contest.status === "DRAFT") {
+    if (contest.status !== "LIVE") {
       return NextResponse.json(
-        { ok: false, message: "Registration is closed for this contest" },
+        { ok: false, message: "This contest is not active" },
         { status: 400 }
       );
     }
 
-    // Allow register for SCHEDULED or LIVE
-    if (contest.status === "LIVE" && !isContestOpen(contest.status, contest.startsAt, contest.endsAt)) {
+    if (!isContestOpen(contest.status, contest.startsAt, contest.endsAt)) {
       return NextResponse.json({ ok: false, message: "Contest is over" }, { status: 400 });
     }
 
@@ -50,3 +49,4 @@ export async function POST(_req: Request, { params }: Params) {
     return NextResponse.json({ ok: false, message: "Registration failed" }, { status: 500 });
   }
 }
+

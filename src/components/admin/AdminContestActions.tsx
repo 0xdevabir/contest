@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CircleStop, Play, Trash2 } from "lucide-react";
+import { CircleStop, EyeOff, Play, Trash2 } from "lucide-react";
 
 export function AdminContestActions({
   contestId,
@@ -73,30 +73,46 @@ export function AdminContestActions({
           className="btn btn-primary !py-2 !text-xs"
           disabled={busy}
           onClick={() => {
-            if (confirm("Start this contest now? The configured timer will begin immediately.")) {
+            if (confirm("Activate this contest now? Users will be able to see and join it immediately.")) {
               void patch({ action: "go-live", durationMinutes });
             }
           }}
-          title="Start contest now"
+          title="Activate contest for users"
         >
           <Play size={13} aria-hidden="true" />
-          {compact ? "Start" : "Go live"}
+          {compact ? "Live" : "Activate"}
         </button>
       )}
       {status === "LIVE" && (
-        <button
-          type="button"
-          className="btn btn-danger !py-2 !text-xs"
-          disabled={busy}
-          onClick={() => {
-            if (confirm("End this live contest now? This cannot be resumed.")) {
-              void patch({ action: "end" });
-            }
-          }}
-        >
-          <CircleStop size={13} aria-hidden="true" />
-          {compact ? "End" : "End contest"}
-        </button>
+        <>
+          <button
+            type="button"
+            className="btn btn-ghost !py-2 !text-xs"
+            disabled={busy}
+            onClick={() => {
+              if (confirm("Deactivate this contest? Users will no longer see or join it.")) {
+                void patch({ action: "deactivate" });
+              }
+            }}
+            title="Hide contest from users"
+          >
+            <EyeOff size={13} aria-hidden="true" />
+            {compact ? "Hide" : "Deactivate"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-danger !py-2 !text-xs"
+            disabled={busy}
+            onClick={() => {
+              if (confirm("End this live contest now?")) {
+                void patch({ action: "end" });
+              }
+            }}
+          >
+            <CircleStop size={13} aria-hidden="true" />
+            {compact ? "End" : "End contest"}
+          </button>
+        </>
       )}
       {status === "DRAFT" && !compact && (
         <button
@@ -128,4 +144,5 @@ export function AdminContestActions({
     </div>
   );
 }
+
 

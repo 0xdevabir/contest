@@ -6,7 +6,7 @@ import type { University } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { getContestLeaderboard } from "@/lib/leaderboard";
-import { contestStatusLabel, parseRules } from "@/lib/contests";
+import { contestStatusLabel, isContestOpen, parseRules } from "@/lib/contests";
 import { getProblem } from "@/lib/problems";
 import { UNIVERSITIES, universityLabel } from "@/lib/universities";
 import { ContestRegisterButton } from "@/components/ContestRegisterButton";
@@ -44,7 +44,13 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
     );
   }
 
-  if (!contest || contest.status === "DRAFT") notFound();
+  if (
+    !contest ||
+    contest.status !== "LIVE" ||
+    !isContestOpen(contest.status, contest.startsAt, contest.endsAt)
+  ) {
+    notFound();
+  }
 
   const university = UNIVERSITIES.some((u) => u.code === uni)
     ? (uni as University)
@@ -85,7 +91,7 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
           <p className="font-mono text-xs text-[var(--accent)]">
             {contestStatusLabel(contest.status)}
           </p>
-          <h1 className="mt-1 font-display text-3xl font-700">{contest.title}</h1>
+          <h1 className="mt-1 font-display text-3xl font-extrabold">{contest.title}</h1>
           <p className="mt-3 max-w-2xl text-[var(--muted)] whitespace-pre-wrap">
             {contest.description || "No description."}
           </p>
@@ -108,17 +114,15 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
             </p>
           )}
         </div>
-        {(contest.status === "SCHEDULED" || contest.status === "LIVE") && (
-          <ContestRegisterButton
-            contestId={contest.id}
-            registered={registered}
-            loggedIn={!!session}
-          />
-        )}
+        <ContestRegisterButton
+          contestId={contest.id}
+          registered={registered}
+          loggedIn={!!session}
+        />
       </div>
 
       <section className="mt-10">
-        <h2 className="font-display text-xl font-600">Problems</h2>
+        <h2 className="font-display text-xl font-semibold">Problems</h2>
         <ul className="panel mt-3 divide-y divide-[var(--line)] overflow-hidden">
           {contest.problems.map((p) => {
             const meta = getProblem(p.problemId);
@@ -126,11 +130,9 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
               <li key={p.id}>
                 <Link
                   href={
-                    contest.status === "LIVE" && registered
+                    registered
                       ? `/problems/${p.problemId}?contest=${contest.id}`
-                      : contest.status === "ENDED"
-                        ? `/problems/${p.problemId}`
-                        : `/contests/${contest.slug}`
+                      : `/contests/${contest.slug}`
                   }
                   className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-white/[0.03]"
                 >
@@ -153,7 +155,7 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
 
       <section className="mt-10">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 className="font-display text-xl font-600">Leaderboard</h2>
+          <h2 className="font-display text-xl font-semibold">Leaderboard</h2>
           <div className="flex flex-wrap gap-2">
             <UniChip href={`/contests/${slug}`} active={!university} label="All" />
             {UNIVERSITIES.map((u) => (
@@ -231,3 +233,4 @@ function UniChip({
     </Link>
   );
 }
+
