@@ -10,12 +10,14 @@ export function UserActions({
   status,
   verified,
   isSelf,
+  redirectOnDelete,
 }: {
   userId: string;
   role: "USER" | "ADMIN";
   status: "ACTIVE" | "SUSPENDED";
   verified: boolean;
   isSelf: boolean;
+  redirectOnDelete?: string;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -60,6 +62,11 @@ export function UserActions({
       const result = await response.json();
       if (!response.ok || !result.ok) {
         setMessage(result.message || "Delete failed");
+        return;
+      }
+      if (redirectOnDelete) {
+        router.push(redirectOnDelete);
+        router.refresh();
         return;
       }
       router.refresh();
@@ -134,3 +141,4 @@ export function UserActions({
     </div>
   );
 }
+

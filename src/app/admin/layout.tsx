@@ -4,6 +4,10 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = {
+  title: "Admin",
+};
+
 export default async function AdminLayout({
   children,
 }: {
@@ -14,9 +18,9 @@ export default async function AdminLayout({
   if (session.role !== "ADMIN") redirect("/");
 
   return (
-    <div className="min-h-[calc(100vh-57px)] lg:flex">
+    <div className="flex min-h-screen bg-[#080b10]">
       <AdminSidebar adminName={session.name} />
-      <div className="min-w-0 flex-1 bg-[#0a0f16]">{children}</div>
+      <div className="min-w-0 flex-1 overflow-x-hidden bg-[#0a0f16]">{children}</div>
     </div>
   );
 }

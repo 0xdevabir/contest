@@ -163,7 +163,12 @@ export default async function AdminUsersPage({ searchParams }: Props) {
                       </span>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="max-w-56 truncate font-medium">{user.name}</p>
+                          <Link
+                            href={`/admin/users/${user.id}`}
+                            className="max-w-56 truncate font-medium hover:text-[var(--accent)]"
+                          >
+                            {user.name}
+                          </Link>
                           {user.id === session?.id && (
                             <span className="rounded bg-white/[0.05] px-1.5 py-0.5 text-[9px] text-[var(--muted)]">
                               YOU
@@ -360,3 +365,4 @@ function relativeTime(date: Date) {
 function formatDate(date: Date) {
   return date.toLocaleDateString("en", { month: "short", day: "numeric", year: "numeric" });
 }
+

@@ -338,7 +338,11 @@ function Dashboard({ data }: { data: DashboardData }) {
         />
         <div className="grid divide-y divide-[var(--line)] md:grid-cols-5 md:divide-x md:divide-y-0">
           {data.recentUsers.map((user) => (
-            <div key={user.id} className="px-4 py-4">
+            <Link
+              key={user.id}
+              href={`/admin/users/${user.id}`}
+              className="px-4 py-4 transition-colors hover:bg-white/[0.02]"
+            >
               <div className="flex items-center gap-2">
                 <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white/[0.05] text-xs font-semibold">
                   {initials(user.name)}
@@ -358,7 +362,7 @@ function Dashboard({ data }: { data: DashboardData }) {
                 )}
                 {user.emailVerified ? "Verified" : "Pending verification"}
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </section>
@@ -477,4 +481,5 @@ function initials(name: string) {
     .join("")
     .toUpperCase();
 }
+
 
