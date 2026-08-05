@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
-import { effectiveContestStatus, isContestOpen } from "@/lib/contests";
+import { effectiveContestStatus } from "@/lib/contests";
 
 export const runtime = "nodejs";
 
@@ -26,12 +26,14 @@ export async function POST(_req: Request, { params }: Params) {
       return NextResponse.json({ ok: false, message: "Contest not found" }, { status: 404 });
     }
 
-    if (!isContestOpen(contest.status, contest.startsAt, contest.endsAt)) {
-      const ended = effectiveContestStatus(contest.status, contest.endsAt) === "ENDED";
+    // Joining before the start whistle is the normal case — the gate is only
+    // that the admin has published the contest and it has not finished.
+    if (effectiveContestStatus(contest.status, contest.endsAt) !== "LIVE") {
+      const ended = contest.status === "LIVE" || contest.status === "ENDED";
       return NextResponse.json(
         {
           ok: false,
-          message: ended ? "This contest has ended" : "This contest is not active yet",
+          message: ended ? "This contest has ended" : "This contest is not open yet",
         },
         { status: 400 }
       );
@@ -49,5 +51,6 @@ export async function POST(_req: Request, { params }: Params) {
     return NextResponse.json({ ok: false, message: "Registration failed" }, { status: 500 });
   }
 }
+
 
 

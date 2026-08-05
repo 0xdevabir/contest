@@ -50,16 +50,33 @@ export function effectiveContestStatus(
   return status;
 }
 
+export type ContestPhase = "BEFORE" | "RUNNING" | "ENDED";
+
+export function contestPhase(
+  startsAt: Date | null | undefined,
+  endsAt: Date | null | undefined,
+  now = Date.now()
+): ContestPhase {
+  if (endsAt && endsAt.getTime() <= now) return "ENDED";
+  if (startsAt && startsAt.getTime() > now) return "BEFORE";
+  return "RUNNING";
+}
+
+/**
+ * LIVE means the admin has published the contest, not that it is running right
+ * now — a published contest is visible before it starts too, otherwise nobody
+ * could find it to register. DRAFT and SCHEDULED stay hidden, and a finished
+ * contest is only listed when the admin opted into publishing the archive.
+ */
 export function isContestPublic(
   status: ContestStatus,
   startsAt: Date | null | undefined,
   endsAt: Date | null | undefined,
   rawRules: Prisma.JsonValue | null | undefined
 ) {
-  if (isContestOpen(status, startsAt, endsAt)) return true;
-  return (
-    effectiveContestStatus(status, endsAt) === "ENDED" &&
-    parseRules(rawRules).publishAfterEnd
-  );
+  const effective = effectiveContestStatus(status, endsAt);
+  if (effective === "LIVE") return true;
+  return effective === "ENDED" && parseRules(rawRules).publishAfterEnd;
 }
+
 

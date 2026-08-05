@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import {
-  contestStatusLabel,
+  contestPhase,
   effectiveContestStatus,
   isContestOpen,
   isContestPublic,
@@ -89,18 +89,21 @@ export default async function ContestsPage() {
           </div>
         )}
         {contests.map((c) => {
-          const status = effectiveContestStatus(c.status, c.endsAt);
+          const phase = contestPhase(c.startsAt, c.endsAt);
+          const ended = effectiveContestStatus(c.status, c.endsAt) === "ENDED";
           const open = isContestOpen(c.status, c.startsAt, c.endsAt);
+          const label =
+            phase === "BEFORE" ? "Upcoming" : open ? "Live now" : "Ended";
           return (
           <article key={c.id} className="panel p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p
                   className={`font-mono text-xs ${
-                    open ? "text-[var(--accent)]" : "text-[var(--muted)]"
+                    ended ? "text-[var(--muted)]" : "text-[var(--accent)]"
                   }`}
                 >
-                  {contestStatusLabel(status)}
+                  {label}
                   {myRegs.has(c.id) && " · You joined"}
                 </p>
                 <h2 className="mt-1 font-display text-xl font-semibold">
@@ -118,9 +121,9 @@ export default async function ContestsPage() {
               </div>
               <div className="flex flex-col items-end gap-2">
                 <Link href={`/contests/${c.slug}`} className="btn btn-ghost !py-2 !text-xs">
-                  {open ? "View" : "Final standings"}
+                  {ended ? "Final standings" : "View"}
                 </Link>
-                {open && (
+                {!ended && (
                   <ContestRegisterButton
                     contestId={c.id}
                     registered={myRegs.has(c.id)}
@@ -156,4 +159,5 @@ async function loadContests(myRegs: Set<string>) {
       isContestPublic(contest.status, contest.startsAt, contest.endsAt, contest.rules)
   );
 }
+
 
