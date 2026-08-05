@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import type { OnMount } from "@monaco-editor/react";
+import { useTheme } from "@/components/ThemeProvider";
 
 const Monaco = dynamic(
   async () => {
@@ -15,7 +17,7 @@ const Monaco = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-full items-center justify-center bg-[#0d1117] font-mono text-sm text-[var(--muted)]">
+      <div className="flex h-full items-center justify-center bg-[var(--bg-elevated)] font-mono text-sm text-[var(--muted)]">
         Loading editor…
       </div>
     ),
@@ -29,6 +31,19 @@ type Props = {
 };
 
 export function CodeEditor({ value, onChange, height = "100%" }: Props) {
+  const { resolved } = useTheme();
+  const [fontSize, setFontSize] = useState(14);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("diu_editor_font");
+      const n = raw ? Number(raw) : 14;
+      if (n >= 12 && n <= 20) setFontSize(n);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   const handleMount: OnMount = (editor) => {
     editor.focus();
   };
@@ -37,13 +52,13 @@ export function CodeEditor({ value, onChange, height = "100%" }: Props) {
     <Monaco
       height={height}
       language="c"
-      theme="vs-dark"
+      theme={resolved === "light" ? "vs" : "vs-dark"}
       value={value}
       onChange={(v) => onChange(v ?? "")}
       onMount={handleMount}
       options={{
         fontFamily: "var(--font-mono), IBM Plex Mono, Menlo, monospace",
-        fontSize: 14,
+        fontSize,
         minimap: { enabled: false },
         scrollBeyondLastLine: false,
         automaticLayout: true,
@@ -57,4 +72,3 @@ export function CodeEditor({ value, onChange, height = "100%" }: Props) {
     />
   );
 }
-

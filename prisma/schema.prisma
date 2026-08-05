@@ -17,6 +17,12 @@ enum UserStatus {
   SUSPENDED
 }
 
+enum ThemePreference {
+  SYSTEM
+  DARK
+  LIGHT
+}
+
 enum University {
   DIU
   NSU
@@ -59,6 +65,16 @@ model User {
   status        UserStatus @default(ACTIVE)
   emailVerified DateTime?
   lastLoginAt   DateTime?
+  /// Short public blurb on the profile.
+  bio           String     @default("")
+  /// UI theme preference — applied client-side; SYSTEM follows OS.
+  theme         ThemePreference @default(DARK)
+  /// Monaco editor font size in px (12–20).
+  editorFontSize Int       @default(14)
+  /// When false, /u/[id] returns 404 to strangers.
+  profilePublic Boolean    @default(true)
+  /// Show email on the public profile.
+  showEmail     Boolean    @default(false)
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
@@ -186,4 +202,5 @@ model SolvedProblem {
   @@index([userId])
   @@index([problemId])
 }
+
 

@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Syne, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
+import { cookies } from "next/headers";
 import { getSession } from "@/lib/auth";
 import { SiteChrome } from "@/components/SiteChrome";
 import { SmoothScroll } from "@/components/SmoothScroll";
+import { ThemeProvider, type ThemeMode } from "@/components/ThemeProvider";
 import { BRAND } from "@/lib/brand";
 import "./globals.css";
 
@@ -129,6 +131,15 @@ export default async function RootLayout({
     user = null;
   }
 
+  const jar = await cookies();
+  const themeCookie = jar.get("diu_theme")?.value;
+  const initialTheme: ThemeMode =
+    themeCookie === "light" || themeCookie === "dark" || themeCookie === "system"
+      ? themeCookie
+      : "dark";
+  const htmlTheme =
+    initialTheme === "system" ? undefined : initialTheme;
+
   // JSON-LD: organization + website + software application. Helps Google
   // build a richer SERP card (sitelinks, software app rich result, etc.).
   const jsonLd = [
@@ -222,7 +233,7 @@ export default async function RootLayout({
   ];
 
   return (
-    <html lang="en">
+    <html lang="en" data-theme={htmlTheme} suppressHydrationWarning>
       <body
         className={`${syne.variable} ${plexSans.variable} ${plexMono.variable} antialiased`}
         style={
@@ -237,10 +248,13 @@ export default async function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        <SmoothScroll />
-        <SiteChrome user={user}>{children}</SiteChrome>
+        <ThemeProvider initial={initialTheme}>
+          <SmoothScroll />
+          <SiteChrome user={user}>{children}</SiteChrome>
+        </ThemeProvider>
       </body>
     </html>
   );
 }
+
 

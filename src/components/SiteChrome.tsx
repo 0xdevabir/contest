@@ -29,6 +29,7 @@ const FOOTER_LINKS: { heading: string; links: { href: string; label: string }[] 
   {
     heading: "Account",
     links: [
+      { href: "/profile", label: "Your profile" },
       { href: "/login", label: "Log in" },
       { href: "/forgot-password", label: "Reset password" },
     ],
@@ -40,6 +41,7 @@ const MOBILE_LINKS = [
   { href: "/sets", label: "Sets" },
   { href: "/contests", label: "Contests" },
   { href: "/leaderboard", label: "Leaderboard" },
+  { href: "/profile", label: "Profile" },
 ];
 
 /**
@@ -150,7 +152,7 @@ export function SiteChrome({
               className="absolute inset-x-0 top-full z-50 border-b border-[var(--line)] bg-[var(--bg-elevated)] px-4 py-4 shadow-2xl md:hidden"
             >
               <nav aria-label="Mobile primary" className="flex flex-col gap-1">
-                {MOBILE_LINKS.map((link) => {
+                {MOBILE_LINKS.filter((link) => link.href !== "/profile" || user).map((link) => {
                   const active =
                     pathname === link.href || pathname.startsWith(`${link.href}/`);
                   return (
@@ -262,4 +264,5 @@ function MobileLogout() {
     </button>
   );
 }
+
 

@@ -101,7 +101,11 @@ export default async function LeaderboardPage({ searchParams }: Props) {
                 >
                   {r.rank}
                 </td>
-                <td className="px-4 py-3.5 font-medium">{r.name}</td>
+                <td className="px-4 py-3.5 font-medium">
+                  <Link href={`/u/${r.userId}`} className="hover:text-[var(--accent)]">
+                    {r.name}
+                  </Link>
+                </td>
                 <td className="px-4 py-3.5 text-[var(--muted)]">
                   {universityLabel(r.university)}
                 </td>
@@ -137,5 +141,6 @@ function UniChip({
     </Link>
   );
 }
+
 
 

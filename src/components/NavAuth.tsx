@@ -32,13 +32,19 @@ export function NavAuth({ user }: { user: SessionUser | null }) {
           Admin
         </Link>
       )}
-      <span className="hidden max-w-[140px] truncate text-[var(--text)] sm:inline" title={user.email}>
+      <Link
+        href="/profile"
+        className="hidden max-w-[140px] truncate text-[var(--text)] transition-colors hover:text-[var(--accent)] sm:inline"
+        title={`${user.name} · ${user.email}`}
+      >
         {user.name}
-      </span>
+      </Link>
+      <Link href="/profile" className="btn btn-ghost !px-3 !py-2 !text-xs sm:hidden">
+        Profile
+      </Link>
       <button type="button" onClick={logout} className="btn btn-ghost !px-3 !py-2 !text-xs">
         Log out
       </button>
     </>
   );
 }
-

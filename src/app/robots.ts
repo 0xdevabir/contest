@@ -15,6 +15,7 @@ export default function robots(): MetadataRoute.Robots {
           "/forgot-password",
           "/reset-password",
           "/verify-email",
+          "/profile",
         ],
       },
       // AI crawlers — allow indexing so the product can be cited accurately.
@@ -28,3 +29,4 @@ export default function robots(): MetadataRoute.Robots {
     host: BRAND.siteUrl,
   };
 }
+
