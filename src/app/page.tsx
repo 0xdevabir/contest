@@ -1,9 +1,14 @@
 import Link from "next/link";
 import { getMeta, getSets } from "@/lib/problems";
+import { SetGrid } from "@/components/SetGrid";
 
 export default function HomePage() {
   const meta = getMeta();
-  const sets = getSets();
+  const sets = getSets().map((s) => ({
+    set: s.set,
+    title: s.title,
+    problemIds: s.problems.map((p) => p.id),
+  }));
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
@@ -40,33 +45,7 @@ export default function HomePage() {
       </section>
 
       <section className="mt-14 animate-fade-up" style={{ animationDelay: "80ms" }}>
-        <div className="mb-6 flex items-end justify-between gap-4">
-          <div>
-            <h2 className="font-display text-2xl font-700">Problem sets</h2>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              Each set ramps Very Easy → Extreme (Q1–Q7).
-            </p>
-          </div>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {sets.map((s) => (
-            <Link
-              key={s.set}
-              href={`/sets/${s.set}`}
-              className="panel group block p-4 transition-colors hover:border-[var(--accent-dim)]"
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-xs text-[var(--accent)]">
-                  SET {String(s.set).padStart(2, "0")}
-                </span>
-                <span className="text-xs text-[var(--muted)]">7 problems</span>
-              </div>
-              <h3 className="mt-2 font-display text-lg font-600 leading-snug group-hover:text-[var(--accent)]">
-                {s.title}
-              </h3>
-            </Link>
-          ))}
-        </div>
+        <SetGrid sets={sets} />
       </section>
     </div>
   );

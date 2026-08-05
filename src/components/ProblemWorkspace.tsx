@@ -74,6 +74,19 @@ export function ProblemWorkspace({ problem, prevId, nextId }: Props) {
     return () => clearTimeout(t);
   }, [code, problem.id]);
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault();
+        if (problem.openEnded) void callJudge("run");
+        else void callJudge("submit");
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code, stdin, tab, problem.id, problem.openEnded, problem.sampleInput]);
+
   const statusClass = useMemo(() => {
     if (!result) return "";
     if (result.verdict === "AC") return "verdict-ac";
@@ -281,7 +294,8 @@ export function ProblemWorkspace({ problem, prevId, nextId }: Props) {
         <div className="max-h-48 overflow-y-auto px-4 py-3">
           {!result && (
             <p className="font-mono text-xs text-[var(--muted)]">
-              Write C, then Run (custom I/O) or Submit (sample tests).
+              Write C, then Run (custom I/O) or Submit (sample tests).{" "}
+              <span className="text-[var(--text)]/70">⌘/Ctrl+Enter</span> submits.
             </p>
           )}
           {result && (

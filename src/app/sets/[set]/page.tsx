@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSets } from "@/lib/problems";
-import { difficultyClass } from "@/lib/difficulty";
+import { ProblemList } from "@/components/ProblemList";
 
 type Props = { params: Promise<{ set: string }> };
 
@@ -36,26 +36,9 @@ export default async function SetDetailPage({ params }: Props) {
         Seven problems, difficulty ramps from Very Easy to Extreme.
       </p>
 
-      <ul className="panel mt-8 divide-y divide-[var(--line)] overflow-hidden">
-        {set.problems.map((p) => (
-          <li key={p.id}>
-            <Link
-              href={`/problems/${p.id}`}
-              className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-white/[0.03]"
-            >
-              <div>
-                <div className="font-mono text-xs text-[var(--muted)]">Q{p.question}</div>
-                <div className="mt-0.5 text-lg font-medium">{p.title}</div>
-              </div>
-              <span
-                className={`font-mono text-[11px] uppercase tracking-wide ${difficultyClass(p.difficulty)}`}
-              >
-                {p.difficulty}
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+      <div className="mt-8">
+        <ProblemList problems={set.problems} />
+      </div>
 
       <div className="mt-8 flex justify-between">
         {prev ? (
