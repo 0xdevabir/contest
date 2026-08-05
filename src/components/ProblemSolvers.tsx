@@ -24,6 +24,15 @@ function formatSolvedAt(iso: string) {
   });
 }
 
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0] ?? "")
+    .join("")
+    .toUpperCase();
+}
+
 export function ProblemSolvers({
   problemId,
   initialTotal,
@@ -67,63 +76,75 @@ export function ProblemSolvers({
   }, [refreshKey, load]);
 
   return (
-    <div>
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="eyebrow flex items-center gap-1.5">
-          <Users size={12} aria-hidden />
-          Who solved this
-        </h2>
-        <span className="tnum text-[11px] text-[var(--muted-dim)]">
+    <section className="panel mt-4 overflow-hidden sm:mt-5">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--line)] px-4 py-3.5 sm:px-5">
+        <div className="flex items-center gap-2">
+          <Users size={15} className="text-[var(--accent)]" aria-hidden />
+          <h2 className="font-display text-base font-bold sm:text-lg">Who solved this</h2>
+        </div>
+        <span className="tnum text-xs text-[var(--muted)]">
           {loading ? "Updating…" : `${total} solver${total === 1 ? "" : "s"}`}
         </span>
       </div>
 
       {solvers.length === 0 ? (
-        <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
-          Nobody has solved this yet. Be the first.
+        <p className="px-4 py-6 text-sm text-[var(--muted)] sm:px-5">
+          Nobody has solved this problem yet. Be the first.
         </p>
       ) : (
-        <ul className="mt-2 divide-y divide-[var(--line-soft)] rounded-lg border border-[var(--line)]">
-          {solvers.map((solver) => {
-            const mine = currentUserId === solver.userId;
-            return (
-              <li
-                key={solver.userId}
-                className={`flex items-start justify-between gap-3 px-3 py-2.5 ${
-                  mine ? "bg-[rgba(62,207,142,0.06)]" : ""
-                }`}
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">
-                    {solver.name}
-                    {mine && (
-                      <span className="ml-1.5 text-[11px] font-normal text-[var(--accent)]">
-                        you
-                      </span>
-                    )}
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-[var(--muted-dim)]">
-                    {solver.university}
-                  </p>
-                </div>
-                <time
-                  dateTime={solver.firstSolvedAt}
-                  className="tnum shrink-0 text-right text-[11px] leading-snug text-[var(--muted)]"
-                  title={formatSolvedAt(solver.firstSolvedAt)}
+        <>
+          <ul className="divide-y divide-[var(--line-soft)]">
+            {solvers.map((solver, index) => {
+              const mine = currentUserId === solver.userId;
+              return (
+                <li
+                  key={solver.userId}
+                  className={`flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-5 ${
+                    mine ? "bg-[rgba(62,207,142,0.06)]" : ""
+                  }`}
                 >
-                  {formatSolvedAt(solver.firstSolvedAt)}
-                </time>
-              </li>
-            );
-          })}
-        </ul>
+                  <span className="tnum w-6 shrink-0 text-xs text-[var(--muted-dim)]">
+                    {index + 1}
+                  </span>
+                  <span
+                    aria-hidden
+                    className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--bg-elevated)] text-[11px] font-semibold text-[var(--muted)]"
+                  >
+                    {initials(solver.name)}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      {solver.name}
+                      {mine && (
+                        <span className="ml-1.5 text-[11px] font-normal text-[var(--accent)]">
+                          you
+                        </span>
+                      )}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-[var(--muted-dim)] sm:hidden">
+                      {solver.university} · {formatSolvedAt(solver.firstSolvedAt)}
+                    </p>
+                  </div>
+                  <span className="hidden w-20 shrink-0 text-xs text-[var(--muted)] sm:block">
+                    {solver.university}
+                  </span>
+                  <time
+                    dateTime={solver.firstSolvedAt}
+                    className="tnum hidden shrink-0 text-right text-xs text-[var(--muted)] sm:block"
+                  >
+                    {formatSolvedAt(solver.firstSolvedAt)}
+                  </time>
+                </li>
+              );
+            })}
+          </ul>
+          {total > solvers.length && (
+            <p className="border-t border-[var(--line-soft)] px-4 py-3 text-xs text-[var(--muted-dim)] sm:px-5">
+              Showing the {solvers.length} most recent of {total}.
+            </p>
+          )}
+        </>
       )}
-
-      {total > solvers.length && (
-        <p className="mt-2 text-[11px] text-[var(--muted-dim)]">
-          Showing the {solvers.length} most recent.
-        </p>
-      )}
-    </div>
+    </section>
   );
 }

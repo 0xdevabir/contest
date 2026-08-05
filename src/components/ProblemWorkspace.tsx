@@ -429,15 +429,6 @@ export function ProblemWorkspace({
             </p>
           )}
 
-          {!problem.openEnded && (
-            <ProblemSolvers
-              problemId={problem.id}
-              initialTotal={initialSolverCount}
-              initialSolvers={initialSolvers}
-              currentUserId={currentUserId}
-              refreshKey={solversRefresh}
-            />
-          )}
         </div>
 
         <div className="flex items-center justify-between gap-2 border-t border-[var(--line)] px-4 py-3 sm:px-5">
@@ -794,9 +785,20 @@ export function ProblemWorkspace({
         </div>
       </section>
       </div>
+
+      {!problem.openEnded && (
+        <ProblemSolvers
+          problemId={problem.id}
+          initialTotal={initialSolverCount}
+          initialSolvers={initialSolvers}
+          currentUserId={currentUserId}
+          refreshKey={solversRefresh}
+        />
+      )}
     </div>
   );
 }
+
 
 
 
