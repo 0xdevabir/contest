@@ -57,12 +57,21 @@ export default async function SetDetailPage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
-      <nav className="mb-7 flex flex-wrap items-center gap-2 font-mono text-xs text-[var(--muted-dim)]">
-        <Link href="/sets" className="transition-colors hover:text-[var(--text)]">
-          Sets
-        </Link>
-        <span aria-hidden>/</span>
-        <span className="text-[var(--muted)]">Set {set.set}</span>
+      <nav
+        aria-label="Breadcrumb"
+        className="mb-7 flex flex-wrap items-center gap-2 font-mono text-xs text-[var(--muted-dim)]"
+      >
+        <ol className="flex flex-wrap items-center gap-2">
+          <li>
+            <Link href="/sets" className="transition-colors hover:text-[var(--text)]">
+              Sets
+            </Link>
+          </li>
+          <li aria-hidden>/</li>
+          <li className="text-[var(--muted)]" aria-current="page">
+            Set {set.set}
+          </li>
+        </ol>
       </nav>
 
       <PageHeader
