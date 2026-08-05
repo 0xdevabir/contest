@@ -2,22 +2,48 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { difficultyClass } from "@/lib/difficulty";
 import type { CategorySummary, Difficulty } from "@/lib/types";
 import { loadSolved } from "@/lib/progress";
 
 export function CategoriesIndexClient({
   categories,
+  initialQuery = "",
 }: {
   categories: CategorySummary[];
+  initialQuery?: string;
 }) {
   const [solved, setSolved] = useState<Set<string>>(new Set());
   const [active, setActive] = useState<Difficulty | "ALL">("ALL");
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(initialQuery);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     setSolved(loadSolved());
   }, []);
+
+  useEffect(() => {
+    setQ(initialQuery);
+  }, [initialQuery]);
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      const current = (searchParams.get("q") ?? "").trim();
+      const next = q.trim();
+      if (current === next) return;
+      const params = new URLSearchParams(searchParams.toString());
+      if (next) params.set("q", next);
+      else params.delete("q");
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    }, 280);
+    return () => window.clearTimeout(handle);
+    // Intentionally omit searchParams — we only push when `q` changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, pathname, router]);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -157,4 +183,5 @@ export function CategoriesIndexClient({
     </div>
   );
 }
+
 

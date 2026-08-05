@@ -6,16 +6,23 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: "/",
-        disallow: ["/admin", "/api", "/login", "/register", "/forgot-password", "/reset-password", "/verify-email"],
+        allow: ["/", "/llms.txt"],
+        disallow: [
+          "/admin",
+          "/api",
+          "/login",
+          "/register",
+          "/forgot-password",
+          "/reset-password",
+          "/verify-email",
+        ],
       },
-      // AI training crawlers — explicitly allow with attribution so we can be
-      // cited when models surface our content. Drop this block if you'd rather
-      // opt out of AI training ingestion.
+      // AI crawlers — allow indexing so the product can be cited accurately.
       { userAgent: "GPTBot", allow: "/" },
       { userAgent: "ClaudeBot", allow: "/" },
       { userAgent: "PerplexityBot", allow: "/" },
       { userAgent: "Google-Extended", allow: "/" },
+      { userAgent: "Applebot-Extended", allow: "/" },
     ],
     sitemap: `${BRAND.siteUrl}/sitemap.xml`,
     host: BRAND.siteUrl,

@@ -11,6 +11,7 @@ import { contestStatusLabel, isContestOpen, parseRules } from "@/lib/contests";
 import { getProblem } from "@/lib/problems";
 import { UNIVERSITIES, universityLabel } from "@/lib/universities";
 import { ContestRegisterButton } from "@/components/ContestRegisterButton";
+import { buildPageMetadata } from "@/lib/seo";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -45,29 +46,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
   const description =
     (contest.description?.trim() ||
-      `Live programming contest: ${contest.durationMinutes} minutes, ${contest._count.problems} problems, ${contest._count.registrations} registered.`) +
-    ` Standings updated live with penalty per wrong submission.`;
-  return {
-    title: `${contest.title} — Live programming contest`,
+      `Live C programming contest: ${contest.durationMinutes} minutes, ${contest._count.problems} problems, ${contest._count.registrations} registered.`) +
+    ` ICPC-style standings with penalty per wrong submission on DIU ContestHub.`;
+  return buildPageMetadata({
+    title: `${contest.title} — Live C programming contest`,
     description,
+    path: `/contests/${slug}`,
+    type: "article",
     keywords: [
       contest.title,
       "live programming contest",
       "coding contest leaderboard",
-      "inter-university contest",
+      "inter-university contest Bangladesh",
+      "ICPC style contest",
     ],
-    alternates: { canonical: `/contests/${slug}` },
-    openGraph: {
-      title: `${contest.title} — Live programming contest`,
-      description,
-      url: `/contests/${slug}`,
-      type: "article",
-    },
-    twitter: {
-      title: `${contest.title} — Live programming contest`,
-      description,
-    },
-  };
+  });
 }
 
 export default async function ContestDetailPage({ params, searchParams }: Props) {
@@ -298,5 +291,6 @@ function UniChip({
     </Link>
   );
 }
+
 
 

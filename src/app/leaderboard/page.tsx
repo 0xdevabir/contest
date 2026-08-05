@@ -6,33 +6,22 @@ import type { University } from "@prisma/client";
 import { getPracticeLeaderboard } from "@/lib/leaderboard";
 import { UNIVERSITIES, universityLabel } from "@/lib/universities";
 import { PageHeader } from "@/components/PageHeader";
+import { breadcrumbJsonLd, buildPageMetadata, JsonLd } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: "Leaderboard — Top C programmers across DIU, NSU, AIUB, BRAC",
   description:
-    "Live practice and contest leaderboards. See top C programmers at Daffodil International University, North South University, AIUB, and BRAC University — ranked by problems solved.",
+    "Live practice and contest leaderboards. See top C programmers at Daffodil International University, North South University, AIUB, and BRAC University — ranked by problems solved on DIU ContestHub.",
+  path: "/leaderboard",
   keywords: [
     "C programming leaderboard",
-    "competitive programming rankings",
+    "competitive programming rankings Bangladesh",
     "DIU programmer leaderboard",
     "NSU programmer leaderboard",
     "AIUB programmer leaderboard",
     "BRAC programmer leaderboard",
-    "Bangladesh programming rankings",
   ],
-  alternates: { canonical: "/leaderboard" },
-  openGraph: {
-    title: "Leaderboard — Top C programmers across DIU, NSU, AIUB, BRAC",
-    description:
-      "Live practice and contest leaderboards across DIU, NSU, AIUB, BRAC.",
-    url: "/leaderboard",
-  },
-  twitter: {
-    title: "Leaderboard — Top C programmers",
-    description:
-      "Live leaderboards across DIU, NSU, AIUB, BRAC.",
-  },
-};
+});
 
 type Props = { searchParams: Promise<{ uni?: string }> };
 
@@ -52,10 +41,16 @@ export default async function LeaderboardPage({ searchParams }: Props) {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: "Home", path: "/" },
+          { name: "Leaderboard", path: "/leaderboard" },
+        ])}
+      />
       <PageHeader
         eyebrow="Standings"
-        title="Leaderboard"
-        lead="Ranked by problems solved in practice. Filter by university."
+        title="C programming leaderboard"
+        lead="Ranked by problems solved in practice across DIU, NSU, AIUB, and BRAC. Filter by university."
       />
 
       <div className="mt-8 flex flex-wrap gap-2">
@@ -142,4 +137,5 @@ function UniChip({
     </Link>
   );
 }
+
 

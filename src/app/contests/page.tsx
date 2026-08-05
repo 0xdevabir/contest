@@ -7,32 +7,22 @@ import { getSession } from "@/lib/auth";
 import { contestStatusLabel } from "@/lib/contests";
 import { ContestRegisterButton } from "@/components/ContestRegisterButton";
 import { PageHeader } from "@/components/PageHeader";
+import { breadcrumbJsonLd, buildPageMetadata, JsonLd } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Live C Programming Contests — DIU, NSU, AIUB, BRAC inter-university contests",
+export const metadata: Metadata = buildPageMetadata({
+  title: "Live C Programming Contests — DIU, NSU, AIUB, BRAC",
   description:
-    "Join live inter-university programming contests. ICPC-style scoreboards with penalty per wrong submission, frozen standings, and live rankings between DIU, NSU, AIUB, and BRAC.",
+    "Join live inter-university C programming contests. ICPC-style scoreboards with penalty per wrong submission and live rankings between DIU, NSU, AIUB, and BRAC University.",
+  path: "/contests",
   keywords: [
     "live programming contest",
     "inter-university programming contest",
     "ICPC style contest",
     "coding contest scoreboard",
     "DIU NSU AIUB BRAC contest",
-    "university programming contest",
+    "university programming contest Bangladesh",
   ],
-  alternates: { canonical: "/contests" },
-  openGraph: {
-    title: "Live C Programming Contests — Inter-university contests",
-    description:
-      "Join live ICPC-style programming contests between DIU, NSU, AIUB, and BRAC.",
-    url: "/contests",
-  },
-  twitter: {
-    title: "Live C Programming Contests",
-    description:
-      "Join live ICPC-style programming contests between DIU, NSU, AIUB, and BRAC.",
-  },
-};
+});
 
 export default async function ContestsPage() {
   let contests: Awaited<ReturnType<typeof loadContests>> = [];
@@ -65,10 +55,16 @@ export default async function ContestsPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: "Home", path: "/" },
+          { name: "Contests", path: "/contests" },
+        ])}
+      />
       <PageHeader
         eyebrow="Compete"
-        title="Contests"
-        lead="Join contests while they are live. New contests appear here when an admin activates them."
+        title="Live C programming contests"
+        lead="Join contests while they are live. New contests appear here when an admin activates them — ICPC-style scoring for DIU, NSU, AIUB, and BRAC."
       />
 
       {dbError && (
@@ -142,5 +138,6 @@ async function loadContests() {
     },
   });
 }
+
 
 

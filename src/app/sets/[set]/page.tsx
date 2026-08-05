@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { getSets } from "@/lib/problems";
 import { ProblemList } from "@/components/ProblemList";
 import { PageHeader } from "@/components/PageHeader";
+import { breadcrumbJsonLd, buildPageMetadata, JsonLd } from "@/lib/seo";
 
 type Props = { params: Promise<{ set: string }> };
 
@@ -23,27 +24,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
   const description =
     `Set ${set.set}: ${set.title}. ` +
-    `Seven C programming problems ramping from Very Easy to Extreme. ` +
-    `Solve, run against hidden tests, and grade instantly.`;
-  return {
+    `Seven exam-style C programming problems ramping from Very Easy to Extreme on DIU ContestHub online judge. ` +
+    `Practice free, submit for hidden-test verdicts.`;
+  return buildPageMetadata({
     title: `Set ${String(set.set).padStart(2, "0")} — ${set.title} | 7 C problems`,
     description,
+    path: `/sets/${setNum}`,
     keywords: [
       `C problem set ${set.set}`,
       `${set.title} C problems`,
       "C programming practice set",
+      "exam-style C set",
     ],
-    alternates: { canonical: `/sets/${setNum}` },
-    openGraph: {
-      title: `Set ${String(set.set).padStart(2, "0")} — ${set.title}`,
-      description,
-      url: `/sets/${setNum}`,
-    },
-    twitter: {
-      title: `Set ${String(set.set).padStart(2, "0")} — ${set.title}`,
-      description,
-    },
-  };
+  });
 }
 
 export default async function SetDetailPage({ params }: Props) {
@@ -57,6 +50,13 @@ export default async function SetDetailPage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: "Home", path: "/" },
+          { name: "Sets", path: "/sets" },
+          { name: `Set ${set.set}`, path: `/sets/${setNum}` },
+        ])}
+      />
       <nav
         aria-label="Breadcrumb"
         className="mb-7 flex flex-wrap items-center gap-2 font-mono text-xs text-[var(--muted-dim)]"
@@ -75,9 +75,9 @@ export default async function SetDetailPage({ params }: Props) {
       </nav>
 
       <PageHeader
-        eyebrow={`Set ${String(set.set).padStart(2, "0")}`}
+        eyebrow={`Set ${String(set.set).padStart(2, "0")} · C practice`}
         title={set.title}
-        lead="Seven problems, ramping from Very Easy to Extreme."
+        lead="Seven exam-style C problems, ramping from Very Easy to Extreme."
       />
 
       <div className="mt-8">
@@ -103,5 +103,6 @@ export default async function SetDetailPage({ params }: Props) {
     </div>
   );
 }
+
 
 

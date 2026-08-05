@@ -13,24 +13,43 @@ import { SetGrid } from "@/components/SetGrid";
 import { JudgePreview } from "@/components/home/JudgePreview";
 import { UNIVERSITIES } from "@/lib/universities";
 import { BRAND } from "@/lib/brand";
+import { buildPageMetadata, faqJsonLd, JsonLd } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: `${BRAND.name} — Practice C, solve contests, get judged in milliseconds`,
+export const metadata: Metadata = buildPageMetadata({
+  title: `${BRAND.name} — Free online C judge for exam practice & contests`,
   description:
-    "Free online judge for C programming: 700 exam-style problems across 7 difficulty tiers, instant AC/WA/TLE verdicts, and live inter-university contests for DIU, NSU, AIUB, and BRAC.",
-  alternates: { canonical: "/" },
-  openGraph: {
-    title: `${BRAND.name} — Practice C, solve contests, get judged in milliseconds`,
-    description:
-      "Free online judge for C programming: 700 exam-style problems across 7 difficulty tiers, instant AC/WA/TLE verdicts, and live inter-university contests.",
-    url: "/",
+    "Free online judge for C programming: 700 exam-style practice problems, instant AC/WA/TLE verdicts, and live inter-university contests for DIU, NSU, AIUB, and BRAC. Practice without an account.",
+  path: "/",
+  keywords: [
+    "free online C judge",
+    "DIU online judge",
+    "C programming practice Bangladesh",
+    "exam-style C problems",
+  ],
+});
+
+const FAQS = [
+  {
+    q: "What is DIU ContestHub?",
+    a: "DIU ContestHub is a free online judge for C programming from Daffodil International University. It offers 700 exam-style C practice problems, instant gcc/clang judging, and live inter-university contests for DIU, NSU, AIUB, and BRAC.",
   },
-  twitter: {
-    title: `${BRAND.name} — Practice C, solve contests, get judged in milliseconds`,
-    description:
-      "700 exam-style C problems, instant judge, live inter-university contests. Practice free.",
+  {
+    q: "Do I need an account to practice C problems?",
+    a: "No. You can open any problem, write C in the browser, and run custom input without signing in. Create an account when you want to submit for an official verdict, save progress, or join contests.",
   },
-};
+  {
+    q: "Which programming language does the judge support?",
+    a: "C only. Submissions are compiled with gcc/clang and graded against hidden tests with real time limits, returning AC, WA, TLE, RE, MLE, or CE.",
+  },
+  {
+    q: "Who can join the contests?",
+    a: "Students from Daffodil International University, North South University, AIUB, and BRAC University can register for live contests when an admin activates them. Contests use ICPC-style scoring with penalty for wrong submissions.",
+  },
+  {
+    q: "Is DIU ContestHub free?",
+    a: "Yes. The problem bank, online C compiler/judge, and practice leaderboards are free. Contests are also free when faculty or admins run them.",
+  },
+];
 
 const FEATURES = [
   {
@@ -90,6 +109,7 @@ export default function HomePage() {
 
   return (
     <>
+      <JsonLd data={faqJsonLd(FAQS)} />
       {/* ---------------- hero ---------------- */}
       <section className="border-b border-[var(--line)]">
         <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 sm:py-20 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center lg:gap-12 lg:py-28">
@@ -101,9 +121,9 @@ export default function HomePage() {
             </h1>
 
             <p className="measure mt-6 text-base leading-relaxed text-[var(--muted)] sm:text-[1.05rem]">
-              {meta.total} original problems across {meta.sets} sets, each one climbing from
-              Very Easy to Extreme. Write in the browser, run against your own input, and let
-              the judge compile and grade it in milliseconds.
+              Free online judge for C programming — {meta.total} exam-style problems across{" "}
+              {meta.sets} sets, climbing Very Easy to Extreme. Write in the browser, run custom
+              input, then submit against hidden tests for a real AC / WA / TLE verdict.
             </p>
 
             <div className="mt-9 flex flex-wrap items-center gap-3">
@@ -260,7 +280,7 @@ export default function HomePage() {
             {UNIVERSITIES.map((u) => (
               <li key={u.code}>
                 <Link
-                  href={`/leaderboard?university=${u.code}`}
+                  href={`/leaderboard?uni=${u.code}`}
                   className="flex items-center justify-between gap-4 px-6 py-5 transition-colors hover:bg-white/[0.025]"
                 >
                   <div className="min-w-0">
@@ -275,6 +295,29 @@ export default function HomePage() {
               </li>
             ))}
           </ul>
+        </div>
+      </section>
+
+      {/* ---------------- faq ---------------- */}
+      <section aria-labelledby="faq-heading" className="border-t border-[var(--line)]">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20">
+          <div className="max-w-2xl">
+            <p className="eyebrow">FAQ</p>
+            <h2
+              id="faq-heading"
+              className="font-display mt-3 text-[1.9rem] leading-[1.1] font-bold sm:text-[2.3rem]"
+            >
+              Online C judge, answered quickly.
+            </h2>
+          </div>
+          <dl className="mt-10 grid gap-6 md:grid-cols-2">
+            {FAQS.map((f) => (
+              <div key={f.q} className="border-t border-[var(--line-soft)] pt-5">
+                <dt className="font-display text-base font-semibold text-[var(--text)]">{f.q}</dt>
+                <dd className="mt-2 text-sm leading-relaxed text-[var(--muted)]">{f.a}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
       </section>
 
@@ -304,6 +347,7 @@ export default function HomePage() {
     </>
   );
 }
+
 
 
 
