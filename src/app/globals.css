@@ -449,6 +449,63 @@ a {
   contain-intrinsic-size: auto 480px;
 }
 
+/* ---------- route progress bar ---------- */
+
+/* A thin top bar that fires the instant a link is clicked, so navigation
+   always feels acknowledged even before the next route starts rendering. */
+.route-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2.5px;
+  z-index: 100;
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, var(--accent-dim), var(--accent), var(--accent-soft));
+  box-shadow: 0 0 8px var(--accent), 0 0 3px var(--accent);
+  will-change: transform, opacity;
+  transition: transform 0.2s ease, opacity 0.3s ease;
+  pointer-events: none;
+}
+
+/* ---------- skeletons ---------- */
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--bg-panel) 80%, var(--hover));
+  border-radius: var(--r-sm);
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--text) 8%, transparent),
+    transparent
+  );
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+  }
+  .route-progress {
+    transition: opacity 0.1s ease;
+  }
+}
+
 /* Sticky header stays on its own layer so scroll doesn't repaint it. */
 .site-header {
   transform: translateZ(0);
@@ -469,6 +526,7 @@ a {
 .verdict-error {
   color: var(--warn);
 }
+
 
 
 

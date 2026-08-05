@@ -2,8 +2,10 @@ import type { Metadata, Viewport } from "next";
 import { Syne, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import { getSession } from "@/lib/auth";
+import { Suspense } from "react";
 import { SiteChrome } from "@/components/SiteChrome";
 import { SmoothScroll } from "@/components/SmoothScroll";
+import { RouteProgress } from "@/components/RouteProgress";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { BRAND } from "@/lib/brand";
 import { THEMES, THEME_COOKIE, normalizeThemeMode, themeCss } from "@/lib/theme";
@@ -254,6 +256,9 @@ export default async function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         <ThemeProvider initial={initialTheme} signedIn={!!user}>
+          <Suspense fallback={null}>
+            <RouteProgress />
+          </Suspense>
           <SmoothScroll />
           <SiteChrome user={user}>{children}</SiteChrome>
         </ThemeProvider>
@@ -261,6 +266,7 @@ export default async function RootLayout({
     </html>
   );
 }
+
 
 
 
