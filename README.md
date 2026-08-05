@@ -8,7 +8,9 @@ C practice platform + university contests for **DIU**, **NSU**, **AIUB**, and **
 - Register / login with university profile
 - Email verification + forgot password (SMTP)
 - Per-university practice & contest leaderboards
-- Admin: create contests, set duration/rules, go live / end
+- Advanced admin command center with analytics, system health, and audit history
+- Contest control center: scheduling, rules, problem ordering, go-live, and monitoring
+- User access management and complete judge submission inspection
 - Logged-in solves persist to Neon Postgres
 
 ## Setup
@@ -34,10 +36,8 @@ npm run db:push
 npm run db:seed
 ```
 
-Default admin (override with `ADMIN_EMAIL` / `ADMIN_PASSWORD`):
-
-- email: `admin@contesthub.local`
-- password: `admin12345`
+Set `ADMIN_EMAIL` and a strong `ADMIN_PASSWORD` (minimum 12 characters)
+in `.env` before running the seed. No default administrator password is used.
 
 4. Run:
 
@@ -59,3 +59,4 @@ Requires `clang` or `gcc` for the local C judge.
 ## Repo
 
 https://github.com/0xdevabir/contest
+

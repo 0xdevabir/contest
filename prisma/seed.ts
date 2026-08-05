@@ -4,9 +4,15 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = process.env.ADMIN_EMAIL || "admin@contesthub.local";
-  const password = process.env.ADMIN_PASSWORD || "admin12345";
+  const email = process.env.ADMIN_EMAIL;
+  const password = process.env.ADMIN_PASSWORD;
   const name = process.env.ADMIN_NAME || "Contest Admin";
+  if (!email || !password) {
+    throw new Error("ADMIN_EMAIL and ADMIN_PASSWORD are required to seed an admin");
+  }
+  if (password.length < 12) {
+    throw new Error("ADMIN_PASSWORD must be at least 12 characters");
+  }
 
   const passwordHash = await bcrypt.hash(password, 12);
   const admin = await prisma.user.upsert({
@@ -28,7 +34,7 @@ async function main() {
     },
   });
 
-  console.log(`Admin ready: ${admin.email} (password from ADMIN_PASSWORD / default admin12345)`);
+  console.log(`Admin ready: ${admin.email}`);
 }
 
 main()
@@ -39,3 +45,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+
