@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { difficultyClass } from "@/lib/difficulty";
 import type { Difficulty } from "@/lib/types";
-
-const SOLVED_KEY = "contest-hub:solved";
+import { loadSolved } from "@/lib/progress";
 
 type ProblemItem = {
   id: string;
@@ -24,12 +23,7 @@ export function SetsIndexClient({ sets }: { sets: SetItem[] }) {
   const [solved, setSolved] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(SOLVED_KEY);
-      setSolved(new Set(raw ? (JSON.parse(raw) as string[]) : []));
-    } catch {
-      setSolved(new Set());
-    }
+    setSolved(loadSolved());
   }, []);
 
   return (
@@ -43,7 +37,7 @@ export function SetsIndexClient({ sets }: { sets: SetItem[] }) {
                 <p className="font-mono text-xs text-[var(--accent)]">
                   SET {String(s.set).padStart(2, "0")} · {done}/7
                 </p>
-                <h2 className="font-display text-xl font-600">{s.title}</h2>
+                <h2 className="font-display text-xl font-semibold">{s.title}</h2>
               </div>
               <Link href={`/sets/${s.set}`} className="btn btn-ghost !py-2 !text-xs">
                 Open set
@@ -82,3 +76,4 @@ export function SetsIndexClient({ sets }: { sets: SetItem[] }) {
     </div>
   );
 }
+

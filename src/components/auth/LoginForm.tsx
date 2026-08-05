@@ -40,7 +40,7 @@ export function LoginForm() {
   return (
     <form onSubmit={onSubmit} className="panel mx-auto w-full max-w-md space-y-4 p-6">
       <div>
-        <h1 className="font-display text-2xl font-700">Log in</h1>
+        <h1 className="font-display text-2xl font-extrabold">Log in</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
           Practice still works without an account — login saves your progress.
         </p>

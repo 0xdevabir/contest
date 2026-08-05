@@ -44,7 +44,7 @@ export default function VerifyEmailClient() {
 
   return (
     <div className="panel mx-auto max-w-md p-6 text-center">
-      <h1 className="font-display text-2xl font-700">Email verification</h1>
+      <h1 className="font-display text-2xl font-extrabold">Email verification</h1>
       <p className="mt-3 text-sm text-[var(--muted)]">{message}</p>
       {status === "err" && (
         <Link href="/login" className="btn btn-ghost mt-4 inline-flex">

@@ -15,16 +15,16 @@ export function NavAuth({ user }: { user: SessionUser | null }) {
   if (!user) {
     return (
       <>
-        <Link href="/leaderboard" className="transition-colors hover:text-[var(--text)]">
+        <Link href="/leaderboard" className="link-quiet hidden sm:inline">
           Leaderboard
         </Link>
-        <Link href="/contests" className="transition-colors hover:text-[var(--text)]">
+        <Link href="/contests" className="link-quiet hidden sm:inline">
           Contests
         </Link>
-        <Link href="/login" className="transition-colors hover:text-[var(--text)]">
+        <Link href="/login" className="link-quiet">
           Log in
         </Link>
-        <Link href="/register" className="btn btn-primary !px-3 !py-2 !text-xs">
+        <Link href="/register" className="btn btn-primary !px-3.5 !py-2 !text-xs">
           Register
         </Link>
       </>
@@ -33,14 +33,14 @@ export function NavAuth({ user }: { user: SessionUser | null }) {
 
   return (
     <>
-      <Link href="/leaderboard" className="transition-colors hover:text-[var(--text)]">
+      <Link href="/leaderboard" className="link-quiet hidden sm:inline">
         Leaderboard
       </Link>
-      <Link href="/contests" className="transition-colors hover:text-[var(--text)]">
+      <Link href="/contests" className="link-quiet">
         Contests
       </Link>
       {user.role === "ADMIN" && (
-        <Link href="/admin" className="transition-colors hover:text-[var(--accent)]">
+        <Link href="/admin" className="text-[var(--accent)] transition-opacity hover:opacity-80">
           Admin
         </Link>
       )}
@@ -53,3 +53,4 @@ export function NavAuth({ user }: { user: SessionUser | null }) {
     </>
   );
 }
+

@@ -36,7 +36,7 @@ export function ForgotPasswordForm() {
   return (
     <form onSubmit={onSubmit} className="panel mx-auto w-full max-w-md space-y-4 p-6">
       <div>
-        <h1 className="font-display text-2xl font-700">Forgot password</h1>
+        <h1 className="font-display text-2xl font-extrabold">Forgot password</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
           We&apos;ll email a reset link if the account exists.
         </p>

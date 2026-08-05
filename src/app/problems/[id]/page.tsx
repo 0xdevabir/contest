@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: Props) {
   const { id } = await params;
   const problem = getProblem(id);
   return {
-    title: problem ? `${problem.title} · Contest Hub` : "Problem · Contest Hub",
+    title: problem ? problem.title : "Problem",
   };
 }
 
@@ -39,3 +39,4 @@ export default async function ProblemPage({ params, searchParams }: Props) {
     />
   );
 }
+

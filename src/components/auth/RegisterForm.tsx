@@ -46,7 +46,7 @@ export function RegisterForm() {
   return (
     <form onSubmit={onSubmit} className="panel mx-auto w-full max-w-md space-y-4 p-6">
       <div>
-        <h1 className="font-display text-2xl font-700">Create account</h1>
+        <h1 className="font-display text-2xl font-extrabold">Create account</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
           Save progress, join contests, climb your university leaderboard.
         </p>

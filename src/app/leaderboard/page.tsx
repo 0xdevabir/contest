@@ -23,7 +23,7 @@ export default async function LeaderboardPage({ searchParams }: Props) {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-      <h1 className="font-display text-3xl font-700">Leaderboard</h1>
+      <h1 className="font-display text-3xl font-extrabold">Leaderboard</h1>
       <p className="mt-2 text-[var(--muted)]">
         Ranked by problems solved in practice. Filter by university.
       </p>

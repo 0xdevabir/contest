@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { difficultyClass } from "@/lib/difficulty";
 import type { Difficulty } from "@/lib/types";
-
-const SOLVED_KEY = "contest-hub:solved";
+import { loadSolved } from "@/lib/progress";
 
 type Item = {
   id: string;
@@ -23,12 +22,7 @@ export function ProblemList({ problems }: Props) {
   const [solved, setSolved] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(SOLVED_KEY);
-      setSolved(new Set(raw ? (JSON.parse(raw) as string[]) : []));
-    } catch {
-      setSolved(new Set());
-    }
+    setSolved(loadSolved());
   }, []);
 
   const done = problems.filter((p) => solved.has(p.id)).length;
@@ -79,3 +73,4 @@ export function ProblemList({ problems }: Props) {
     </div>
   );
 }
+

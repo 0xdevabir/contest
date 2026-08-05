@@ -1,6 +1,7 @@
-# Contest Hub
+# DIU ContestHub
 
-C practice platform + university contests for **DIU**, **NSU**, **AIUB**, and **BRAC**.
+The competitive programming platform of **Daffodil International University** — exam-style
+C practice plus inter-university contests with **NSU**, **AIUB**, and **BRAC**.
 
 ## Features
 
@@ -59,4 +60,5 @@ Requires `clang` or `gcc` for the local C judge.
 ## Repo
 
 https://github.com/0xdevabir/contest
+
 

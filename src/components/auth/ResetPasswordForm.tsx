@@ -54,7 +54,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
 
   return (
     <form onSubmit={onSubmit} className="panel mx-auto w-full max-w-md space-y-4 p-6">
-      <h1 className="font-display text-2xl font-700">Set new password</h1>
+      <h1 className="font-display text-2xl font-extrabold">Set new password</h1>
       <label className="block text-sm">
         <span className="text-[var(--muted)]">New password</span>
         <input

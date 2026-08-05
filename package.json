@@ -1,5 +1,5 @@
 {
-  "name": "contest-hub",
+  "name": "diu-contesthub",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -19,6 +19,8 @@
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
     "@prisma/client": "^6.19.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.8",
     "lucide-react": "^1.28.0",

@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { BRAND } from "@/lib/brand";
 
 function transporter() {
   const host = process.env.SMTP_HOST;
@@ -42,9 +43,9 @@ export async function sendVerifyEmail(to: string, name: string, token: string) {
   const link = appUrl(`/verify-email?token=${encodeURIComponent(token)}`);
   await sendMail({
     to,
-    subject: "Verify your Contest Hub account",
-    text: `Hi ${name},\n\nVerify your email: ${link}\n\nThis link expires in 24 hours.`,
-    html: `<p>Hi ${name},</p><p>Confirm your Contest Hub account:</p><p><a href="${link}">Verify email</a></p><p>This link expires in 24 hours.</p>`,
+    subject: `Verify your ${BRAND.name} account`,
+    text: `Hi ${name},\n\nVerify your email: ${link}\n\nThis link expires in 24 hours.\n\n— ${BRAND.name}`,
+    html: `<p>Hi ${name},</p><p>Confirm your ${BRAND.name} account:</p><p><a href="${link}">Verify email</a></p><p>This link expires in 24 hours.</p>`,
   });
 }
 
@@ -52,8 +53,9 @@ export async function sendPasswordResetEmail(to: string, name: string, token: st
   const link = appUrl(`/reset-password?token=${encodeURIComponent(token)}`);
   await sendMail({
     to,
-    subject: "Reset your Contest Hub password",
-    text: `Hi ${name},\n\nReset your password: ${link}\n\nThis link expires in 1 hour. If you did not request this, ignore the email.`,
+    subject: `Reset your ${BRAND.name} password`,
+    text: `Hi ${name},\n\nReset your password: ${link}\n\nThis link expires in 1 hour. If you did not request this, ignore the email.\n\n— ${BRAND.name}`,
     html: `<p>Hi ${name},</p><p>Reset your password:</p><p><a href="${link}">Reset password</a></p><p>This link expires in 1 hour. If you did not request this, ignore the email.</p>`,
   });
 }
+

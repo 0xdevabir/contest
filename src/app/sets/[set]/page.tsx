@@ -9,6 +9,12 @@ export function generateStaticParams() {
   return Array.from({ length: 20 }, (_, i) => ({ set: String(i + 1) }));
 }
 
+export async function generateMetadata({ params }: Props) {
+  const { set: setParam } = await params;
+  const set = getSets().find((s) => s.set === Number(setParam));
+  return { title: set ? `Set ${set.set} · ${set.title}` : "Set" };
+}
+
 export default async function SetDetailPage({ params }: Props) {
   const { set: setParam } = await params;
   const setNum = Number(setParam);
@@ -28,12 +34,14 @@ export default async function SetDetailPage({ params }: Props) {
         <span className="text-[var(--text)]">Set {set.set}</span>
       </div>
 
-      <p className="font-mono text-xs text-[var(--accent)]">
-        SET {String(set.set).padStart(2, "0")}
+      <p className="eyebrow text-[var(--accent)]">
+        Set {String(set.set).padStart(2, "0")}
       </p>
-      <h1 className="mt-1 font-display text-3xl font-700 sm:text-4xl">{set.title}</h1>
-      <p className="mt-2 text-[var(--muted)]">
-        Seven problems, difficulty ramps from Very Easy to Extreme.
+      <h1 className="font-display mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
+        {set.title}
+      </h1>
+      <p className="mt-3 text-[15px] text-[var(--muted)]">
+        Seven problems, ramping from Very Easy to Extreme.
       </p>
 
       <div className="mt-8">
@@ -59,3 +67,4 @@ export default async function SetDetailPage({ params }: Props) {
     </div>
   );
 }
+
