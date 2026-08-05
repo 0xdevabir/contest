@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { Menu, User, X } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
 import { NavAuth } from "@/components/NavAuth";
 import { BrandMark, Wordmark } from "@/components/BrandMark";
@@ -122,11 +122,12 @@ export function SiteChrome({
               </Link>
             ) : (
               <Link
-                href={user.role === "ADMIN" ? "/admin" : "/problems"}
-                className="max-w-24 truncate text-xs text-[var(--muted)]"
-                title={user.email}
+                href="/profile"
+                aria-label="Your profile"
+                title="Your profile"
+                className="inline-flex size-8 items-center justify-center rounded-full border border-[var(--line)] text-[var(--muted)] transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
               >
-                {user.name.split(/\s+/)[0]}
+                <User size={16} aria-hidden />
               </Link>
             )}
             <button

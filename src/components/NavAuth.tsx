@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { User } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
 
 export function NavAuth({ user }: { user: SessionUser | null }) {
@@ -34,13 +35,11 @@ export function NavAuth({ user }: { user: SessionUser | null }) {
       )}
       <Link
         href="/profile"
-        className="hidden max-w-[140px] truncate text-[var(--text)] transition-colors hover:text-[var(--accent)] sm:inline"
-        title={`${user.name} · ${user.email}`}
+        aria-label="Your profile"
+        title="Your profile"
+        className="inline-flex size-8 items-center justify-center rounded-full border border-[var(--line)] text-[var(--muted)] transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--hover)] hover:text-[var(--text)]"
       >
-        {user.name}
-      </Link>
-      <Link href="/profile" className="btn btn-ghost !px-3 !py-2 !text-xs sm:hidden">
-        Profile
+        <User size={16} aria-hidden />
       </Link>
       <button type="button" onClick={logout} className="btn btn-ghost !px-3 !py-2 !text-xs">
         Log out
