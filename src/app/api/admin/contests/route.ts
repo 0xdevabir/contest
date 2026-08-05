@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { defaultContestRules, contestRulesSchema } from "@/lib/validators";
 import { slugify } from "@/lib/contests";
+import { getProblem } from "@/lib/problems";
 
 export const runtime = "nodejs";
 
@@ -53,7 +54,29 @@ export async function POST(req: Request) {
     }
 
     const data = parsed.data;
+    const invalidProblem = data.problemIds.find((problemId) => !getProblem(problemId));
+    if (invalidProblem) {
+      return NextResponse.json(
+        { ok: false, message: `Unknown problem: ${invalidProblem}` },
+        { status: 400 }
+      );
+    }
+    if (new Set(data.problemIds).size !== data.problemIds.length) {
+      return NextResponse.json(
+        { ok: false, message: "A problem can only be added once" },
+        { status: 400 }
+      );
+    }
+    const startDate = data.startsAt ? new Date(data.startsAt) : null;
+    const endDate = data.endsAt ? new Date(data.endsAt) : null;
+    if (startDate && endDate && endDate <= startDate) {
+      return NextResponse.json(
+        { ok: false, message: "End time must be after start time" },
+        { status: 400 }
+      );
+    }
     let slug = slugify(data.title);
+    if (!slug) slug = `contest-${Date.now().toString(36)}`;
     const exists = await prisma.contest.findUnique({ where: { slug } });
     if (exists) slug = `${slug}-${Date.now().toString(36)}`;
 
@@ -66,8 +89,8 @@ export async function POST(req: Request) {
         slug,
         description: data.description || "",
         durationMinutes: data.durationMinutes,
-        startsAt: data.startsAt ? new Date(data.startsAt) : null,
-        endsAt: data.endsAt ? new Date(data.endsAt) : null,
+        startsAt: startDate,
+        endsAt: endDate,
         status: data.startsAt ? "SCHEDULED" : "DRAFT",
         rules,
         createdById: admin.id,
@@ -96,3 +119,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, message: "Create failed" }, { status: 500 });
   }
 }
+

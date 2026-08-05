@@ -2,15 +2,18 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { CircleStop, Play, Trash2 } from "lucide-react";
 
 export function AdminContestActions({
   contestId,
   status,
   durationMinutes,
+  compact = false,
 }: {
   contestId: string;
   status: string;
   durationMinutes: number;
+  compact?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -39,23 +42,45 @@ export function AdminContestActions({
   }
 
   async function remove() {
-    if (!confirm("Delete this contest?")) return;
+    if (!confirm("Delete this contest permanently? Registrations and contest submissions will also be removed.")) {
+      return;
+    }
     setBusy(true);
-    await fetch(`/api/admin/contests/${contestId}`, { method: "DELETE" });
-    router.refresh();
-    setBusy(false);
+    setMsg("");
+    try {
+      const response = await fetch(`/api/admin/contests/${contestId}`, {
+        method: "DELETE",
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok) {
+        setMsg(result.message || "Delete failed");
+        return;
+      }
+      router.push("/admin/contests");
+      router.refresh();
+    } catch {
+      setMsg("Network error");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
-    <div className="flex flex-col items-end gap-2">
+    <div className={`flex items-center gap-2 ${compact ? "" : "flex-wrap justify-end"}`}>
       {(status === "DRAFT" || status === "SCHEDULED") && (
         <button
           type="button"
           className="btn btn-primary !py-2 !text-xs"
           disabled={busy}
-          onClick={() => patch({ action: "go-live", durationMinutes })}
+          onClick={() => {
+            if (confirm("Start this contest now? The configured timer will begin immediately.")) {
+              void patch({ action: "go-live", durationMinutes });
+            }
+          }}
+          title="Start contest now"
         >
-          Go live
+          <Play size={13} aria-hidden="true" />
+          {compact ? "Start" : "Go live"}
         </button>
       )}
       {status === "LIVE" && (
@@ -63,12 +88,17 @@ export function AdminContestActions({
           type="button"
           className="btn btn-danger !py-2 !text-xs"
           disabled={busy}
-          onClick={() => patch({ action: "end" })}
+          onClick={() => {
+            if (confirm("End this live contest now? This cannot be resumed.")) {
+              void patch({ action: "end" });
+            }
+          }}
         >
-          End contest
+          <CircleStop size={13} aria-hidden="true" />
+          {compact ? "End" : "End contest"}
         </button>
       )}
-      {status === "DRAFT" && (
+      {status === "DRAFT" && !compact && (
         <button
           type="button"
           className="btn btn-ghost !py-2 !text-xs"
@@ -85,13 +115,17 @@ export function AdminContestActions({
       )}
       <button
         type="button"
-        className="btn btn-ghost !py-2 !text-xs text-[var(--danger)]"
+        className={`${compact ? "grid size-8 place-items-center rounded-lg border border-[var(--line)]" : "btn btn-ghost !py-2 !text-xs"} text-[var(--danger)]`}
         disabled={busy}
         onClick={remove}
+        title="Delete contest"
+        aria-label="Delete contest"
       >
-        Delete
+        <Trash2 size={13} aria-hidden="true" />
+        {!compact && "Delete"}
       </button>
-      {msg && <p className="text-[11px] text-[var(--danger)]">{msg}</p>}
+      {msg && <p className="w-full text-right text-[11px] text-[var(--danger)]">{msg}</p>}
     </div>
   );
 }
+
