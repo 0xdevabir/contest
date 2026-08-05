@@ -411,18 +411,12 @@ export function ProblemWorkspace({ problem, prevId, nextId, contestId }: Props) 
                     : `Check against every test (${shortcut} + Enter)`
               }
             >
-              {busy ? (
-                <span className="animate-pulse-soft">Checking…</span>
-              ) : contestId ? (
-                "Submit answer"
-              ) : (
-                "Check answer"
-              )}
+              {busy ? <span className="animate-pulse-soft">Submitting…</span> : "Submit"}
             </button>
           </div>
         </div>
 
-        <div className="min-h-[260px] flex-1 border-b border-[var(--line)]">
+        <div className="min-h-[340px] flex-1 border-b border-[var(--line)]">
           <CodeEditor value={code} onChange={setCode} />
         </div>
 
@@ -511,8 +505,10 @@ export function ProblemWorkspace({ problem, prevId, nextId, contestId }: Props) 
         <div
           aria-live="polite"
           className={
+            // Sizes to its content and scrolls past the cap, rather than
+            // claiming half the column to hold three lines of help text.
             panel === "tests" || !RUNNER_ENABLED
-              ? "max-h-[42%] flex-1 shrink-0 overflow-y-auto px-4 py-3"
+              ? "max-h-[42%] shrink-0 overflow-y-auto px-4 py-3"
               : "hidden"
           }
         >
@@ -521,10 +517,8 @@ export function ProblemWorkspace({ problem, prevId, nextId, contestId }: Props) 
               <p>
                 <span className="text-[var(--text)]">Run</span> tries your code on the input above
                 and shows what it prints.{" "}
-                <span className="text-[var(--text)]">
-                  {contestId ? "Submit answer" : "Check answer"}
-                </span>{" "}
-                compares your output with every test, including hidden ones.
+                <span className="text-[var(--text)]">Submit</span> checks your output against every
+                test, including hidden ones.
               </p>
               {contestId && (
                 <p className="mt-1.5 text-[var(--warn)]">
@@ -628,3 +622,5 @@ export function ProblemWorkspace({ problem, prevId, nextId, contestId }: Props) 
     </div>
   );
 }
+
+
