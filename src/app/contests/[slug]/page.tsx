@@ -132,13 +132,22 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
-      <div className="mb-4 text-sm text-[var(--muted)]">
-        <Link href="/contests" className="hover:text-[var(--text)]">
-          Contests
-        </Link>
-        <span className="mx-2">/</span>
-        <span className="text-[var(--text)]">{contest.title}</span>
-      </div>
+      <nav
+        aria-label="Breadcrumb"
+        className="mb-4 text-sm text-[var(--muted)]"
+      >
+        <ol className="flex flex-wrap items-center">
+          <li>
+            <Link href="/contests" className="hover:text-[var(--text)]">
+              Contests
+            </Link>
+          </li>
+          <li aria-hidden className="mx-2">/</li>
+          <li className="text-[var(--text)]" aria-current="page">
+            {contest.title}
+          </li>
+        </ol>
+      </nav>
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
