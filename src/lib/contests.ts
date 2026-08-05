@@ -37,6 +37,19 @@ export function isContestOpen(status: ContestStatus, startsAt?: Date | null, end
   return false;
 }
 
+/**
+ * A contest only leaves LIVE when an admin presses End, so one whose window has
+ * already closed is still stored as LIVE. Left alone it is neither open nor
+ * archived, which hides it from everyone — including the people who joined it.
+ */
+export function effectiveContestStatus(
+  status: ContestStatus,
+  endsAt: Date | null | undefined
+): ContestStatus {
+  if (status === "LIVE" && endsAt && endsAt.getTime() < Date.now()) return "ENDED";
+  return status;
+}
+
 export function isContestPublic(
   status: ContestStatus,
   startsAt: Date | null | undefined,
@@ -44,5 +57,9 @@ export function isContestPublic(
   rawRules: Prisma.JsonValue | null | undefined
 ) {
   if (isContestOpen(status, startsAt, endsAt)) return true;
-  return status === "ENDED" && parseRules(rawRules).publishAfterEnd;
+  return (
+    effectiveContestStatus(status, endsAt) === "ENDED" &&
+    parseRules(rawRules).publishAfterEnd
+  );
 }
+

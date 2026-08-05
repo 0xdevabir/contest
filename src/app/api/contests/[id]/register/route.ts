@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
-import { isContestOpen } from "@/lib/contests";
+import { effectiveContestStatus, isContestOpen } from "@/lib/contests";
 
 export const runtime = "nodejs";
 
@@ -26,15 +26,15 @@ export async function POST(_req: Request, { params }: Params) {
       return NextResponse.json({ ok: false, message: "Contest not found" }, { status: 404 });
     }
 
-    if (contest.status !== "LIVE") {
+    if (!isContestOpen(contest.status, contest.startsAt, contest.endsAt)) {
+      const ended = effectiveContestStatus(contest.status, contest.endsAt) === "ENDED";
       return NextResponse.json(
-        { ok: false, message: "This contest is not active" },
+        {
+          ok: false,
+          message: ended ? "This contest has ended" : "This contest is not active yet",
+        },
         { status: 400 }
       );
-    }
-
-    if (!isContestOpen(contest.status, contest.startsAt, contest.endsAt)) {
-      return NextResponse.json({ ok: false, message: "Contest is over" }, { status: 400 });
     }
 
     await prisma.contestRegistration.upsert({
@@ -49,4 +49,5 @@ export async function POST(_req: Request, { params }: Params) {
     return NextResponse.json({ ok: false, message: "Registration failed" }, { status: 500 });
   }
 }
+
 

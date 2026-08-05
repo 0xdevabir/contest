@@ -4,7 +4,7 @@ import { getProblem } from "@/lib/problems";
 import { compileAndJudge, runCustom } from "@/lib/judge";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { isContestOpen } from "@/lib/contests";
+import { effectiveContestStatus, isContestOpen } from "@/lib/contests";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -120,7 +120,17 @@ export async function POST(req: NextRequest) {
     });
 
     if (!contest || !isContestOpen(contest.status, contest.startsAt, contest.endsAt)) {
-      return NextResponse.json({ ok: false, message: "Contest is not live" }, { status: 400 });
+      const ended =
+        contest && effectiveContestStatus(contest.status, contest.endsAt) === "ENDED";
+      return NextResponse.json(
+        {
+          ok: false,
+          message: ended
+            ? "This contest has ended — open the problem outside the contest to keep practising."
+            : "Contest is not live",
+        },
+        { status: 400 }
+      );
     }
 
     // Verify the submitted problem is actually part of this contest
@@ -185,6 +195,7 @@ export async function POST(req: NextRequest) {
     saved: Boolean(session),
   });
 }
+
 
 
 

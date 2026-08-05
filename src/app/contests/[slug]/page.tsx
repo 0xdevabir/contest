@@ -9,10 +9,12 @@ import { getSession } from "@/lib/auth";
 import { getContestLeaderboard } from "@/lib/leaderboard";
 import {
   contestStatusLabel,
+  effectiveContestStatus,
   isContestOpen,
   isContestPublic,
   parseRules,
 } from "@/lib/contests";
+import { closeExpiredContests } from "@/lib/contest-lifecycle";
 import { getProblem } from "@/lib/problems";
 import { UNIVERSITIES, universityLabel } from "@/lib/universities";
 import { ContestRegisterButton } from "@/components/ContestRegisterButton";
@@ -55,7 +57,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       robots: { index: false, follow: false },
     };
   }
-  const archived = contest.status === "ENDED";
+  const archived = effectiveContestStatus(contest.status, contest.endsAt) === "ENDED";
   const description =
     (contest.description?.trim() ||
       `${archived ? "Archived" : "Live"} C programming contest: ${contest.durationMinutes} minutes, ${contest._count.problems} problems, ${contest._count.registrations} registered.`) +
@@ -88,6 +90,7 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
 
   let contest;
   try {
+    await closeExpiredContests();
     contest = await prisma.contest.findUnique({
       where: { slug },
       include: {
@@ -103,24 +106,39 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
     );
   }
 
+  let registered = false;
+  if (session && contest) {
+    const reg = await prisma.contestRegistration.findUnique({
+      where: { contestId_userId: { contestId: contest.id, userId: session.id } },
+    });
+    registered = !!reg;
+  }
+
   const rules = contest ? parseRules(contest.rules) : null;
   const contestOpen = contest
     ? isContestOpen(contest.status, contest.startsAt, contest.endsAt)
     : false;
+  // Participants keep access to a contest they joined even if the admin never
+  // published the archive — otherwise joining makes it disappear at the end.
   if (
     !contest ||
     !rules ||
-    !isContestPublic(contest.status, contest.startsAt, contest.endsAt, contest.rules)
+    (!registered &&
+      !isContestPublic(contest.status, contest.startsAt, contest.endsAt, contest.rules))
   ) {
     notFound();
   }
+
+  const status = effectiveContestStatus(contest.status, contest.endsAt);
 
   const university = UNIVERSITIES.some((u) => u.code === uni)
     ? (uni as University)
     : undefined;
 
+  // Freezing only applies while the contest is actually running; once it is over
+  // the board is final.
   let freezeAt: Date | null = null;
-  if (contest.status === "LIVE" && contest.endsAt && rules.freezeMinutes > 0) {
+  if (contestOpen && contest.endsAt && rules.freezeMinutes > 0) {
     freezeAt = new Date(contest.endsAt.getTime() - rules.freezeMinutes * 60_000);
     if (Date.now() < freezeAt.getTime()) freezeAt = null; // not frozen yet
   }
@@ -129,14 +147,6 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
     university,
     freezeAt: freezeAt && Date.now() >= freezeAt.getTime() ? freezeAt : null,
   });
-
-  let registered = false;
-  if (session) {
-    const reg = await prisma.contestRegistration.findUnique({
-      where: { contestId_userId: { contestId: contest.id, userId: session.id } },
-    });
-    registered = !!reg;
-  }
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
@@ -159,8 +169,13 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="font-mono text-xs text-[var(--accent)]">
-            {contestStatusLabel(contest.status)}
+          <p
+            className={`font-mono text-xs ${
+              contestOpen ? "text-[var(--accent)]" : "text-[var(--muted)]"
+            }`}
+          >
+            {contestStatusLabel(status)}
+            {registered && " · You joined"}
           </p>
           <h1 className="mt-1.5 font-display text-[1.9rem] leading-[1.1] font-bold sm:text-[2.3rem]">
             {contest.title}
@@ -239,14 +254,19 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
             );
           })}
         </ul>
-        {contest.status === "LIVE" && !registered && (
+        {contestOpen && !registered && (
           <p className="mt-2 text-xs text-[var(--warn)]">
             Register to open contest problems.
           </p>
         )}
-        {contest.status === "ENDED" && !rules.allowPracticeAfter && (
+        {status === "ENDED" && !rules.allowPracticeAfter && (
           <p className="mt-2 text-xs text-[var(--muted)]">
-            This archive is public, but the admin has kept its problems closed for practice.
+            This contest is over and its problems are closed for practice.
+          </p>
+        )}
+        {status === "ENDED" && rules.allowPracticeAfter && (
+          <p className="mt-2 text-xs text-[var(--muted)]">
+            This contest is over — the problems stay open for untimed practice.
           </p>
         )}
       </section>
@@ -266,7 +286,7 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
             ))}
           </div>
         </div>
-        {freezeAt && Date.now() >= freezeAt.getTime() && contest.status === "LIVE" && (
+        {freezeAt && Date.now() >= freezeAt.getTime() && contestOpen && (
           <p className="mt-2 text-xs text-[var(--warn)]">
             Scoreboard frozen (last {rules.freezeMinutes} minutes).
           </p>
@@ -331,3 +351,4 @@ function UniChip({
     </Link>
   );
 }
+

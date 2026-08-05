@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ContestStatus, Prisma } from "@prisma/client";
 import { Calendar, ChevronRight, Plus, Search, Trophy } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { closeExpiredContests } from "@/lib/contest-lifecycle";
 import { AdminContestActions } from "@/components/admin/AdminContestActions";
 
 type Props = {
@@ -33,6 +34,7 @@ export default async function AdminContestsPage({ searchParams }: Props) {
       : {}),
   };
 
+  await closeExpiredContests();
   const [contests, counts] = await Promise.all([
     prisma.contest.findMany({
       where,
@@ -202,3 +204,4 @@ function formatDate(date: Date) {
     timeStyle: "short",
   }).format(date);
 }
+
