@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import {
   ArrowRight,
   CalendarClock,
@@ -12,6 +13,24 @@ import { SetGrid } from "@/components/SetGrid";
 import { JudgePreview } from "@/components/home/JudgePreview";
 import { UNIVERSITIES } from "@/lib/universities";
 import { BRAND } from "@/lib/brand";
+
+export const metadata: Metadata = {
+  title: `${BRAND.name} — Practice C, solve contests, get judged in milliseconds`,
+  description:
+    "Free online judge for C programming: 700 exam-style problems across 7 difficulty tiers, instant AC/WA/TLE verdicts, and live inter-university contests for DIU, NSU, AIUB, and BRAC.",
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: `${BRAND.name} — Practice C, solve contests, get judged in milliseconds`,
+    description:
+      "Free online judge for C programming: 700 exam-style problems across 7 difficulty tiers, instant AC/WA/TLE verdicts, and live inter-university contests.",
+    url: "/",
+  },
+  twitter: {
+    title: `${BRAND.name} — Practice C, solve contests, get judged in milliseconds`,
+    description:
+      "700 exam-style C problems, instant judge, live inter-university contests. Practice free.",
+  },
+};
 
 const FEATURES = [
   {
@@ -122,7 +141,7 @@ export default function HomePage() {
       </section>
 
       {/* ---------------- stats ---------------- */}
-      <section className="border-b border-[var(--line)]">
+      <section aria-label="Platform statistics" className="border-b border-[var(--line)]">
         <dl className="mx-auto grid max-w-7xl grid-cols-2 divide-x divide-y divide-[var(--line-soft)] px-4 sm:px-6 lg:grid-cols-4 lg:divide-y-0">
           {stats.map((s) => (
             <div key={s.label} className="px-2 py-7 first:pl-0 sm:px-6 lg:py-9">
@@ -136,10 +155,16 @@ export default function HomePage() {
       </section>
 
       {/* ---------------- features ---------------- */}
-      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24">
+      <section
+        aria-labelledby="features-heading"
+        className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24"
+      >
         <div className="max-w-2xl">
           <p className="eyebrow">Why it holds up</p>
-          <h2 className="font-display mt-3 text-[1.9rem] leading-[1.1] font-bold sm:text-[2.3rem]">
+          <h2
+            id="features-heading"
+            className="font-display mt-3 text-[1.9rem] leading-[1.1] font-bold sm:text-[2.3rem]"
+          >
             Built like a real judge, not a quiz app.
           </h2>
         </div>
@@ -163,12 +188,15 @@ export default function HomePage() {
       </section>
 
       {/* ---------------- workflow ---------------- */}
-      <section className="border-y border-[var(--line)]">
+      <section aria-labelledby="workflow-heading" className="border-y border-[var(--line)]">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20">
           <div className="grid gap-10 lg:grid-cols-[340px_1fr] lg:gap-16">
             <div>
               <p className="eyebrow">The loop</p>
-              <h2 className="font-display mt-3 text-2xl leading-[1.15] font-bold sm:text-[1.75rem]">
+              <h2
+                id="workflow-heading"
+                className="font-display mt-3 text-2xl leading-[1.15] font-bold sm:text-[1.75rem]"
+              >
                 Three keystrokes from idea to verdict.
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-[var(--muted)]">
@@ -201,11 +229,14 @@ export default function HomePage() {
       </section>
 
       {/* ---------------- contests ---------------- */}
-      <section className="border-y border-[var(--line)]">
+      <section aria-labelledby="contests-heading" className="border-y border-[var(--line)]">
         <div className="mx-auto grid max-w-7xl gap-10 px-4 py-20 sm:px-6 sm:py-24 lg:grid-cols-2 lg:gap-16">
           <div>
             <p className="eyebrow">Contests</p>
-            <h2 className="font-display mt-3 text-[1.9rem] leading-[1.1] font-bold sm:text-[2.3rem]">
+            <h2
+              id="contests-heading"
+              className="font-display mt-3 text-[1.9rem] leading-[1.1] font-bold sm:text-[2.3rem]"
+            >
               Four campuses, one scoreboard.
             </h2>
             <p className="measure mt-5 text-[15px] leading-relaxed text-[var(--muted)]">

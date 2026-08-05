@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import type { University } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
@@ -15,6 +16,59 @@ type Props = {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ uni?: string }>;
 };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  let contest;
+  try {
+    contest = await prisma.contest.findUnique({
+      where: { slug },
+      select: {
+        title: true,
+        description: true,
+        status: true,
+        durationMinutes: true,
+        _count: { select: { problems: true, registrations: true } },
+      },
+    });
+  } catch {
+    return {
+      title: "Contest",
+      robots: { index: false, follow: false },
+    };
+  }
+  if (!contest || contest.status !== "LIVE") {
+    return {
+      title: "Contest not found",
+      robots: { index: false, follow: false },
+    };
+  }
+  const description =
+    (contest.description?.trim() ||
+      `Live programming contest: ${contest.durationMinutes} minutes, ${contest._count.problems} problems, ${contest._count.registrations} registered.`) +
+    ` Standings updated live with penalty per wrong submission.`;
+  return {
+    title: `${contest.title} — Live programming contest`,
+    description,
+    keywords: [
+      contest.title,
+      "live programming contest",
+      "coding contest leaderboard",
+      "inter-university contest",
+    ],
+    alternates: { canonical: `/contests/${slug}` },
+    openGraph: {
+      title: `${contest.title} — Live programming contest`,
+      description,
+      url: `/contests/${slug}`,
+      type: "article",
+    },
+    twitter: {
+      title: `${contest.title} — Live programming contest`,
+      description,
+    },
+  };
+}
 
 export default async function ContestDetailPage({ params, searchParams }: Props) {
   const { slug } = await params;

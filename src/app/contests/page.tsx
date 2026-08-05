@@ -1,11 +1,38 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
+import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { contestStatusLabel } from "@/lib/contests";
 import { ContestRegisterButton } from "@/components/ContestRegisterButton";
 import { PageHeader } from "@/components/PageHeader";
+
+export const metadata: Metadata = {
+  title: "Live C Programming Contests — DIU, NSU, AIUB, BRAC inter-university contests",
+  description:
+    "Join live inter-university programming contests. ICPC-style scoreboards with penalty per wrong submission, frozen standings, and live rankings between DIU, NSU, AIUB, and BRAC.",
+  keywords: [
+    "live programming contest",
+    "inter-university programming contest",
+    "ICPC style contest",
+    "coding contest scoreboard",
+    "DIU NSU AIUB BRAC contest",
+    "university programming contest",
+  ],
+  alternates: { canonical: "/contests" },
+  openGraph: {
+    title: "Live C Programming Contests — Inter-university contests",
+    description:
+      "Join live ICPC-style programming contests between DIU, NSU, AIUB, and BRAC.",
+    url: "/contests",
+  },
+  twitter: {
+    title: "Live C Programming Contests",
+    description:
+      "Join live ICPC-style programming contests between DIU, NSU, AIUB, and BRAC.",
+  },
+};
 
 export default async function ContestsPage() {
   let contests: Awaited<ReturnType<typeof loadContests>> = [];

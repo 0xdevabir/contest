@@ -1,4 +1,13 @@
+import type { Metadata } from "next";
 import { RegisterForm } from "@/components/auth/RegisterForm";
+
+export const metadata: Metadata = {
+  title: "Create your account",
+  description:
+    "Register for DIU ContestHub with your university profile. Free account unlocks submissions, contest registration, leaderboard rankings, and progress tracking.",
+  robots: { index: false, follow: true },
+  alternates: { canonical: "/register" },
+};
 
 type Props = { searchParams: Promise<{ next?: string }> };
 

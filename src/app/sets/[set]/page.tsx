@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { getSets } from "@/lib/problems";
 import { ProblemList } from "@/components/ProblemList";
 import { PageHeader } from "@/components/PageHeader";
@@ -10,10 +11,39 @@ export function generateStaticParams() {
   return Array.from({ length: 20 }, (_, i) => ({ set: String(i + 1) }));
 }
 
-export async function generateMetadata({ params }: Props) {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { set: setParam } = await params;
-  const set = getSets().find((s) => s.set === Number(setParam));
-  return { title: set ? `Set ${set.set} · ${set.title}` : "Set" };
+  const setNum = Number(setParam);
+  const set = getSets().find((s) => s.set === setNum);
+  if (!set) {
+    return {
+      title: "Set not found",
+      robots: { index: false, follow: false },
+    };
+  }
+  const description =
+    `Set ${set.set}: ${set.title}. ` +
+    `Seven C programming problems ramping from Very Easy to Extreme. ` +
+    `Solve, run against hidden tests, and grade instantly.`;
+  return {
+    title: `Set ${String(set.set).padStart(2, "0")} — ${set.title} | 7 C problems`,
+    description,
+    keywords: [
+      `C problem set ${set.set}`,
+      `${set.title} C problems`,
+      "C programming practice set",
+    ],
+    alternates: { canonical: `/sets/${setNum}` },
+    openGraph: {
+      title: `Set ${String(set.set).padStart(2, "0")} — ${set.title}`,
+      description,
+      url: `/sets/${setNum}`,
+    },
+    twitter: {
+      title: `Set ${String(set.set).padStart(2, "0")} — ${set.title}`,
+      description,
+    },
+  };
 }
 
 export default async function SetDetailPage({ params }: Props) {

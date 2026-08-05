@@ -1,10 +1,38 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
+import type { Metadata } from "next";
 import type { University } from "@prisma/client";
 import { getPracticeLeaderboard } from "@/lib/leaderboard";
 import { UNIVERSITIES, universityLabel } from "@/lib/universities";
 import { PageHeader } from "@/components/PageHeader";
+
+export const metadata: Metadata = {
+  title: "Leaderboard — Top C programmers across DIU, NSU, AIUB, BRAC",
+  description:
+    "Live practice and contest leaderboards. See top C programmers at Daffodil International University, North South University, AIUB, and BRAC University — ranked by problems solved.",
+  keywords: [
+    "C programming leaderboard",
+    "competitive programming rankings",
+    "DIU programmer leaderboard",
+    "NSU programmer leaderboard",
+    "AIUB programmer leaderboard",
+    "BRAC programmer leaderboard",
+    "Bangladesh programming rankings",
+  ],
+  alternates: { canonical: "/leaderboard" },
+  openGraph: {
+    title: "Leaderboard — Top C programmers across DIU, NSU, AIUB, BRAC",
+    description:
+      "Live practice and contest leaderboards across DIU, NSU, AIUB, BRAC.",
+    url: "/leaderboard",
+  },
+  twitter: {
+    title: "Leaderboard — Top C programmers",
+    description:
+      "Live leaderboards across DIU, NSU, AIUB, BRAC.",
+  },
+};
 
 type Props = { searchParams: Promise<{ uni?: string }> };
 

@@ -76,13 +76,24 @@ const TESTS = [
 
 export function JudgePreview() {
   return (
-    <div className="panel min-w-0 overflow-hidden">
+    <figure
+      aria-label="Preview of the C judge running a submitted solution"
+      className="panel min-w-0 overflow-hidden"
+    >
       <div className="flex items-center justify-between border-b border-[var(--line)] bg-black/25 pr-4">
-        <div className="flex">
-          <span className="border-r border-[var(--line)] border-b-2 border-b-[var(--accent)] bg-[var(--bg-panel)] px-4 py-2.5 font-mono text-xs text-[var(--text)]">
+        <div className="flex" role="tablist" aria-label="Editor tabs">
+          <span
+            role="tab"
+            aria-selected="true"
+            className="border-r border-[var(--line)] border-b-2 border-b-[var(--accent)] bg-[var(--bg-panel)] px-4 py-2.5 font-mono text-xs text-[var(--text)]"
+          >
             main.c
           </span>
-          <span className="border-r border-[var(--line)] px-4 py-2.5 font-mono text-xs text-[var(--muted-dim)]">
+          <span
+            role="tab"
+            aria-selected="false"
+            className="border-r border-[var(--line)] px-4 py-2.5 font-mono text-xs text-[var(--muted-dim)]"
+          >
             stdin
           </span>
         </div>
@@ -91,11 +102,17 @@ export function JudgePreview() {
         </span>
       </div>
 
-      <pre className="overflow-x-auto px-4 py-4 font-mono text-[11.5px] leading-[1.8] sm:px-5 sm:text-[12.5px]">
+      <pre
+        aria-label="Submitted C source code"
+        className="overflow-x-auto px-4 py-4 font-mono text-[11.5px] leading-[1.8] sm:px-5 sm:text-[12.5px]"
+      >
         <code>
           {CODE_LINES.map((line, i) => (
             <div key={i} className="flex gap-4">
-              <span className="w-4 shrink-0 select-none text-right text-[var(--muted-dim)]/60">
+              <span
+                aria-hidden
+                className="w-4 shrink-0 select-none text-right text-[var(--muted-dim)]/60"
+              >
                 {i + 1}
               </span>
               <span className="whitespace-pre">
@@ -115,7 +132,7 @@ export function JudgePreview() {
       <div className="border-t border-[var(--line)] bg-black/25">
         <div className="flex items-center justify-between px-4 py-3 sm:px-5">
           <span className="flex items-center gap-2 font-mono text-xs font-semibold text-[var(--accent)]">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+            <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
             ACCEPTED
           </span>
           <span className="font-mono text-[11px] text-[var(--muted-dim)]">
@@ -137,7 +154,7 @@ export function JudgePreview() {
           ))}
         </ul>
       </div>
-    </div>
+    </figure>
   );
 }
 

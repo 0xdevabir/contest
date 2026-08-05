@@ -82,17 +82,30 @@ export function SiteChrome({
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_82%,transparent)] pt-[env(safe-area-inset-top)] backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-3.5">
-          <Link href="/" className="flex min-w-0 shrink items-center gap-2 sm:gap-2.5">
+          <Link
+            href="/"
+            aria-label={`${BRAND.name} home`}
+            className="flex min-w-0 shrink items-center gap-2 sm:gap-2.5"
+          >
             <BrandMark size={26} />
             <Wordmark className="truncate text-[14px] sm:text-[17px]" />
           </Link>
 
-          <nav className="hidden items-center justify-end gap-x-5 text-sm md:flex">
+          <nav
+            aria-label="Primary"
+            className="hidden items-center justify-end gap-x-5 text-sm md:flex"
+          >
             <Link href="/problems" className="link-quiet">
               Problems
             </Link>
             <Link href="/sets" className="link-quiet">
               Sets
+            </Link>
+            <Link href="/contests" className="link-quiet">
+              Contests
+            </Link>
+            <Link href="/leaderboard" className="link-quiet">
+              Leaderboard
             </Link>
             <NavAuth user={user} />
           </nav>
@@ -136,7 +149,7 @@ export function SiteChrome({
               id="mobile-nav"
               className="absolute inset-x-0 top-full z-50 border-b border-[var(--line)] bg-[var(--bg-elevated)] px-4 py-4 shadow-2xl md:hidden"
             >
-              <nav className="flex flex-col gap-1">
+              <nav aria-label="Mobile primary" className="flex flex-col gap-1">
                 {MOBILE_LINKS.map((link) => {
                   const active =
                     pathname === link.href || pathname.startsWith(`${link.href}/`);
@@ -182,9 +195,15 @@ export function SiteChrome({
         )}
       </header>
 
-      <main className="flex-1">{children}</main>
+      <main id="main" className="flex-1">{children}</main>
 
-      <footer className="mt-12 border-t border-[var(--line)] bg-black/25 pb-[env(safe-area-inset-bottom)] sm:mt-16">
+      <footer
+        aria-labelledby="footer-heading"
+        className="mt-12 border-t border-[var(--line)] bg-black/25 pb-[env(safe-area-inset-bottom)] sm:mt-16"
+      >
+        <h2 id="footer-heading" className="sr-only">
+          Site footer
+        </h2>
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12">
           <div className="grid gap-8 sm:gap-10 md:grid-cols-[1.4fr_repeat(3,1fr)]">
             <div>
