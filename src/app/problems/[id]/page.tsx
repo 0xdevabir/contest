@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { getSession } from "@/lib/auth";
 import { getAllProblemIds, getProblem } from "@/lib/problems";
 import { ProblemWorkspace } from "@/components/ProblemWorkspace";
 
@@ -25,6 +26,13 @@ export default async function ProblemPage({ params, searchParams }: Props) {
   const problem = getProblem(id);
   if (!problem) notFound();
 
+  let loggedIn = false;
+  try {
+    loggedIn = Boolean(await getSession());
+  } catch {
+    loggedIn = false;
+  }
+
   const ids = getAllProblemIds();
   const idx = ids.indexOf(id);
   const prevId = idx > 0 ? ids[idx - 1] : null;
@@ -36,7 +44,9 @@ export default async function ProblemPage({ params, searchParams }: Props) {
       prevId={prevId}
       nextId={nextId}
       contestId={contest || null}
+      loggedIn={loggedIn}
     />
   );
 }
+
 

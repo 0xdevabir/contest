@@ -32,7 +32,7 @@ const FEATURES = [
   {
     icon: ShieldCheck,
     title: "Progress that survives",
-    body: "Practice anonymously if you want. Sign in and every accepted solution, submission, and contest result is stored against your university profile.",
+    body: "Write and run code without an account. Sign in when you are ready to submit — every accepted answer, submission, and contest result is stored against your university profile.",
   },
 ];
 
@@ -98,7 +98,7 @@ export default function HomePage() {
             </div>
 
             <p className="mt-4 font-mono text-[11px] text-[var(--muted-dim)]">
-              No account required to practice · Sign in to save progress and enter contests
+              Run without an account · Sign in to submit and enter contests
             </p>
 
             <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-[var(--line-soft)] pt-6">
@@ -273,4 +273,5 @@ export default function HomePage() {
     </>
   );
 }
+
 

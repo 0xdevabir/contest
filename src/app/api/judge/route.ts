@@ -83,6 +83,8 @@ export async function POST(req: NextRequest) {
 
   const mode = body.mode ?? "submit";
 
+  // Run stays anonymous so people can try input before signing up. Submit is the
+  // graded action — that always needs an account so progress and scoreboards stay honest.
   if (mode === "run") {
     const result = await runCustom({
       code: body.code,
@@ -90,6 +92,13 @@ export async function POST(req: NextRequest) {
       timeLimitMs: problem.timeLimitMs,
     });
     return NextResponse.json({ ok: true, ...result, results: [] });
+  }
+
+  if (!session) {
+    return NextResponse.json(
+      { ok: false, message: "Sign in to submit an answer." },
+      { status: 401 }
+    );
   }
 
   if (problem.openEnded || !problem.tests.length) {
@@ -104,9 +113,6 @@ export async function POST(req: NextRequest) {
 
   // Contest gate — must be LIVE, problem must belong to contest, user must be registered
   if (body.contestId) {
-    if (!session) {
-      return NextResponse.json({ ok: false, message: "Login required for contest submissions" }, { status: 401 });
-    }
 
     const contest = await prisma.contest.findUnique({
       where: { id: body.contestId },
@@ -179,5 +185,6 @@ export async function POST(req: NextRequest) {
     saved: Boolean(session),
   });
 }
+
 
 

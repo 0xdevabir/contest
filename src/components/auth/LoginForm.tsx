@@ -45,7 +45,7 @@ export function LoginForm({ next }: { next?: string }) {
       <div>
         <h1 className="font-display text-2xl font-bold">Log in</h1>
         <p className="mt-1.5 text-sm text-[var(--muted)]">
-          Practice still works without an account — login saves your progress.
+          Practice still works without an account — sign in when you want to submit.
         </p>
       </div>
 
@@ -75,5 +75,6 @@ export function LoginForm({ next }: { next?: string }) {
     </form>
   );
 }
+
 
 

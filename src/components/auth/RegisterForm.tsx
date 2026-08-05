@@ -5,10 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { UNIVERSITIES } from "@/lib/universities";
 
-export function RegisterForm() {
+export function RegisterForm({ next }: { next?: string }) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const destination =
+    next && next.startsWith("/") && !next.startsWith("//") ? next : "/problems";
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -34,7 +37,7 @@ export function RegisterForm() {
         setError(data.message || "Registration failed");
         return;
       }
-      router.push("/problems");
+      router.push(destination);
       router.refresh();
     } catch {
       setError("Network error");
@@ -134,6 +137,7 @@ function Field(props: {
     </label>
   );
 }
+
 
 
 

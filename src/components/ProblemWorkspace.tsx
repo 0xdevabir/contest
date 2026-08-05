@@ -143,9 +143,16 @@ type Props = {
   prevId?: string | null;
   nextId?: string | null;
   contestId?: string | null;
+  loggedIn?: boolean;
 };
 
-export function ProblemWorkspace({ problem, prevId, nextId, contestId }: Props) {
+export function ProblemWorkspace({
+  problem,
+  prevId,
+  nextId,
+  contestId,
+  loggedIn = false,
+}: Props) {
   const [code, setCode] = useState(problem.starterCode);
   const [stdin, setStdin] = useState(problem.sampleInput);
   const [pending, startTransition] = useTransition();
@@ -183,6 +190,16 @@ export function ProblemWorkspace({ problem, prevId, nextId, contestId }: Props) 
 
   const callJudge = useCallback(
     async (mode: "submit" | "run") => {
+      if (mode === "submit" && !loggedIn) {
+        setPanel("tests");
+        setResult({
+          ok: false,
+          verdict: "ERROR",
+          results: [],
+          message: "Sign in to submit an answer.",
+        });
+        return;
+      }
       setBusy(true);
       setResult(null);
       try {
@@ -214,7 +231,7 @@ export function ProblemWorkspace({ problem, prevId, nextId, contestId }: Props) 
         setBusy(false);
       }
     },
-    [code, contestId, problem.id, problem.sampleInput, stdin, tab]
+    [code, contestId, loggedIn, problem.id, problem.sampleInput, stdin, tab]
   );
 
   const handleRun = useCallback(() => {
@@ -257,6 +274,9 @@ export function ProblemWorkspace({ problem, prevId, nextId, contestId }: Props) 
     [result]
   );
   const totalTests = result?.results?.length ?? 0;
+  const loginHref = `/login?next=${encodeURIComponent(
+    `/problems/${problem.id}${contestId ? `?contest=${contestId}` : ""}`
+  )}`;
 
   return (
     <div className="mx-auto grid max-w-[1500px] gap-4 px-4 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.02fr)] lg:gap-5">
@@ -398,21 +418,31 @@ export function ProblemWorkspace({ problem, prevId, nextId, contestId }: Props) 
                 Run
               </button>
             )}
-            <button
-              type="button"
-              className="btn btn-primary !px-3.5 !py-2 !text-xs"
-              disabled={busy || termRunning || !!problem.openEnded}
-              onClick={handleSubmit}
-              title={
-                problem.openEnded
-                  ? "This problem has no fixed answer to check"
-                  : contestId
-                    ? `Send this to the contest scoreboard (${shortcut} + Enter)`
-                    : `Check against every test (${shortcut} + Enter)`
-              }
-            >
-              {busy ? <span className="animate-pulse-soft">Submitting…</span> : "Submit"}
-            </button>
+            {loggedIn ? (
+              <button
+                type="button"
+                className="btn btn-primary !px-3.5 !py-2 !text-xs"
+                disabled={busy || termRunning || !!problem.openEnded}
+                onClick={handleSubmit}
+                title={
+                  problem.openEnded
+                    ? "This problem has no fixed answer to check"
+                    : contestId
+                      ? `Send this to the contest scoreboard (${shortcut} + Enter)`
+                      : `Check against every test (${shortcut} + Enter)`
+                }
+              >
+                {busy ? <span className="animate-pulse-soft">Submitting…</span> : "Submit"}
+              </button>
+            ) : (
+              <Link
+                href={loginHref}
+                className="btn btn-primary !px-3.5 !py-2 !text-xs"
+                title="Sign in to submit an answer"
+              >
+                Sign in to submit
+              </Link>
+            )}
           </div>
         </div>
 
@@ -518,8 +548,25 @@ export function ProblemWorkspace({ problem, prevId, nextId, contestId }: Props) 
                 <span className="text-[var(--text)]">Run</span> tries your code on the input above
                 and shows what it prints.{" "}
                 <span className="text-[var(--text)]">Submit</span> checks your output against every
-                test, including hidden ones.
+                test, including hidden ones
+                {loggedIn ? "." : " — sign in first so your result is saved."}
               </p>
+              {!loggedIn && (
+                <p className="mt-1.5">
+                  <Link href={loginHref} className="text-[var(--accent)] hover:underline">
+                    Sign in to submit
+                  </Link>
+                  {" · "}
+                  <Link
+                    href={`/register?next=${encodeURIComponent(
+                      `/problems/${problem.id}${contestId ? `?contest=${contestId}` : ""}`
+                    )}`}
+                    className="text-[var(--accent)] hover:underline"
+                  >
+                    Create an account
+                  </Link>
+                </p>
+              )}
               {contestId && (
                 <p className="mt-1.5 text-[var(--warn)]">
                   This is a contest: every wrong submission on a problem you later solve adds
@@ -527,8 +574,23 @@ export function ProblemWorkspace({ problem, prevId, nextId, contestId }: Props) 
                 </p>
               )}
               <p className="mt-1.5 text-[var(--muted-dim)]">
-                Shortcut: {shortcut} + Enter sends it to the judge.
+                Shortcut: {shortcut} + Enter{" "}
+                {loggedIn ? "sends it to the judge." : "submits once you are signed in."}
               </p>
+            </div>
+          )}
+
+          {result && !result.ok && !result.verdict && (
+            <div className="rounded-lg border border-[var(--warn)]/40 bg-[rgba(240,180,41,0.08)] p-3 text-xs text-[var(--warn)]">
+              <p>{result.message || "Something went wrong."}</p>
+              {/sign in/i.test(result.message || "") && (
+                <p className="mt-2">
+                  <Link href={loginHref} className="font-medium text-[var(--accent)] hover:underline">
+                    Sign in
+                  </Link>
+                  {" to continue."}
+                </p>
+              )}
             </div>
           )}
 
@@ -539,7 +601,7 @@ export function ProblemWorkspace({ problem, prevId, nextId, contestId }: Props) 
                   className={`flex items-center gap-2 text-sm font-semibold ${toneText(verdict.tone)}`}
                 >
                   <ToneIcon tone={verdict.tone} />
-                  {verdict.title}
+                  {/sign in/i.test(result.message || "") ? "Sign in required" : verdict.title}
                   {totalTests > 0 && (
                     <span className="tnum ml-auto text-xs font-normal text-[var(--muted)]">
                       {passed} of {totalTests} tests passed
@@ -549,6 +611,22 @@ export function ProblemWorkspace({ problem, prevId, nextId, contestId }: Props) 
                 <p className="mt-1.5 text-xs leading-relaxed text-[var(--muted)]">
                   {result.message || verdict.hint}
                 </p>
+                {/sign in/i.test(result.message || "") && (
+                  <p className="mt-2 text-xs">
+                    <Link href={loginHref} className="text-[var(--accent)] hover:underline">
+                      Sign in
+                    </Link>
+                    {" · "}
+                    <Link
+                      href={`/register?next=${encodeURIComponent(
+                        `/problems/${problem.id}${contestId ? `?contest=${contestId}` : ""}`
+                      )}`}
+                      className="text-[var(--accent)] hover:underline"
+                    >
+                      Create an account
+                    </Link>
+                  </p>
+                )}
               </div>
 
               {result.compileStderr && (
@@ -622,5 +700,6 @@ export function ProblemWorkspace({ problem, prevId, nextId, contestId }: Props) 
     </div>
   );
 }
+
 
 
