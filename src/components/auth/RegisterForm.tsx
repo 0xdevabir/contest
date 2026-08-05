@@ -34,7 +34,7 @@ export function RegisterForm() {
         setError(data.message || "Registration failed");
         return;
       }
-      router.push("/sets");
+      router.push("/problems");
       router.refresh();
     } catch {
       setError("Network error");
@@ -134,5 +134,6 @@ function Field(props: {
     </label>
   );
 }
+
 
 

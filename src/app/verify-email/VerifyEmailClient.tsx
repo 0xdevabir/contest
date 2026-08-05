@@ -32,7 +32,7 @@ export default function VerifyEmailClient() {
         setStatus("ok");
         setMessage("Email verified. Redirecting…");
         setTimeout(() => {
-          router.push("/sets");
+          router.push("/problems");
           router.refresh();
         }, 1200);
       })
@@ -54,4 +54,5 @@ export default function VerifyEmailClient() {
     </div>
   );
 }
+
 

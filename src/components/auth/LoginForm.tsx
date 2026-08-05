@@ -4,10 +4,13 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-export function LoginForm() {
+export function LoginForm({ next }: { next?: string }) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // Guarded against "//evil.com", which is a valid URL that leaves the site.
+  const destination = next && next.startsWith("/") && !next.startsWith("//") ? next : "/problems";
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -28,7 +31,7 @@ export function LoginForm() {
         setError(data.message || "Login failed");
         return;
       }
-      router.push("/sets");
+      router.push(destination);
       router.refresh();
     } catch {
       setError("Network error");
@@ -72,4 +75,5 @@ export function LoginForm() {
     </form>
   );
 }
+
 
