@@ -2,12 +2,20 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import type { Metadata } from "next";
+import {
+  Archive,
+  ArrowRight,
+  CalendarClock,
+  CircleDot,
+  ListChecks,
+  Radio,
+  Users,
+} from "lucide-react";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import {
   contestPhase,
   effectiveContestStatus,
-  isContestOpen,
   isContestPublic,
 } from "@/lib/contests";
 import { closeExpiredContests } from "@/lib/contest-lifecycle";
@@ -59,8 +67,42 @@ export default async function ContestsPage() {
     dbError = true;
   }
 
+  const grouped = groupContests(contests);
+  const sections = [
+    {
+      id: "live",
+      eyebrow: "Happening now",
+      title: "Live contests",
+      description: "The exam clock is running. Join and start solving now.",
+      empty: "No contest is running right now.",
+      contests: grouped.live,
+      icon: Radio,
+      tone: "live" as const,
+    },
+    {
+      id: "upcoming",
+      eyebrow: "Next up",
+      title: "Upcoming contests",
+      description: "Register early, review the schedule, and be ready before the start.",
+      empty: "No upcoming contest has been published yet.",
+      contests: grouped.upcoming,
+      icon: CalendarClock,
+      tone: "upcoming" as const,
+    },
+    {
+      id: "past",
+      eyebrow: "Archive",
+      title: "Past contests",
+      description: "Review published contests, final standings, and practice-enabled problems.",
+      empty: "No past contest has been published yet.",
+      contests: grouped.past,
+      icon: Archive,
+      tone: "past" as const,
+    },
+  ];
+
   return (
-    <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
+    <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
       <JsonLd
         data={breadcrumbJsonLd([
           { name: "Home", path: "/" },
@@ -70,7 +112,7 @@ export default async function ContestsPage() {
       <PageHeader
         eyebrow="Compete"
         title="C programming contests"
-        lead="Join active contests or review past contests an admin has chosen to publish, including their final standings and problem lists."
+        lead="See what is running, register for what comes next, and revisit every published contest from one timeline."
       />
 
       {dbError && (
@@ -79,65 +121,267 @@ export default async function ContestsPage() {
         </p>
       )}
 
-      <div className="mt-8 space-y-4">
-        {!dbError && contests.length === 0 && (
-          <div className="panel px-5 py-10 text-center">
-            <h2 className="font-display text-lg font-semibold">No published contests</h2>
-            <p className="mt-2 text-sm text-[var(--muted)]">
-              Check back when an admin activates or publishes a contest.
-            </p>
-          </div>
-        )}
-        {contests.map((c) => {
-          const phase = contestPhase(c.startsAt, c.endsAt);
-          const ended = effectiveContestStatus(c.status, c.endsAt) === "ENDED";
-          const open = isContestOpen(c.status, c.startsAt, c.endsAt);
-          const label =
-            phase === "BEFORE" ? "Upcoming" : open ? "Live now" : "Ended";
-          return (
-          <article key={c.id} className="panel p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p
-                  className={`font-mono text-xs ${
-                    ended ? "text-[var(--muted)]" : "text-[var(--accent)]"
+      {!dbError && (
+        <>
+          <nav
+            aria-label="Contest timeline"
+            className="panel mt-8 grid overflow-hidden sm:grid-cols-3"
+          >
+            {sections.map((section, index) => {
+              const Icon = section.icon;
+              return (
+                <Link
+                  key={section.id}
+                  href={`#${section.id}`}
+                  className={`flex items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-[var(--hover)] ${
+                    index > 0
+                      ? "border-t border-[var(--line)] sm:border-t-0 sm:border-l"
+                      : ""
                   }`}
                 >
-                  {label}
-                  {myRegs.has(c.id) && " · You joined"}
-                </p>
-                <h2 className="mt-1 font-display text-xl font-semibold">
-                  <Link href={`/contests/${c.slug}`} className="hover:text-[var(--accent)]">
-                    {c.title}
-                  </Link>
-                </h2>
-                <p className="mt-2 line-clamp-2 text-sm text-[var(--muted)]">
-                  {c.description || "No description"}
-                </p>
-                <p className="mt-2 font-mono text-xs text-[var(--muted)]">
-                  {c.durationMinutes} min · {c._count.problems} problems ·{" "}
-                  {c._count.registrations} registered
-                </p>
-              </div>
-              <div className="flex flex-col items-end gap-2">
-                <Link href={`/contests/${c.slug}`} className="btn btn-ghost !py-2 !text-xs">
-                  {ended ? "Final standings" : "View"}
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    <Icon
+                      size={15}
+                      className={
+                        section.tone === "live"
+                          ? "text-[var(--accent)]"
+                          : "text-[var(--muted)]"
+                      }
+                      aria-hidden="true"
+                    />
+                    <span className="truncate text-sm font-medium">{section.title}</span>
+                  </span>
+                  <span className="font-mono text-xs text-[var(--muted)]">
+                    {section.contests.length}
+                  </span>
                 </Link>
-                {!ended && (
-                  <ContestRegisterButton
-                    contestId={c.id}
-                    registered={myRegs.has(c.id)}
-                    loggedIn={!!session}
-                  />
-                )}
-              </div>
+              );
+            })}
+          </nav>
+
+          {contests.length === 0 && (
+            <div className="panel mt-8 px-5 py-10 text-center">
+              <h2 className="font-display text-lg font-semibold">No published contests</h2>
+              <p className="mt-2 text-sm text-[var(--muted)]">
+                Check back when an admin publishes a contest.
+              </p>
             </div>
-          </article>
-          );
-        })}
-      </div>
+          )}
+
+          {contests.length > 0 && (
+            <div className="mt-12 space-y-14">
+              {sections.map((section) => (
+                <ContestSection
+                  key={section.id}
+                  {...section}
+                  myRegs={myRegs}
+                  loggedIn={!!session}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
+}
+
+type ContestItem = Awaited<ReturnType<typeof loadContests>>[number];
+type ContestTone = "live" | "upcoming" | "past";
+
+function groupContests(contests: ContestItem[]) {
+  const groups: Record<ContestTone, ContestItem[]> = {
+    live: [],
+    upcoming: [],
+    past: [],
+  };
+
+  for (const contest of contests) {
+    const status = effectiveContestStatus(contest.status, contest.endsAt);
+    const phase =
+      status === "ENDED"
+        ? "ENDED"
+        : contestPhase(contest.startsAt, contest.endsAt);
+
+    if (phase === "ENDED") groups.past.push(contest);
+    else if (phase === "BEFORE") groups.upcoming.push(contest);
+    else groups.live.push(contest);
+  }
+
+  groups.live.sort(
+    (a, b) => (a.endsAt?.getTime() ?? Infinity) - (b.endsAt?.getTime() ?? Infinity)
+  );
+  groups.upcoming.sort(
+    (a, b) => (a.startsAt?.getTime() ?? Infinity) - (b.startsAt?.getTime() ?? Infinity)
+  );
+  groups.past.sort(
+    (a, b) => (b.endsAt?.getTime() ?? 0) - (a.endsAt?.getTime() ?? 0)
+  );
+
+  return groups;
+}
+
+function ContestSection({
+  id,
+  eyebrow,
+  title,
+  description,
+  empty,
+  contests,
+  icon: Icon,
+  tone,
+  myRegs,
+  loggedIn,
+}: {
+  id: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  empty: string;
+  contests: ContestItem[];
+  icon: typeof Radio;
+  tone: ContestTone;
+  myRegs: Set<string>;
+  loggedIn: boolean;
+}) {
+  return (
+    <section id={id} className="scroll-mt-24" aria-labelledby={`${id}-title`}>
+      <div className="flex items-end justify-between gap-4 border-b border-[var(--line)] pb-4">
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--muted)]">
+            {eyebrow}
+          </p>
+          <h2 id={`${id}-title`} className="mt-1 font-display text-2xl font-semibold">
+            {title}
+          </h2>
+          <p className="mt-1.5 max-w-2xl text-sm text-[var(--muted)]">{description}</p>
+        </div>
+        <span className="hidden items-center gap-2 font-mono text-xs text-[var(--muted)] sm:flex">
+          <Icon
+            size={14}
+            className={tone === "live" ? "text-[var(--accent)]" : ""}
+            aria-hidden="true"
+          />
+          {contests.length}
+        </span>
+      </div>
+
+      {contests.length === 0 ? (
+        <div className="panel-quiet mt-4 flex items-center gap-3 px-4 py-5 text-sm text-[var(--muted)]">
+          <CircleDot size={15} aria-hidden="true" />
+          {empty}
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          {contests.map((contest) => (
+            <ContestCard
+              key={contest.id}
+              contest={contest}
+              tone={tone}
+              registered={myRegs.has(contest.id)}
+              loggedIn={loggedIn}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ContestCard({
+  contest,
+  tone,
+  registered,
+  loggedIn,
+}: {
+  contest: ContestItem;
+  tone: ContestTone;
+  registered: boolean;
+  loggedIn: boolean;
+}) {
+  const schedule =
+    tone === "upcoming"
+      ? `Starts ${formatContestDate(contest.startsAt)}`
+      : tone === "live"
+        ? `Ends ${formatContestDate(contest.endsAt)}`
+        : `Ended ${formatContestDate(contest.endsAt)}`;
+
+  return (
+    <article className="panel panel-hover flex h-full flex-col p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p
+            className={`flex items-center gap-2 font-mono text-[11px] ${
+              tone === "live" ? "text-[var(--accent)]" : "text-[var(--muted)]"
+            }`}
+          >
+            {tone === "live" && (
+              <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--accent)] opacity-70" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+              </span>
+            )}
+            {tone === "live" ? "Live now" : tone === "upcoming" ? "Upcoming" : "Finished"}
+            {registered && " · You joined"}
+          </p>
+          <h3 className="mt-1.5 font-display text-xl font-semibold leading-snug">
+            <Link href={`/contests/${contest.slug}`} className="hover:text-[var(--accent)]">
+              {contest.title}
+            </Link>
+          </h3>
+        </div>
+        <span className="shrink-0 rounded-md border border-[var(--line)] bg-[var(--sunken)] px-2 py-1 font-mono text-[10px] text-[var(--muted)]">
+          {contest.durationMinutes} min
+        </span>
+      </div>
+
+      <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-[var(--muted)]">
+        {contest.description || "No description provided."}
+      </p>
+
+      <dl className="mt-4 grid grid-cols-2 gap-2 border-y border-[var(--line)] py-3 font-mono text-[11px] text-[var(--muted)]">
+        <div className="flex items-center gap-1.5">
+          <ListChecks size={12} aria-hidden="true" />
+          <dt className="sr-only">Problems</dt>
+          <dd>{contest._count.problems} problems</dd>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Users size={12} aria-hidden="true" />
+          <dt className="sr-only">Registrations</dt>
+          <dd>{contest._count.registrations} registered</dd>
+        </div>
+      </dl>
+
+      <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-4">
+        <p className="font-mono text-[11px] text-[var(--muted)]">{schedule}</p>
+        <div className="flex items-center gap-2">
+          {tone !== "past" && (
+            <ContestRegisterButton
+              contestId={contest.id}
+              registered={registered}
+              loggedIn={loggedIn}
+            />
+          )}
+          <Link
+            href={`/contests/${contest.slug}`}
+            className="btn btn-ghost !gap-1.5 !py-2 !text-xs"
+          >
+            {tone === "past" ? "Final standings" : "Open"}
+            <ArrowRight size={12} aria-hidden="true" />
+          </Link>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function formatContestDate(value: Date | null) {
+  if (!value) return "time not set";
+  return new Intl.DateTimeFormat("en-BD", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Dhaka",
+  }).format(value);
 }
 
 async function loadContests(myRegs: Set<string>) {
@@ -159,5 +403,6 @@ async function loadContests(myRegs: Set<string>) {
       isContestPublic(contest.status, contest.startsAt, contest.endsAt, contest.rules)
   );
 }
+
 
 
