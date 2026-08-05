@@ -44,7 +44,7 @@ const FOOTER_LINKS: { heading: string; links: { href: string; label: string }[] 
   {
     heading: "Practice",
     links: [
-      { href: "/problems", label: "All 140 problems" },
+      { href: "/problems", label: "All 700 problems" },
       { href: "/sets", label: "All 20 sets" },
       { href: "/sets/1", label: "Start with Set 01" },
     ],
@@ -91,31 +91,19 @@ export default async function RootLayout({
         }
       >
         <div className="flex min-h-screen flex-col">
-          <div className="hidden border-b border-[var(--line-soft)] bg-black/25 lg:block">
-            <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-1.5">
-              <span className="eyebrow">{BRAND.university}</span>
-              <span className="eyebrow flex items-center gap-2">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--accent)] animate-blip" />
-                Judge online · C (gcc / clang)
-              </span>
-            </div>
-          </div>
-
           <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_82%,transparent)] backdrop-blur-xl">
-            <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+            <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
               <Link href="/" className="flex shrink-0 items-center gap-2.5">
-                <BrandMark size={30} />
-                <span className="flex flex-col leading-none">
-                  <Wordmark className="text-[13.5px] sm:text-lg" />
-                  <span className="mt-1 hidden font-mono text-[10px] tracking-[0.16em] text-[var(--muted-dim)] uppercase sm:inline">
-                    C practice · live contests
-                  </span>
-                </span>
+                <BrandMark size={28} />
+                <Wordmark className="text-[15px] sm:text-[17px]" />
               </Link>
 
               <nav className="flex flex-wrap items-center justify-end gap-x-3.5 gap-y-2 text-sm sm:gap-x-5">
                 <Link href="/problems" className="link-quiet">
                   Problems
+                </Link>
+                <Link href="/sets" className="link-quiet hidden sm:inline">
+                  Sets
                 </Link>
                 <NavAuth user={user} />
               </nav>
@@ -124,7 +112,7 @@ export default async function RootLayout({
 
           <main className="flex-1">{children}</main>
 
-          <footer className="mt-24 border-t border-[var(--line)] bg-black/25">
+          <footer className="mt-16 border-t border-[var(--line)] bg-black/25">
             <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
               <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(3,1fr)]">
                 <div>
@@ -166,3 +154,4 @@ export default async function RootLayout({
     </html>
   );
 }
+

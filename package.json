@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "monaco": "node scripts/copy-monaco.mjs",
+    "bank:build": "node scripts/build-problem-bank.mjs",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
@@ -48,4 +49,5 @@
     "typescript": "^5"
   }
 }
+
 

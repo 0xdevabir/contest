@@ -91,8 +91,10 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
           <p className="font-mono text-xs text-[var(--accent)]">
             {contestStatusLabel(contest.status)}
           </p>
-          <h1 className="mt-1 font-display text-3xl font-extrabold">{contest.title}</h1>
-          <p className="mt-3 max-w-2xl text-[var(--muted)] whitespace-pre-wrap">
+          <h1 className="mt-1.5 font-display text-[1.9rem] leading-[1.1] font-bold sm:text-[2.3rem]">
+            {contest.title}
+          </h1>
+          <p className="measure mt-3.5 text-[var(--muted)] whitespace-pre-wrap">
             {contest.description || "No description."}
           </p>
           <dl className="mt-4 grid gap-2 font-mono text-xs text-[var(--muted)] sm:grid-cols-2">
@@ -233,4 +235,5 @@ function UniChip({
     </Link>
   );
 }
+
 

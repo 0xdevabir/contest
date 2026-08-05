@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSets } from "@/lib/problems";
 import { ProblemList } from "@/components/ProblemList";
+import { PageHeader } from "@/components/PageHeader";
 
 type Props = { params: Promise<{ set: string }> };
 
@@ -25,24 +26,20 @@ export default async function SetDetailPage({ params }: Props) {
   const next = setNum < 20 ? setNum + 1 : null;
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-      <div className="mb-6 flex flex-wrap items-center gap-3 text-sm text-[var(--muted)]">
-        <Link href="/sets" className="hover:text-[var(--text)]">
+    <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
+      <nav className="mb-7 flex flex-wrap items-center gap-2 font-mono text-xs text-[var(--muted-dim)]">
+        <Link href="/sets" className="transition-colors hover:text-[var(--text)]">
           Sets
         </Link>
-        <span>/</span>
-        <span className="text-[var(--text)]">Set {set.set}</span>
-      </div>
+        <span aria-hidden>/</span>
+        <span className="text-[var(--muted)]">Set {set.set}</span>
+      </nav>
 
-      <p className="eyebrow text-[var(--accent)]">
-        Set {String(set.set).padStart(2, "0")}
-      </p>
-      <h1 className="font-display mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
-        {set.title}
-      </h1>
-      <p className="mt-3 text-[15px] text-[var(--muted)]">
-        Seven problems, ramping from Very Easy to Extreme.
-      </p>
+      <PageHeader
+        eyebrow={`Set ${String(set.set).padStart(2, "0")}`}
+        title={set.title}
+        lead="Seven problems, ramping from Very Easy to Extreme."
+      />
 
       <div className="mt-8">
         <ProblemList problems={set.problems} />
@@ -67,4 +64,5 @@ export default async function SetDetailPage({ params }: Props) {
     </div>
   );
 }
+
 

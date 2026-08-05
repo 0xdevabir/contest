@@ -31,10 +31,10 @@ export function SetGrid({ sets }: { sets: SetCard[] }) {
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div className="max-w-xl">
           <p className="eyebrow">The curriculum</p>
-          <h2 className="font-display mt-3 text-3xl font-extrabold leading-tight sm:text-[2.6rem]">
+          <h2 className="font-display mt-3 text-[1.9rem] leading-[1.1] font-bold sm:text-[2.3rem]">
             {sets.length} sets. Same ramp every time.
           </h2>
-          <p className="mt-4 text-[15px] leading-relaxed text-[var(--muted)]">
+          <p className="measure mt-4 text-[15px] leading-relaxed text-[var(--muted)]">
             Q1 starts at Very Easy and Q7 finishes at Extreme, so you always know how far
             into a set your ceiling is.
           </p>
@@ -109,3 +109,4 @@ export function SetGrid({ sets }: { sets: SetCard[] }) {
     </div>
   );
 }
+

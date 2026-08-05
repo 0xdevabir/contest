@@ -46,8 +46,8 @@ export function RegisterForm() {
   return (
     <form onSubmit={onSubmit} className="panel mx-auto w-full max-w-md space-y-4 p-6">
       <div>
-        <h1 className="font-display text-2xl font-extrabold">Create account</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">
+        <h1 className="font-display text-2xl font-bold">Create account</h1>
+        <p className="mt-1.5 text-sm text-[var(--muted)]">
           Save progress, join contests, climb your university leaderboard.
         </p>
       </div>
@@ -71,14 +71,9 @@ export function RegisterForm() {
         autoComplete="new-password"
       />
 
-      <label className="block text-sm">
-        <span className="text-[var(--muted)]">University</span>
-        <select
-          name="university"
-          required
-          className="mt-1 w-full rounded-lg border border-[var(--line)] bg-black/30 px-3 py-2 outline-none focus:border-[var(--accent-dim)]"
-          defaultValue="DIU"
-        >
+      <label className="block">
+        <span className="field-label">University</span>
+        <select name="university" required className="field" defaultValue="DIU">
           {UNIVERSITIES.map((u) => (
             <option key={u.code} value={u.code}>
               {u.name}
@@ -117,8 +112,8 @@ function Field(props: {
   hint?: string;
 }) {
   return (
-    <label className="block text-sm">
-      <span className="text-[var(--muted)]">
+    <label className="block">
+      <span className="field-label">
         {props.label}
         {props.required && <span className="text-[var(--danger)]"> *</span>}
       </span>
@@ -131,12 +126,13 @@ function Field(props: {
         autoComplete={props.autoComplete}
         autoCapitalize={props.name === "name" ? "words" : undefined}
         placeholder={props.name === "name" ? "e.g. Md Abir Hossain" : undefined}
-        className="mt-1 w-full rounded-lg border border-[var(--line)] bg-black/30 px-3 py-2 outline-none focus:border-[var(--accent-dim)]"
+        className="field"
       />
       {props.hint && (
-        <span className="mt-1 block text-xs text-[var(--muted-dim)]">{props.hint}</span>
+        <span className="mt-1.5 block text-xs text-[var(--muted-dim)]">{props.hint}</span>
       )}
     </label>
   );
 }
+
 

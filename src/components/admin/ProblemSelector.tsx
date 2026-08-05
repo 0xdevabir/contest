@@ -68,7 +68,7 @@ export function ProblemSelector({
                 type="search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search 140 problems…"
+                placeholder="Search 700 problems…"
                 className="w-full rounded-lg border border-[var(--line)] bg-[#0a0f16] py-2 pl-9 pr-3 text-xs outline-none focus:border-[var(--accent-dim)]"
               />
             </label>
@@ -192,3 +192,4 @@ export function ProblemSelector({
     </div>
   );
 }
+

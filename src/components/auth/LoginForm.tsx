@@ -40,29 +40,19 @@ export function LoginForm() {
   return (
     <form onSubmit={onSubmit} className="panel mx-auto w-full max-w-md space-y-4 p-6">
       <div>
-        <h1 className="font-display text-2xl font-extrabold">Log in</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">
+        <h1 className="font-display text-2xl font-bold">Log in</h1>
+        <p className="mt-1.5 text-sm text-[var(--muted)]">
           Practice still works without an account — login saves your progress.
         </p>
       </div>
 
-      <label className="block text-sm">
-        <span className="text-[var(--muted)]">Email</span>
-        <input
-          name="email"
-          type="email"
-          required
-          className="mt-1 w-full rounded-lg border border-[var(--line)] bg-black/30 px-3 py-2 outline-none focus:border-[var(--accent-dim)]"
-        />
+      <label className="block">
+        <span className="field-label">Email</span>
+        <input name="email" type="email" required className="field" />
       </label>
-      <label className="block text-sm">
-        <span className="text-[var(--muted)]">Password</span>
-        <input
-          name="password"
-          type="password"
-          required
-          className="mt-1 w-full rounded-lg border border-[var(--line)] bg-black/30 px-3 py-2 outline-none focus:border-[var(--accent-dim)]"
-        />
+      <label className="block">
+        <span className="field-label">Password</span>
+        <input name="password" type="password" required className="field" />
       </label>
 
       {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
@@ -82,3 +72,4 @@ export function LoginForm() {
     </form>
   );
 }
+

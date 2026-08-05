@@ -22,7 +22,7 @@ const FEATURES = [
   {
     icon: ListOrdered,
     title: "A curriculum, not a pile",
-    body: "20 sets of 7 questions, each set climbing Very Easy → Extreme. Work a set end to end and you have covered one full exam's worth of difficulty.",
+    body: "20 core sets of 7 questions climb Very Easy → Extreme, plus 700 problems across 7 difficulty categories for volume practice.",
   },
   {
     icon: CalendarClock,
@@ -72,43 +72,16 @@ export default function HomePage() {
   return (
     <>
       {/* ---------------- hero ---------------- */}
-      <section className="relative overflow-hidden border-b border-[var(--line)]">
-        <div
-          aria-hidden
-          className="grid-field pointer-events-none absolute inset-0"
-          style={{
-            maskImage:
-              "radial-gradient(ellipse 90% 70% at 20% 0%, black 10%, transparent 70%)",
-            WebkitMaskImage:
-              "radial-gradient(ellipse 90% 70% at 20% 0%, black 10%, transparent 70%)",
-          }}
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -top-40 left-1/2 h-80 w-[46rem] -translate-x-1/2 rounded-full opacity-40 blur-3xl"
-          style={{ background: "radial-gradient(circle, rgba(62,207,142,0.22), transparent 65%)" }}
-        />
-
-        <div className="relative mx-auto grid max-w-7xl gap-14 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center lg:gap-12 lg:py-28">
+      <section className="border-b border-[var(--line)]">
+        <div className="mx-auto grid max-w-7xl gap-14 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center lg:gap-12 lg:py-28">
           <div className="animate-fade-up min-w-0">
-            <span className="badge badge-accent">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
-              {meta.subtitle}
-            </span>
+            <p className="eyebrow">{meta.subtitle}</p>
 
-            <h1 className="font-display mt-6 max-w-[34rem] text-[2.35rem] font-extrabold leading-[1.06] tracking-tight sm:text-[3rem] lg:text-[3.4rem]">
-              Practice C the way the{" "}
-              <span className="relative whitespace-nowrap">
-                <span className="relative z-10">exam</span>
-                <span
-                  aria-hidden
-                  className="absolute inset-x-0 bottom-[0.04em] z-0 h-[0.14em] bg-[var(--accent)] opacity-70"
-                />
-              </span>{" "}
-              actually asks.
+            <h1 className="display-hero mt-5 max-w-[34rem] text-[2.4rem] font-bold sm:text-[3rem] lg:text-[3.35rem]">
+              Practice C the way the exam actually asks.
             </h1>
 
-            <p className="mt-6 max-w-xl text-base leading-relaxed text-[var(--muted)] sm:text-[1.05rem]">
+            <p className="measure mt-6 text-base leading-relaxed text-[var(--muted)] sm:text-[1.05rem]">
               {meta.total} original problems across {meta.sets} sets, each one climbing from
               Very Easy to Extreme. Write in the browser, run against your own input, and let
               the judge compile and grade it in milliseconds.
@@ -149,12 +122,12 @@ export default function HomePage() {
       </section>
 
       {/* ---------------- stats ---------------- */}
-      <section className="border-b border-[var(--line)] bg-black/20">
+      <section className="border-b border-[var(--line)]">
         <dl className="mx-auto grid max-w-7xl grid-cols-2 divide-x divide-y divide-[var(--line-soft)] px-4 sm:px-6 lg:grid-cols-4 lg:divide-y-0">
           {stats.map((s) => (
             <div key={s.label} className="px-2 py-7 first:pl-0 sm:px-6 lg:py-9">
               <dt className="eyebrow">{s.label}</dt>
-              <dd className="font-display tnum mt-2 text-3xl font-extrabold sm:text-4xl">
+              <dd className="font-display tnum mt-2 text-3xl font-bold sm:text-[2.35rem]">
                 {s.value}
               </dd>
             </div>
@@ -163,15 +136,15 @@ export default function HomePage() {
       </section>
 
       {/* ---------------- features ---------------- */}
-      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
+      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24">
         <div className="max-w-2xl">
           <p className="eyebrow">Why it holds up</p>
-          <h2 className="font-display mt-3 text-3xl font-extrabold leading-tight sm:text-[2.6rem]">
+          <h2 className="font-display mt-3 text-[1.9rem] leading-[1.1] font-bold sm:text-[2.3rem]">
             Built like a real judge, not a quiz app.
           </h2>
         </div>
 
-        <div className="mt-14 grid gap-px overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--line)] sm:grid-cols-2">
+        <div className="mt-14 grid gap-px overflow-hidden rounded-[var(--r-lg)] border border-[var(--line)] bg-[var(--line)] sm:grid-cols-2">
           {FEATURES.map(({ icon: Icon, title, body }) => (
             <div
               key={title}
@@ -190,12 +163,12 @@ export default function HomePage() {
       </section>
 
       {/* ---------------- workflow ---------------- */}
-      <section className="border-y border-[var(--line)] bg-black/20">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:py-20">
+      <section className="border-y border-[var(--line)]">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20">
           <div className="grid gap-10 lg:grid-cols-[340px_1fr] lg:gap-16">
             <div>
               <p className="eyebrow">The loop</p>
-              <h2 className="font-display mt-3 text-2xl font-extrabold leading-tight sm:text-3xl">
+              <h2 className="font-display mt-3 text-2xl leading-[1.15] font-bold sm:text-[1.75rem]">
                 Three keystrokes from idea to verdict.
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-[var(--muted)]">
@@ -223,19 +196,19 @@ export default function HomePage() {
       </section>
 
       {/* ---------------- sets ---------------- */}
-      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
+      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24">
         <SetGrid sets={sets} />
       </section>
 
       {/* ---------------- contests ---------------- */}
-      <section className="border-y border-[var(--line)] bg-black/20">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:py-24">
+      <section className="border-y border-[var(--line)]">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-20 sm:px-6 sm:py-24 lg:grid-cols-2 lg:gap-16">
           <div>
             <p className="eyebrow">Contests</p>
-            <h2 className="font-display mt-3 text-3xl font-extrabold leading-tight sm:text-4xl">
+            <h2 className="font-display mt-3 text-[1.9rem] leading-[1.1] font-bold sm:text-[2.3rem]">
               Four campuses, one scoreboard.
             </h2>
-            <p className="mt-5 max-w-lg text-[15px] leading-relaxed text-[var(--muted)]">
+            <p className="measure mt-5 text-[15px] leading-relaxed text-[var(--muted)]">
               {BRAND.name} contests are configured end to end by administrators: problem
               order, start and end time, penalty per wrong submission, and who is allowed to
               register. When a contest goes live, standings rank by problems solved, then by
@@ -275,36 +248,29 @@ export default function HomePage() {
       </section>
 
       {/* ---------------- cta ---------------- */}
-      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
-        <div className="panel relative overflow-hidden px-6 py-14 text-center sm:px-16">
-          <div
-            aria-hidden
-            className="grid-field pointer-events-none absolute inset-0 opacity-60"
-            style={{
-              maskImage: "radial-gradient(ellipse at center, black, transparent 72%)",
-              WebkitMaskImage: "radial-gradient(ellipse at center, black, transparent 72%)",
-            }}
-          />
-          <div className="relative">
-            <h2 className="font-display mx-auto max-w-2xl text-3xl font-extrabold leading-tight sm:text-[2.75rem]">
+      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24">
+        <div className="panel flex flex-wrap items-end justify-between gap-x-12 gap-y-8 p-8 sm:p-12">
+          <div className="min-w-0">
+            <h2 className="font-display max-w-xl text-[1.9rem] leading-[1.1] font-bold sm:text-[2.3rem]">
               The next contest is graded the same way this page is.
             </h2>
-            <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-[var(--muted)]">
+            <p className="measure mt-4 text-[15px] leading-relaxed text-[var(--muted)]">
               Create an account with your university, keep every accepted solution, and show
               up on the board.
             </p>
-            <div className="mt-9 flex flex-wrap justify-center gap-3">
-              <Link href="/register" className="btn btn-primary">
-                Create your account
-                <ArrowRight size={16} />
-              </Link>
-              <Link href="/sets/1" className="btn btn-ghost">
-                Solve one first
-              </Link>
-            </div>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/register" className="btn btn-primary">
+              Create your account
+              <ArrowRight size={16} />
+            </Link>
+            <Link href="/sets/1" className="btn btn-ghost">
+              Solve one first
+            </Link>
           </div>
         </div>
       </section>
     </>
   );
 }
+

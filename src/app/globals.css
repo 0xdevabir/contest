@@ -19,6 +19,9 @@
   --font-display: "Syne", system-ui, sans-serif;
   --font-body: "IBM Plex Sans", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
 }
 
 @theme inline {
@@ -43,9 +46,7 @@ body {
 }
 
 body {
-  background-image:
-    radial-gradient(ellipse 60% 40% at 50% -12%, rgba(62, 207, 142, 0.08), transparent 62%),
-    linear-gradient(180deg, #080b10 0%, #0a0e14 45%, #080b10 100%);
+  background-image: linear-gradient(180deg, #090c12 0%, var(--bg) 40%);
   background-attachment: fixed;
 }
 
@@ -85,11 +86,27 @@ a {
 
 .font-display {
   font-family: var(--font-display);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.024em;
+  text-wrap: balance;
+}
+
+/* Display type wants tighter tracking as it gets larger; Syne at hero sizes
+   looks loose at the default. */
+.display-hero {
+  font-family: var(--font-display);
+  letter-spacing: -0.038em;
+  line-height: 1.03;
+  text-wrap: balance;
 }
 
 .font-mono {
   font-family: var(--font-mono);
+}
+
+/* Caps up the readable line length. Prose wider than this reads like a wall. */
+.measure {
+  max-width: 62ch;
+  text-wrap: pretty;
 }
 
 .tnum {
@@ -109,25 +126,24 @@ a {
 .panel {
   background: color-mix(in srgb, var(--bg-panel) 92%, transparent);
   border: 1px solid var(--line);
-  border-radius: 14px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.025),
-    0 1px 2px rgba(0, 0, 0, 0.4);
+  border-radius: var(--r-lg);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
 .panel-quiet {
   background: color-mix(in srgb, var(--bg-elevated) 70%, transparent);
   border: 1px solid var(--line-soft);
-  border-radius: 14px;
+  border-radius: var(--r-lg);
 }
 
+/* Hover shifts the surface, not the geometry — lifting cards on hover reads
+   cheap and causes reflow jitter in dense grids. */
 .panel-hover {
-  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+  transition: border-color 0.18s ease, background 0.18s ease;
 }
 .panel-hover:hover {
   border-color: var(--line-strong);
-  background: color-mix(in srgb, var(--bg-panel) 99%, var(--accent) 1%);
-  transform: translateY(-2px);
+  background: color-mix(in srgb, var(--bg-panel) 96%, #fff 4%);
 }
 
 /* Hairline that fades at both ends — used to separate sections. */
@@ -137,21 +153,14 @@ a {
   background: linear-gradient(90deg, transparent, var(--line), transparent);
 }
 
-.grid-field {
-  background-image:
-    linear-gradient(rgba(122, 149, 180, 0.055) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(122, 149, 180, 0.055) 1px, transparent 1px);
-  background-size: 56px 56px;
-}
-
 /* ---------- typography helpers ---------- */
 
 .eyebrow {
   font-family: var(--font-mono);
   font-size: 0.6875rem;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--muted-dim);
 }
 
 .badge {
@@ -160,11 +169,11 @@ a {
   gap: 0.4rem;
   max-width: 100%;
   border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 0.3rem 0.7rem;
+  border-radius: var(--r-sm);
+  padding: 0.25rem 0.5rem;
   font-family: var(--font-mono);
   font-size: 0.6875rem;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.02em;
   color: var(--muted);
   background: color-mix(in srgb, var(--bg-elevated) 80%, transparent);
 }
@@ -183,6 +192,39 @@ a {
   color: var(--text);
 }
 
+/* ---------- form fields ---------- */
+
+.field {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: rgba(0, 0, 0, 0.28);
+  padding: 0.55rem 0.7rem;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.field::placeholder {
+  color: var(--muted-dim);
+}
+
+.field:hover:not(:focus) {
+  border-color: var(--line-strong);
+}
+
+.field:focus {
+  border-color: var(--accent-dim);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.field-label {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  margin-bottom: 0.375rem;
+}
+
 /* ---------- buttons ---------- */
 
 .btn {
@@ -190,19 +232,19 @@ a {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: 10px;
+  border-radius: var(--r-md);
   border: 1px solid transparent;
-  padding: 0.65rem 1.1rem;
+  padding: 0.6rem 1.05rem;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
+  letter-spacing: -0.005em;
   line-height: 1.1;
   cursor: pointer;
-  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease,
-    box-shadow 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .btn:active {
-  transform: translateY(1px);
+  transform: translateY(0.5px);
 }
 
 .btn:disabled {
@@ -210,14 +252,16 @@ a {
   cursor: not-allowed;
 }
 
+/* No coloured glow: a solid accent surface with a hairline top highlight reads
+   as a real control rather than a landing-page ornament. */
 .btn-primary {
   background: var(--accent);
   color: #04140c;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.18) inset, 0 6px 18px -10px rgba(62, 207, 142, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #4fe0a0;
+  background: var(--accent-soft);
 }
 
 .btn-ghost {
@@ -308,3 +352,4 @@ a {
 .verdict-error {
   color: var(--warn);
 }
+

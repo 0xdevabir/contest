@@ -20,6 +20,8 @@ export type Problem = {
   title: string;
   difficulty: Difficulty;
   setTitle: string;
+  topic?: string;
+  source?: "authored" | "generated";
   statement: string;
   input: string;
   output: string;
@@ -44,6 +46,22 @@ export type SetSummary = {
   }[];
 };
 
+export type CategoryProblem = {
+  id: string;
+  title: string;
+  difficulty: Difficulty;
+  topic?: string;
+  source?: "authored" | "generated";
+  set: number;
+  question: number;
+};
+
+export type CategorySummary = {
+  tier: Difficulty;
+  count: number;
+  problems: CategoryProblem[];
+};
+
 export type ProblemBank = {
   meta: {
     title: string;
@@ -52,8 +70,11 @@ export type ProblemBank = {
     sets: number;
     problemsPerSet: number;
     total: number;
+    tiers?: Difficulty[];
+    problemsPerTier?: number;
   };
   sets: SetSummary[];
+  categories?: CategorySummary[];
   problems: Record<string, Problem>;
 };
 
@@ -87,4 +108,5 @@ export type JudgeResponse = {
   stderr?: string;
   timeMs?: number;
 };
+
 

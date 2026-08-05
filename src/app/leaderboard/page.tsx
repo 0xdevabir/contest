@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { University } from "@prisma/client";
 import { getPracticeLeaderboard } from "@/lib/leaderboard";
 import { UNIVERSITIES, universityLabel } from "@/lib/universities";
+import { PageHeader } from "@/components/PageHeader";
 
 type Props = { searchParams: Promise<{ uni?: string }> };
 
@@ -22,13 +23,14 @@ export default async function LeaderboardPage({ searchParams }: Props) {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-      <h1 className="font-display text-3xl font-extrabold">Leaderboard</h1>
-      <p className="mt-2 text-[var(--muted)]">
-        Ranked by problems solved in practice. Filter by university.
-      </p>
+    <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
+      <PageHeader
+        eyebrow="Standings"
+        title="Leaderboard"
+        lead="Ranked by problems solved in practice. Filter by university."
+      />
 
-      <div className="mt-6 flex flex-wrap gap-2">
+      <div className="mt-8 flex flex-wrap gap-2">
         <UniChip href="/leaderboard" active={!university} label="All" />
         {UNIVERSITIES.map((u) => (
           <UniChip
@@ -49,15 +51,15 @@ export default async function LeaderboardPage({ searchParams }: Props) {
 
       <div className="panel mt-6 overflow-hidden">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-[var(--line)] text-xs uppercase tracking-wide text-[var(--muted)]">
-            <tr>
-              <th className="px-4 py-3">#</th>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">University</th>
-              <th className="px-4 py-3 text-right">Solved</th>
+          <thead className="border-b border-[var(--line)]">
+            <tr className="[&>th]:px-4 [&>th]:py-3 [&>th]:font-normal">
+              <th className="eyebrow w-12">#</th>
+              <th className="eyebrow">Name</th>
+              <th className="eyebrow">University</th>
+              <th className="eyebrow text-right">Solved</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[var(--line)]">
+          <tbody className="divide-y divide-[var(--line-soft)]">
             {rows.length === 0 && !dbError && (
               <tr>
                 <td colSpan={4} className="px-4 py-8 text-center text-[var(--muted)]">
@@ -66,13 +68,21 @@ export default async function LeaderboardPage({ searchParams }: Props) {
               </tr>
             )}
             {rows.map((r) => (
-              <tr key={r.userId} className="hover:bg-white/[0.02]">
-                <td className="px-4 py-3 font-mono text-[var(--accent)]">{r.rank}</td>
-                <td className="px-4 py-3 font-medium">{r.name}</td>
-                <td className="px-4 py-3 text-[var(--muted)]">
+              <tr key={r.userId} className="transition-colors hover:bg-white/[0.02]">
+                {/* Accent only on the podium — colouring every rank makes the
+                    column read as decoration instead of signal. */}
+                <td
+                  className={`tnum px-4 py-3.5 font-mono ${
+                    r.rank <= 3 ? "text-[var(--accent)]" : "text-[var(--muted-dim)]"
+                  }`}
+                >
+                  {r.rank}
+                </td>
+                <td className="px-4 py-3.5 font-medium">{r.name}</td>
+                <td className="px-4 py-3.5 text-[var(--muted)]">
                   {universityLabel(r.university)}
                 </td>
-                <td className="px-4 py-3 text-right font-mono">{r.solved}</td>
+                <td className="tnum px-4 py-3.5 text-right font-mono">{r.solved}</td>
               </tr>
             ))}
           </tbody>
@@ -104,3 +114,4 @@ function UniChip({
     </Link>
   );
 }
+

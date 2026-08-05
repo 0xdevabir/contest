@@ -170,7 +170,7 @@ export function ProblemWorkspace({ problem, prevId, nextId, contestId }: Props) 
               </span>
             )}
           </div>
-          <h1 className="mt-1 font-display text-2xl font-extrabold leading-tight">{problem.title}</h1>
+          <h1 className="mt-1.5 font-display text-2xl leading-tight font-bold">{problem.title}</h1>
           <p
             className={`mt-2 font-mono text-[11px] uppercase tracking-wide ${difficultyClass(problem.difficulty)}`}
           >
@@ -428,5 +428,6 @@ export function ProblemWorkspace({ problem, prevId, nextId, contestId }: Props) 
     </div>
   );
 }
+
 
 

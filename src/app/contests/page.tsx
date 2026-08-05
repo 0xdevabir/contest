@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { contestStatusLabel } from "@/lib/contests";
 import { ContestRegisterButton } from "@/components/ContestRegisterButton";
+import { PageHeader } from "@/components/PageHeader";
 
 export default async function ContestsPage() {
   let contests: Awaited<ReturnType<typeof loadContests>> = [];
@@ -36,11 +37,12 @@ export default async function ContestsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-      <h1 className="font-display text-3xl font-extrabold">Contests</h1>
-      <p className="mt-2 text-[var(--muted)]">
-        Join contests while they are live. New contests appear here when an admin activates them.
-      </p>
+    <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
+      <PageHeader
+        eyebrow="Compete"
+        title="Contests"
+        lead="Join contests while they are live. New contests appear here when an admin activates them."
+      />
 
       {dbError && (
         <p className="mt-6 rounded-lg border border-[var(--warn)]/40 bg-[rgba(240,180,41,0.08)] p-3 text-sm text-[var(--warn)]">
@@ -113,4 +115,5 @@ async function loadContests() {
     },
   });
 }
+
 
