@@ -1,25 +1,61 @@
 # Contest Hub
 
-No-login C programming practice platform built from the **20 Sets Exam-Style Problem Bank** (140 problems).
+C practice platform + university contests for **DIU**, **NSU**, **AIUB**, and **BRAC**.
 
 ## Features
 
-- Browse 20 sets (Very Easy → Extreme within each set)
-- Write C in the browser and submit against sample tests
-- Instant verdicts: AC / WA / CE / RE / TLE
-- No accounts — progress stays local in the browser
+- 140 exam-style C problems (practice without login)
+- Register / login with university profile
+- Email verification + forgot password (SMTP)
+- Per-university practice & contest leaderboards
+- Admin: create contests, set duration/rules, go live / end
+- Logged-in solves persist to Neon Postgres
 
-## Quick start
+## Setup
+
+1. Copy env template:
+
+```bash
+cp .env.example .env
+```
+
+2. Fill in:
+
+- `DATABASE_URL` — Neon Postgres connection string
+- `AUTH_SECRET` — `openssl rand -base64 32`
+- `APP_URL` — e.g. `http://localhost:3000`
+- SMTP vars for mail
+
+3. Push schema + seed admin:
 
 ```bash
 npm install
+npm run db:push
+npm run db:seed
+```
+
+Default admin (override with `ADMIN_EMAIL` / `ADMIN_PASSWORD`):
+
+- email: `admin@contesthub.local`
+- password: `admin12345`
+
+4. Run:
+
+```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Requires `clang` or `gcc` on the machine running the server (used by the local judge).
+Requires `clang` or `gcc` for the local C judge.
 
-## Stack
+## Scripts
 
-- Next.js 15 (App Router) + TypeScript + Tailwind
-- Monaco editor
-- Local process judge (`clang`/`gcc`) for C
+| Script | Purpose |
+|--------|---------|
+| `npm run db:push` | Sync Prisma schema to Neon |
+| `npm run db:seed` | Create / update admin user |
+| `npm run db:studio` | Browse data |
+| `npm run build` | Generate Prisma client + Next build |
+
+## Repo
+
+https://github.com/0xdevabir/contest

@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum University {
+  DIU
+  NSU
+  AIUB
+  BRAC
+}
+
+enum TokenType {
+  EMAIL_VERIFY
+  PASSWORD_RESET
+}
+
+enum ContestStatus {
+  DRAFT
+  SCHEDULED
+  LIVE
+  ENDED
+}
+
+enum Verdict {
+  AC
+  WA
+  CE
+  RE
+  TLE
+  MLE
+  SKIP
+  ERROR
+}
+
+model User {
+  id            String     @id @default(cuid())
+  email         String     @unique
+  passwordHash  String
+  name          String
+  university    University
+  studentId     String?
+  department    String?
+  role          Role       @default(USER)
+  emailVerified DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  tokens              AuthToken[]
+  submissions         Submission[]
+  solvedProblems      SolvedProblem[]
+  contestRegs         ContestRegistration[]
+  contestsCreated     Contest[]              @relation("ContestCreator")
+
+  @@index([university])
+  @@index([role])
+}
+
+model AuthToken {
+  id        String    @id @default(cuid())
+  userId    String
+  token     String    @unique
+  type      TokenType
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+}
+
+model Contest {
+  id              String        @id @default(cuid())
+  slug            String        @unique
+  title           String
+  description     String        @default("")
+  status          ContestStatus @default(DRAFT)
+  startsAt        DateTime?
+  endsAt          DateTime?
+  durationMinutes Int           @default(120)
+  /// JSON rules: freezeMinutes, penaltyPerWrong, maxSubmissions, languages, visibility, etc.
+  rules           Json          @default("{}")
+  createdById     String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  createdBy     User                   @relation("ContestCreator", fields: [createdById], references: [id])
+  problems      ContestProblem[]
+  registrations ContestRegistration[]
+  submissions   Submission[]
+
+  @@index([status])
+}
+
+model ContestProblem {
+  id        String @id @default(cuid())
+  contestId String
+  problemId String
+  order     Int    @default(0)
+  points    Int    @default(100)
+  label     String @default("A")
+
+  contest Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+
+  @@unique([contestId, problemId])
+  @@index([contestId, order])
+}
+
+model ContestRegistration {
+  id        String   @id @default(cuid())
+  contestId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  contest Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([contestId, userId])
+}
+
+model Submission {
+  id        String   @id @default(cuid())
+  userId    String?
+  problemId String
+  contestId String?
+  code      String
+  language  String   @default("c")
+  verdict   Verdict
+  timeMs    Int?
+  stdout    String?
+  stderr    String?
+  createdAt DateTime @default(now())
+
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  contest Contest? @relation(fields: [contestId], references: [id], onDelete: SetNull)
+
+  @@index([userId, problemId])
+  @@index([contestId, userId])
+  @@index([problemId, verdict])
+}
+
+model SolvedProblem {
+  id           String   @id @default(cuid())
+  userId       String
+  problemId    String
+  firstSolvedAt DateTime @default(now())
+  solveCount   Int      @default(1)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, problemId])
+  @@index([userId])
+  @@index([problemId])
+}

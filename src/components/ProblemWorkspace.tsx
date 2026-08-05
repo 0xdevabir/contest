@@ -48,9 +48,10 @@ type Props = {
   problem: Problem;
   prevId?: string | null;
   nextId?: string | null;
+  contestId?: string | null;
 };
 
-export function ProblemWorkspace({ problem, prevId, nextId }: Props) {
+export function ProblemWorkspace({ problem, prevId, nextId, contestId }: Props) {
   const [code, setCode] = useState(problem.starterCode);
   const [stdin, setStdin] = useState(problem.sampleInput);
   const [pending, startTransition] = useTransition();
@@ -85,7 +86,7 @@ export function ProblemWorkspace({ problem, prevId, nextId }: Props) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code, stdin, tab, problem.id, problem.openEnded, problem.sampleInput]);
+  }, [code, stdin, tab, problem.id, problem.openEnded, problem.sampleInput, contestId]);
 
   const statusClass = useMemo(() => {
     if (!result) return "";
@@ -106,6 +107,7 @@ export function ProblemWorkspace({ problem, prevId, nextId }: Props) {
           code,
           mode,
           stdin: tab === "custom" || mode === "run" ? stdin : problem.sampleInput,
+          contestId: contestId || undefined,
         }),
       });
       const data = (await res.json()) as JudgeResponse & {
@@ -363,3 +365,4 @@ export function ProblemWorkspace({ problem, prevId, nextId }: Props) {
     </div>
   );
 }
+
