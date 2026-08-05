@@ -7,7 +7,12 @@ import type { University } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { getContestLeaderboard } from "@/lib/leaderboard";
-import { contestStatusLabel, isContestOpen, parseRules } from "@/lib/contests";
+import {
+  contestStatusLabel,
+  isContestOpen,
+  isContestPublic,
+  parseRules,
+} from "@/lib/contests";
 import { getProblem } from "@/lib/problems";
 import { UNIVERSITIES, universityLabel } from "@/lib/universities";
 import { ContestRegisterButton } from "@/components/ContestRegisterButton";
@@ -28,6 +33,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         title: true,
         description: true,
         status: true,
+        startsAt: true,
+        endsAt: true,
+        rules: true,
         durationMinutes: true,
         _count: { select: { problems: true, registrations: true } },
       },
@@ -38,24 +46,28 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       robots: { index: false, follow: false },
     };
   }
-  if (!contest || contest.status !== "LIVE") {
+  if (
+    !contest ||
+    !isContestPublic(contest.status, contest.startsAt, contest.endsAt, contest.rules)
+  ) {
     return {
       title: "Contest not found",
       robots: { index: false, follow: false },
     };
   }
+  const archived = contest.status === "ENDED";
   const description =
     (contest.description?.trim() ||
-      `Live C programming contest: ${contest.durationMinutes} minutes, ${contest._count.problems} problems, ${contest._count.registrations} registered.`) +
+      `${archived ? "Archived" : "Live"} C programming contest: ${contest.durationMinutes} minutes, ${contest._count.problems} problems, ${contest._count.registrations} registered.`) +
     ` ICPC-style standings with penalty per wrong submission on DIU ContestHub.`;
   return buildPageMetadata({
-    title: `${contest.title} — Live C programming contest`,
+    title: `${contest.title} — ${archived ? "Past contest & final standings" : "Live C programming contest"}`,
     description,
     path: `/contests/${slug}`,
     type: "article",
     keywords: [
       contest.title,
-      "live programming contest",
+      archived ? "past programming contest" : "live programming contest",
       "coding contest leaderboard",
       "inter-university contest Bangladesh",
       "ICPC style contest",
@@ -91,10 +103,14 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
     );
   }
 
+  const rules = contest ? parseRules(contest.rules) : null;
+  const contestOpen = contest
+    ? isContestOpen(contest.status, contest.startsAt, contest.endsAt)
+    : false;
   if (
     !contest ||
-    contest.status !== "LIVE" ||
-    !isContestOpen(contest.status, contest.startsAt, contest.endsAt)
+    !rules ||
+    !isContestPublic(contest.status, contest.startsAt, contest.endsAt, contest.rules)
   ) {
     notFound();
   }
@@ -103,7 +119,6 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
     ? (uni as University)
     : undefined;
 
-  const rules = parseRules(contest.rules);
   let freezeAt: Date | null = null;
   if (contest.status === "LIVE" && contest.endsAt && rules.freezeMinutes > 0) {
     freezeAt = new Date(contest.endsAt.getTime() - rules.freezeMinutes * 60_000);
@@ -172,11 +187,17 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
             </p>
           )}
         </div>
-        <ContestRegisterButton
-          contestId={contest.id}
-          registered={registered}
-          loggedIn={!!session}
-        />
+        {contestOpen ? (
+          <ContestRegisterButton
+            contestId={contest.id}
+            registered={registered}
+            loggedIn={!!session}
+          />
+        ) : (
+          <span className="badge border-[var(--line)] text-[var(--muted)]">
+            Final standings
+          </span>
+        )}
       </div>
 
       <section className="mt-10">
@@ -184,22 +205,36 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
         <ul className="panel mt-3 divide-y divide-[var(--line)] overflow-hidden">
           {contest.problems.map((p) => {
             const meta = getProblem(p.problemId);
+            const href = contestOpen
+              ? registered
+                ? `/problems/${p.problemId}?contest=${contest.id}`
+                : null
+              : rules.allowPracticeAfter
+                ? `/problems/${p.problemId}`
+                : null;
+            const content = (
+              <>
+                <span>
+                  <span className="font-mono text-[var(--accent)]">{p.label}</span>
+                  <span className="ml-3">{meta?.title || p.problemId}</span>
+                </span>
+                <span className="font-mono text-xs text-[var(--muted)]">{p.points} pts</span>
+              </>
+            );
             return (
               <li key={p.id}>
-                <Link
-                  href={
-                    registered
-                      ? `/problems/${p.problemId}?contest=${contest.id}`
-                      : `/contests/${contest.slug}`
-                  }
-                  className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-[var(--hover)]"
-                >
-                  <span>
-                    <span className="font-mono text-[var(--accent)]">{p.label}</span>
-                    <span className="ml-3">{meta?.title || p.problemId}</span>
-                  </span>
-                  <span className="font-mono text-xs text-[var(--muted)]">{p.points} pts</span>
-                </Link>
+                {href ? (
+                  <Link
+                    href={href}
+                    className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-[var(--hover)]"
+                  >
+                    {content}
+                  </Link>
+                ) : (
+                  <div className="flex items-center justify-between gap-3 px-4 py-3 text-[var(--muted)]">
+                    {content}
+                  </div>
+                )}
               </li>
             );
           })}
@@ -207,6 +242,11 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
         {contest.status === "LIVE" && !registered && (
           <p className="mt-2 text-xs text-[var(--warn)]">
             Register to open contest problems.
+          </p>
+        )}
+        {contest.status === "ENDED" && !rules.allowPracticeAfter && (
+          <p className="mt-2 text-xs text-[var(--muted)]">
+            This archive is public, but the admin has kept its problems closed for practice.
           </p>
         )}
       </section>
@@ -291,6 +331,3 @@ function UniChip({
     </Link>
   );
 }
-
-
-

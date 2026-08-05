@@ -104,6 +104,7 @@ export default async function ContestControlPage({ params }: Props) {
               freezeMinutes: rules.freezeMinutes,
               penaltyPerWrong: rules.penaltyPerWrong,
               maxSubmissionsPerProblem: rules.maxSubmissionsPerProblem,
+              publishAfterEnd: rules.publishAfterEnd,
               allowPracticeAfter: rules.allowPracticeAfter,
               showSamples: rules.showSamples,
               notes: rules.notes ?? "",

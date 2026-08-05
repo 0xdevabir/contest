@@ -41,6 +41,7 @@ export const contestRulesSchema = z.object({
   freezeMinutes: z.number().int().min(0).max(600).default(60),
   penaltyPerWrong: z.number().int().min(0).max(60).default(20),
   maxSubmissionsPerProblem: z.number().int().min(0).max(500).default(0),
+  publishAfterEnd: z.boolean().default(false),
   allowPracticeAfter: z.boolean().default(true),
   showSamples: z.boolean().default(true),
   languages: z.array(z.string()).default(["c"]),
@@ -53,10 +54,9 @@ export const defaultContestRules: ContestRules = {
   freezeMinutes: 60,
   penaltyPerWrong: 20,
   maxSubmissionsPerProblem: 0,
+  publishAfterEnd: false,
   allowPracticeAfter: true,
   showSamples: true,
   languages: ["c"],
   notes: "",
 };
-
-

@@ -20,6 +20,7 @@ export type ContestEditorValue = {
     freezeMinutes: number;
     penaltyPerWrong: number;
     maxSubmissionsPerProblem: number;
+    publishAfterEnd: boolean;
     allowPracticeAfter: boolean;
     showSamples: boolean;
     notes: string;
@@ -46,6 +47,9 @@ export function ContestEditor({
   const [allowPracticeAfter, setAllowPracticeAfter] = useState(
     initial?.rules.allowPracticeAfter ?? true
   );
+  const [publishAfterEnd, setPublishAfterEnd] = useState(
+    initial?.rules.publishAfterEnd ?? false
+  );
   const [showSamples, setShowSamples] = useState(initial?.rules.showSamples ?? true);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -71,6 +75,7 @@ export function ContestEditor({
         freezeMinutes: Number(data.get("freezeMinutes") || 0),
         penaltyPerWrong: Number(data.get("penaltyPerWrong") || 0),
         maxSubmissionsPerProblem: Number(data.get("maxSubmissionsPerProblem") || 0),
+        publishAfterEnd,
         allowPracticeAfter,
         showSamples,
         languages: ["c"],
@@ -207,7 +212,7 @@ export function ContestEditor({
             value={initial?.rules.maxSubmissionsPerProblem ?? 0}
           />
         </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
           <Toggle
             label="Show sample test cases"
             description="Participants can see sample input and output."
@@ -215,8 +220,14 @@ export function ContestEditor({
             onChange={setShowSamples}
           />
           <Toggle
+            label="Publish after contest ends"
+            description="Show the ended contest, final standings, and problem list publicly."
+            checked={publishAfterEnd}
+            onChange={setPublishAfterEnd}
+          />
+          <Toggle
             label="Allow practice after contest"
-            description="Contest problems remain available after ending."
+            description="Let users solve archived problems outside contest scoring."
             checked={allowPracticeAfter}
             onChange={setAllowPracticeAfter}
           />
@@ -350,4 +361,3 @@ function Toggle({
     </label>
   );
 }
-

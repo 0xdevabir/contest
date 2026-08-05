@@ -210,7 +210,7 @@ export default async function RootLayout({
       featureList: [
         "700 exam-style C programming practice problems",
         "Instant online C judge with AC, WA, TLE, RE, MLE, CE verdicts",
-        "20 curriculum sets from Very Easy to Extreme",
+        "Seven difficulty tiers from Very Easy to Extreme",
         "Live inter-university programming contests",
         "University leaderboards for DIU, NSU, AIUB, BRAC",
         "Submission history and progress tracking",
@@ -266,7 +266,3 @@ export default async function RootLayout({
     </html>
   );
 }
-
-
-
-

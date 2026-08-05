@@ -354,8 +354,8 @@ export function ProblemWorkspace({
       >
         <div className="border-b border-[var(--line)] px-4 py-4 sm:px-5">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--muted)]">
-            <Link href={`/sets/${problem.set}`} className="hover:text-[var(--text)]">
-              Set {problem.set}
+            <Link href="/problems" className="hover:text-[var(--text)]">
+              Problems
             </Link>
             <span aria-hidden>·</span>
             <span>Question {problem.question}</span>
@@ -798,10 +798,3 @@ export function ProblemWorkspace({
     </div>
   );
 }
-
-
-
-
-
-
-

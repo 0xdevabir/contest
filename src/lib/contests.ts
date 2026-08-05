@@ -36,3 +36,13 @@ export function isContestOpen(status: ContestStatus, startsAt?: Date | null, end
   }
   return false;
 }
+
+export function isContestPublic(
+  status: ContestStatus,
+  startsAt: Date | null | undefined,
+  endsAt: Date | null | undefined,
+  rawRules: Prisma.JsonValue | null | undefined
+) {
+  if (isContestOpen(status, startsAt, endsAt)) return true;
+  return status === "ENDED" && parseRules(rawRules).publishAfterEnd;
+}

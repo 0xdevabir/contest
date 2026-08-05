@@ -8,8 +8,7 @@ import {
   ShieldCheck,
   Trophy,
 } from "lucide-react";
-import { getMeta, getSets } from "@/lib/problems";
-import { SetGrid } from "@/components/SetGrid";
+import { getMeta } from "@/lib/problems";
 import { JudgePreview } from "@/components/home/JudgePreview";
 import { UNIVERSITIES } from "@/lib/universities";
 import { BRAND } from "@/lib/brand";
@@ -59,8 +58,8 @@ const FEATURES = [
   },
   {
     icon: ListOrdered,
-    title: "A curriculum, not a pile",
-    body: "20 core sets of 7 questions climb Very Easy → Extreme, plus 700 problems across 7 difficulty categories for volume practice.",
+    title: "Practice by difficulty",
+    body: "Browse 700 problems across seven clear difficulty tiers, from first C programs through Extreme contest-level challenges.",
   },
   {
     icon: CalendarClock,
@@ -94,17 +93,12 @@ const STEPS = [
 
 export default function HomePage() {
   const meta = getMeta();
-  const sets = getSets().map((s) => ({
-    set: s.set,
-    title: s.title,
-    problems: s.problems.map((p) => ({ id: p.id, difficulty: p.difficulty })),
-  }));
 
   const stats = [
     { value: meta.total, label: "C problems" },
-    { value: meta.sets, label: "Graded sets" },
     { value: 7, label: "Difficulty tiers" },
     { value: UNIVERSITIES.length, label: "Universities" },
+    { value: "24/7", label: "Practice access" },
   ];
 
   return (
@@ -121,18 +115,18 @@ export default function HomePage() {
             </h1>
 
             <p className="measure mt-6 text-base leading-relaxed text-[var(--muted)] sm:text-[1.05rem]">
-              Free online judge for C programming — {meta.total} exam-style problems across{" "}
-              {meta.sets} sets, climbing Very Easy to Extreme. Write in the browser, run custom
-              input, then submit against hidden tests for a real AC / WA / TLE verdict.
+              Free online judge for C programming — {meta.total} exam-style and contest problems,
+              organized from Very Easy to Extreme. Write in the browser, run custom input, then
+              submit against hidden tests for a real AC / WA / TLE verdict.
             </p>
 
             <div className="mt-9 flex flex-wrap items-center gap-3">
-              <Link href="/sets/1" className="btn btn-primary">
-                Start Set 01
+              <Link href="/problems" className="btn btn-primary">
+                Browse problems
                 <ArrowRight size={16} />
               </Link>
-              <Link href="/sets" className="btn btn-ghost">
-                Browse all {meta.sets} sets
+              <Link href="/contests" className="btn btn-ghost">
+                View contests
               </Link>
             </div>
 
@@ -243,11 +237,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ---------------- sets ---------------- */}
-      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24">
-        <SetGrid sets={sets} />
-      </section>
-
       {/* ---------------- contests ---------------- */}
       <section aria-labelledby="contests-heading" className="cv-auto border-y border-[var(--line)]">
         <div className="mx-auto grid max-w-7xl gap-10 px-4 py-20 sm:px-6 sm:py-24 lg:grid-cols-2 lg:gap-16">
@@ -338,7 +327,7 @@ export default function HomePage() {
               Create your account
               <ArrowRight size={16} />
             </Link>
-            <Link href="/sets/1" className="btn btn-ghost">
+            <Link href="/problems" className="btn btn-ghost">
               Solve one first
             </Link>
           </div>
@@ -347,8 +336,3 @@ export default function HomePage() {
     </>
   );
 }
-
-
-
-
-

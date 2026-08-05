@@ -4,15 +4,15 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
-import { contestStatusLabel } from "@/lib/contests";
+import { contestStatusLabel, isContestPublic } from "@/lib/contests";
 import { ContestRegisterButton } from "@/components/ContestRegisterButton";
 import { PageHeader } from "@/components/PageHeader";
 import { breadcrumbJsonLd, buildPageMetadata, JsonLd } from "@/lib/seo";
 
 export const metadata: Metadata = buildPageMetadata({
-  title: "Live C Programming Contests — DIU, NSU, AIUB, BRAC",
+  title: "C Programming Contests — Live Events & Published Archives",
   description:
-    "Join live inter-university C programming contests. ICPC-style scoreboards with penalty per wrong submission and live rankings between DIU, NSU, AIUB, and BRAC University.",
+    "Join live inter-university C programming contests and browse published past contests with final standings across DIU, NSU, AIUB, and BRAC University.",
   path: "/contests",
   keywords: [
     "live programming contest",
@@ -63,8 +63,8 @@ export default async function ContestsPage() {
       />
       <PageHeader
         eyebrow="Compete"
-        title="Live C programming contests"
-        lead="Join contests while they are live. New contests appear here when an admin activates them — ICPC-style scoring for DIU, NSU, AIUB, and BRAC."
+        title="C programming contests"
+        lead="Join active contests or review past contests an admin has chosen to publish, including their final standings and problem lists."
       />
 
       {dbError && (
@@ -76,9 +76,9 @@ export default async function ContestsPage() {
       <div className="mt-8 space-y-4">
         {!dbError && contests.length === 0 && (
           <div className="panel px-5 py-10 text-center">
-            <h2 className="font-display text-lg font-semibold">No live contests</h2>
+            <h2 className="font-display text-lg font-semibold">No published contests</h2>
             <p className="mt-2 text-sm text-[var(--muted)]">
-              Check back when an admin activates the next contest.
+              Check back when an admin activates or publishes a contest.
             </p>
           </div>
         )}
@@ -123,21 +123,16 @@ export default async function ContestsPage() {
 }
 
 async function loadContests() {
-  const now = new Date();
-  return prisma.contest.findMany({
+  const contests = await prisma.contest.findMany({
     where: {
-      status: "LIVE",
-      AND: [
-        { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
-        { OR: [{ endsAt: null }, { endsAt: { gt: now } }] },
-      ],
+      status: { in: ["LIVE", "ENDED"] },
     },
-    orderBy: { startsAt: "desc" },
+    orderBy: [{ status: "asc" }, { startsAt: "desc" }],
     include: {
       _count: { select: { problems: true, registrations: true } },
     },
   });
+  return contests.filter((contest) =>
+    isContestPublic(contest.status, contest.startsAt, contest.endsAt, contest.rules)
+  );
 }
-
-
-

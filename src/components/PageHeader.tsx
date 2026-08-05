@@ -10,7 +10,7 @@ type Props = {
 /**
  * The single page-header pattern. Every top-level page uses this so the type
  * size, baseline rhythm, and the hairline under the title stay identical
- * between /problems, /contests, /leaderboard and /sets.
+ * between /problems, /contests, and /leaderboard.
  */
 export function PageHeader({ eyebrow, title, lead, actions }: Props) {
   return (
@@ -34,4 +34,3 @@ export function PageHeader({ eyebrow, title, lead, actions }: Props) {
     </header>
   );
 }
-

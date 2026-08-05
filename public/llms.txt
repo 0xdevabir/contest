@@ -6,8 +6,7 @@
 
 - Home: https://diucode.devabir.me/
 - All problems: https://diucode.devabir.me/problems
-- Problem sets: https://diucode.devabir.me/sets
-- Live contests: https://diucode.devabir.me/contests
+- Live contests and published archives: https://diucode.devabir.me/contests
 - Leaderboard: https://diucode.devabir.me/leaderboard
 
 ## What it is
@@ -17,7 +16,6 @@ DIU ContestHub (Daffodil International University) is an educational online judg
 ## Key facts
 
 - 700 C practice problems across 7 difficulty tiers (Very Easy → Extreme)
-- 20 curated curriculum sets × 7 problems
 - Instant gcc/clang-based C judge
 - Free to practice without an account; sign-in required to submit and enter contests
 - Language: C only

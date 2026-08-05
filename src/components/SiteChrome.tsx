@@ -15,8 +15,8 @@ const FOOTER_LINKS: { heading: string; links: { href: string; label: string }[] 
     heading: "Practice",
     links: [
       { href: "/problems", label: "All 700 problems" },
-      { href: "/sets", label: "All 20 sets" },
-      { href: "/sets/1", label: "Start with Set 01" },
+      { href: "/problems", label: "Browse by difficulty" },
+      { href: "/leaderboard", label: "Practice leaderboard" },
     ],
   },
   {
@@ -39,7 +39,6 @@ const FOOTER_LINKS: { heading: string; links: { href: string; label: string }[] 
 
 const MOBILE_LINKS = [
   { href: "/problems", label: "Problems" },
-  { href: "/sets", label: "Sets" },
   { href: "/contests", label: "Contests" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/profile", label: "Profile" },
@@ -100,9 +99,6 @@ export function SiteChrome({
           >
             <Link href="/problems" className="link-quiet">
               Problems
-            </Link>
-            <Link href="/sets" className="link-quiet">
-              Sets
             </Link>
             <Link href="/contests" className="link-quiet">
               Contests
@@ -268,6 +264,3 @@ function MobileLogout() {
     </button>
   );
 }
-
-
-
