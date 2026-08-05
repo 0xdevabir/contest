@@ -161,7 +161,7 @@ export default function HomePage() {
       </section>
 
       {/* ---------------- stats ---------------- */}
-      <section aria-label="Platform statistics" className="border-b border-[var(--line)]">
+      <section aria-label="Platform statistics" className="cv-auto border-b border-[var(--line)]">
         <dl className="mx-auto grid max-w-7xl grid-cols-2 divide-x divide-y divide-[var(--line-soft)] px-4 sm:px-6 lg:grid-cols-4 lg:divide-y-0">
           {stats.map((s) => (
             <div key={s.label} className="px-2 py-7 first:pl-0 sm:px-6 lg:py-9">
@@ -177,7 +177,7 @@ export default function HomePage() {
       {/* ---------------- features ---------------- */}
       <section
         aria-labelledby="features-heading"
-        className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24"
+        className="cv-auto mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24"
       >
         <div className="max-w-2xl">
           <p className="eyebrow">Why it holds up</p>
@@ -208,7 +208,7 @@ export default function HomePage() {
       </section>
 
       {/* ---------------- workflow ---------------- */}
-      <section aria-labelledby="workflow-heading" className="border-y border-[var(--line)]">
+      <section aria-labelledby="workflow-heading" className="cv-auto border-y border-[var(--line)]">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20">
           <div className="grid gap-10 lg:grid-cols-[340px_1fr] lg:gap-16">
             <div>
@@ -249,7 +249,7 @@ export default function HomePage() {
       </section>
 
       {/* ---------------- contests ---------------- */}
-      <section aria-labelledby="contests-heading" className="border-y border-[var(--line)]">
+      <section aria-labelledby="contests-heading" className="cv-auto border-y border-[var(--line)]">
         <div className="mx-auto grid max-w-7xl gap-10 px-4 py-20 sm:px-6 sm:py-24 lg:grid-cols-2 lg:gap-16">
           <div>
             <p className="eyebrow">Contests</p>
@@ -299,7 +299,7 @@ export default function HomePage() {
       </section>
 
       {/* ---------------- faq ---------------- */}
-      <section aria-labelledby="faq-heading" className="border-t border-[var(--line)]">
+      <section aria-labelledby="faq-heading" className="cv-auto border-t border-[var(--line)]">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20">
           <div className="max-w-2xl">
             <p className="eyebrow">FAQ</p>
@@ -347,6 +347,7 @@ export default function HomePage() {
     </>
   );
 }
+
 
 
 

@@ -44,7 +44,21 @@ body {
   color: var(--text);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   overflow-x: clip;
+}
+
+html {
+  scroll-behavior: smooth;
+  /* Keep scroll anchored during layout shifts (font load, Monaco mount). */
+  overflow-anchor: auto;
+}
+
+/* Lenis owns wheel inertia on marketing pages; keep native smooth as fallback.
+   Lenis CSS is imported by SmoothScroll — don't duplicate html.lenis height rules. */
+html.lenis {
+  scroll-behavior: auto;
 }
 
 body {
@@ -52,6 +66,8 @@ body {
   background-attachment: scroll;
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
+  /* Compositor-friendly page chrome; avoids paint thrash on scroll. */
+  overscroll-behavior-y: contain;
 }
 
 a {
@@ -417,6 +433,10 @@ a {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
   *,
   *::before,
   *::after {
@@ -424,6 +444,27 @@ a {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Soft page cross-fade when the browser supports View Transitions. */
+@supports (view-transition-name: none) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 180ms;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+
+/* Below-fold sections paint lazily — big win on the long home page. */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 480px;
+}
+
+/* Sticky header stays on its own layer so scroll doesn't repaint it. */
+.site-header {
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 /* ---------- verdicts ---------- */
@@ -440,6 +481,7 @@ a {
 .verdict-error {
   color: var(--warn);
 }
+
 
 
 

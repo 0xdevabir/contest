@@ -2,25 +2,32 @@ import type { Metadata, Viewport } from "next";
 import { Syne, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import { getSession } from "@/lib/auth";
 import { SiteChrome } from "@/components/SiteChrome";
+import { SmoothScroll } from "@/components/SmoothScroll";
 import { BRAND } from "@/lib/brand";
 import "./globals.css";
 
 const syne = Syne({
   subsets: ["latin"],
   variable: "--font-syne",
-  weight: ["500", "600", "700", "800"],
+  weight: ["600", "700"],
+  display: "swap",
+  preload: true,
 });
 
 const plexSans = IBM_Plex_Sans({
   subsets: ["latin"],
   variable: "--font-plex-sans",
   weight: ["400", "500", "600", "700"],
+  display: "swap",
+  preload: true,
 });
 
 const plexMono = IBM_Plex_Mono({
   subsets: ["latin"],
   variable: "--font-plex-mono",
   weight: ["400", "500", "600"],
+  display: "swap",
+  preload: false,
 });
 
 const SITE_URL = BRAND.siteUrl;
@@ -230,8 +237,10 @@ export default async function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        <SmoothScroll />
         <SiteChrome user={user}>{children}</SiteChrome>
       </body>
     </html>
   );
 }
+

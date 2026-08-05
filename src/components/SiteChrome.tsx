@@ -80,7 +80,7 @@ export function SiteChrome({
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_82%,transparent)] pt-[env(safe-area-inset-top)] backdrop-blur-xl">
+      <header className="site-header sticky top-0 z-40 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_82%,transparent)] pt-[env(safe-area-inset-top)] backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-3.5">
           <Link
             href="/"
@@ -262,3 +262,4 @@ function MobileLogout() {
     </button>
   );
 }
+

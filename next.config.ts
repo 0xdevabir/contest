@@ -30,6 +30,13 @@ const contentSecurityPolicy = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  // Faster cold compiles + smaller client bundles for icon-heavy UI.
+  experimental: {
+    optimizePackageImports: ["lucide-react"],
+    viewTransition: true,
+  },
+  poweredByHeader: false,
+  compress: true,
   async headers() {
     return [
       {
@@ -55,10 +62,23 @@ const nextConfig: NextConfig = {
         source: "/monaco/:path*",
         headers: [{ key: "Cache-Control", value: "public, max-age=604800" }],
       },
+      {
+        source: "/llms.txt",
+        headers: [{ key: "Cache-Control", value: "public, max-age=86400" }],
+      },
+      {
+        source: "/icon-192",
+        headers: [{ key: "Cache-Control", value: "public, max-age=604800" }],
+      },
+      {
+        source: "/icon-512",
+        headers: [{ key: "Cache-Control", value: "public, max-age=604800" }],
+      },
     ];
   },
 };
 
 export default nextConfig;
+
 
 
