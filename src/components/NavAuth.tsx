@@ -15,12 +15,6 @@ export function NavAuth({ user }: { user: SessionUser | null }) {
   if (!user) {
     return (
       <>
-        <Link href="/leaderboard" className="link-quiet hidden sm:inline">
-          Leaderboard
-        </Link>
-        <Link href="/contests" className="link-quiet hidden sm:inline">
-          Contests
-        </Link>
         <Link href="/login" className="link-quiet">
           Log in
         </Link>
@@ -33,12 +27,6 @@ export function NavAuth({ user }: { user: SessionUser | null }) {
 
   return (
     <>
-      <Link href="/leaderboard" className="link-quiet hidden sm:inline">
-        Leaderboard
-      </Link>
-      <Link href="/contests" className="link-quiet">
-        Contests
-      </Link>
       {user.role === "ADMIN" && (
         <Link href="/admin" className="text-[var(--accent)] transition-opacity hover:opacity-80">
           Admin
