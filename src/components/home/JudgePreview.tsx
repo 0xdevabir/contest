@@ -115,7 +115,7 @@ export function JudgePreview() {
       <div className="border-t border-[var(--line)] bg-black/25">
         <div className="flex items-center justify-between px-4 py-3 sm:px-5">
           <span className="flex items-center gap-2 font-mono text-xs font-semibold text-[var(--accent)]">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--accent)] animate-blip" />
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
             ACCEPTED
           </span>
           <span className="font-mono text-[11px] text-[var(--muted-dim)]">
@@ -140,3 +140,4 @@ export function JudgePreview() {
     </div>
   );
 }
+

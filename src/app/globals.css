@@ -312,22 +312,6 @@ a {
   animation: pulse-soft 1.2s ease infinite;
 }
 
-@keyframes blip {
-  0%,
-  100% {
-    opacity: 1;
-    box-shadow: 0 0 0 0 rgba(62, 207, 142, 0.45);
-  }
-  50% {
-    opacity: 0.75;
-    box-shadow: 0 0 0 5px rgba(62, 207, 142, 0);
-  }
-}
-
-.animate-blip {
-  animation: blip 2s ease-in-out infinite;
-}
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -352,4 +336,5 @@ a {
 .verdict-error {
   color: var(--warn);
 }
+
 
