@@ -3,14 +3,24 @@
 import dynamic from "next/dynamic";
 import type { OnMount } from "@monaco-editor/react";
 
-const Monaco = dynamic(() => import("@monaco-editor/react"), {
-  ssr: false,
-  loading: () => (
-    <div className="flex h-full items-center justify-center bg-[#0d1117] font-mono text-sm text-[var(--muted)]">
-      Loading editor…
-    </div>
-  ),
-});
+const Monaco = dynamic(
+  async () => {
+    const mod = await import("@monaco-editor/react");
+    // Load Monaco from our own origin. The package default is a jsDelivr CDN,
+    // which the app's `script-src 'self'` CSP blocks, leaving the editor stuck
+    // on its internal "Loading..." state. See scripts/copy-monaco.mjs.
+    mod.loader.config({ paths: { vs: "/monaco/vs" } });
+    return mod.default;
+  },
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full items-center justify-center bg-[#0d1117] font-mono text-sm text-[var(--muted)]">
+        Loading editor…
+      </div>
+    ),
+  }
+);
 
 type Props = {
   value: string;
@@ -47,3 +57,4 @@ export function CodeEditor({ value, onChange, height = "100%" }: Props) {
     />
   );
 }
+

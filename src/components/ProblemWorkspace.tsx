@@ -1,29 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { CodeEditor } from "./CodeEditor";
 import { difficultyClass } from "@/lib/difficulty";
+import type { TerminalHandle } from "./InteractiveTerminal";
 import type { JudgeResponse, JudgeVerdict, Problem } from "@/lib/types";
 
-const STORAGE_PREFIX = "contest-hub:code:";
-const SOLVED_KEY = "contest-hub:solved";
+const InteractiveTerminal = dynamic(
+  () => import("./InteractiveTerminal").then((m) => m.InteractiveTerminal),
+  { ssr: false }
+);
 
-function loadSolved(): Set<string> {
-  if (typeof window === "undefined") return new Set();
-  try {
-    const raw = localStorage.getItem(SOLVED_KEY);
-    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
-  } catch {
-    return new Set();
-  }
-}
+const RUNNER_ENABLED = Boolean(process.env.NEXT_PUBLIC_RUNNER_URL);
 
-function markSolved(id: string) {
-  const set = loadSolved();
-  set.add(id);
-  localStorage.setItem(SOLVED_KEY, JSON.stringify([...set]));
-}
+// Interactive runs are wall-clock bound and include human typing time, so the
+// per-problem judging limit would be far too tight here.
+const INTERACTIVE_TIME_LIMIT_MS = 60_000;
+import { clearDraft, loadDraft, loadSolved, markSolved, saveDraft } from "@/lib/progress";
 
 function verdictLabel(v: JudgeVerdict): string {
   switch (v) {
@@ -59,9 +54,14 @@ export function ProblemWorkspace({ problem, prevId, nextId, contestId }: Props) 
   const [result, setResult] = useState<JudgeResponse | null>(null);
   const [solved, setSolved] = useState(false);
   const [tab, setTab] = useState<"sample" | "custom">("sample");
+  const [panel, setPanel] = useState<"terminal" | "tests">(
+    RUNNER_ENABLED ? "terminal" : "tests"
+  );
+  const [termRunning, setTermRunning] = useState(false);
+  const terminalRef = useRef<TerminalHandle | null>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_PREFIX + problem.id);
+    const saved = loadDraft(problem.id);
     setCode(saved ?? problem.starterCode);
     setStdin(problem.sampleInput);
     setResult(null);
@@ -70,7 +70,7 @@ export function ProblemWorkspace({ problem, prevId, nextId, contestId }: Props) 
 
   useEffect(() => {
     const t = setTimeout(() => {
-      localStorage.setItem(STORAGE_PREFIX + problem.id, code);
+      saveDraft(problem.id, code);
     }, 400);
     return () => clearTimeout(t);
   }, [code, problem.id]);
@@ -79,8 +79,8 @@ export function ProblemWorkspace({ problem, prevId, nextId, contestId }: Props) 
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
         e.preventDefault();
-        if (problem.openEnded) void callJudge("run");
-        else void callJudge("submit");
+        if (problem.openEnded) handleRun();
+        else handleSubmit();
       }
     }
     window.addEventListener("keydown", onKey);
@@ -132,10 +132,24 @@ export function ProblemWorkspace({ problem, prevId, nextId, contestId }: Props) 
     }
   }
 
+  function handleRun() {
+    if (RUNNER_ENABLED) {
+      setPanel("terminal");
+      terminalRef.current?.run(code);
+      return;
+    }
+    void callJudge("run");
+  }
+
+  function handleSubmit() {
+    setPanel("tests");
+    void callJudge("submit");
+  }
+
   function resetCode() {
     startTransition(() => {
       setCode(problem.starterCode);
-      localStorage.removeItem(STORAGE_PREFIX + problem.id);
+      clearDraft(problem.id);
       setResult(null);
     });
   }
@@ -156,7 +170,7 @@ export function ProblemWorkspace({ problem, prevId, nextId, contestId }: Props) 
               </span>
             )}
           </div>
-          <h1 className="mt-1 font-display text-2xl font-700 leading-tight">{problem.title}</h1>
+          <h1 className="mt-1 font-display text-2xl font-extrabold leading-tight">{problem.title}</h1>
           <p
             className={`mt-2 font-mono text-[11px] uppercase tracking-wide ${difficultyClass(problem.difficulty)}`}
           >
@@ -242,19 +256,29 @@ export function ProblemWorkspace({ problem, prevId, nextId, contestId }: Props) 
             <button type="button" className="btn btn-ghost !py-2 !text-xs" onClick={resetCode}>
               Reset
             </button>
-            <button
-              type="button"
-              className="btn btn-ghost !py-2 !text-xs"
-              disabled={busy}
-              onClick={() => callJudge("run")}
-            >
-              Run
-            </button>
+            {termRunning ? (
+              <button
+                type="button"
+                className="btn btn-ghost !py-2 !text-xs !text-[var(--danger)]"
+                onClick={() => terminalRef.current?.stop()}
+              >
+                Stop
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-ghost !py-2 !text-xs"
+                disabled={busy}
+                onClick={handleRun}
+              >
+                Run
+              </button>
+            )}
             <button
               type="button"
               className="btn btn-primary !py-2 !text-xs"
-              disabled={busy || !!problem.openEnded}
-              onClick={() => callJudge("submit")}
+              disabled={busy || termRunning || !!problem.openEnded}
+              onClick={handleSubmit}
             >
               {busy ? <span className="animate-pulse-soft">Judging…</span> : "Submit"}
             </button>
@@ -265,44 +289,83 @@ export function ProblemWorkspace({ problem, prevId, nextId, contestId }: Props) 
           <CodeEditor value={code} onChange={setCode} />
         </div>
 
-        <div className="border-b border-[var(--line)] px-4 pt-3">
-          <div className="flex gap-3 text-xs">
+        {RUNNER_ENABLED && (
+          <div className="flex gap-4 border-b border-[var(--line)] px-4 py-2 text-xs">
             <button
               type="button"
-              className={tab === "sample" ? "text-[var(--accent)]" : "text-[var(--muted)]"}
-              onClick={() => {
-                setTab("sample");
-                setStdin(problem.sampleInput);
-              }}
+              className={panel === "terminal" ? "text-[var(--accent)]" : "text-[var(--muted)]"}
+              onClick={() => setPanel("terminal")}
             >
-              Sample stdin
+              Terminal
             </button>
             <button
               type="button"
-              className={tab === "custom" ? "text-[var(--accent)]" : "text-[var(--muted)]"}
-              onClick={() => setTab("custom")}
+              className={panel === "tests" ? "text-[var(--accent)]" : "text-[var(--muted)]"}
+              onClick={() => setPanel("tests")}
             >
-              Custom stdin
+              Test results
             </button>
           </div>
-          <textarea
-            className="mt-2 mb-3 h-20 w-full resize-y rounded-lg border border-[var(--line)] bg-black/30 p-2 font-mono text-xs outline-none focus:border-[var(--accent-dim)]"
-            value={stdin}
-            onChange={(e) => setStdin(e.target.value)}
-            spellCheck={false}
-          />
-        </div>
+        )}
 
-        <div className="max-h-48 overflow-y-auto px-4 py-3">
+        {RUNNER_ENABLED && (
+          <div className={panel === "terminal" ? "h-60 border-b border-[var(--line)]" : "hidden"}>
+            <InteractiveTerminal
+              ref={terminalRef}
+              timeLimitMs={INTERACTIVE_TIME_LIMIT_MS}
+              onRunningChange={setTermRunning}
+            />
+          </div>
+        )}
+
+        {!RUNNER_ENABLED && (
+          <div className="border-b border-[var(--line)] px-4 pt-3">
+            <div className="flex gap-3 text-xs">
+              <button
+                type="button"
+                className={tab === "sample" ? "text-[var(--accent)]" : "text-[var(--muted)]"}
+                onClick={() => {
+                  setTab("sample");
+                  setStdin(problem.sampleInput);
+                }}
+              >
+                Sample stdin
+              </button>
+              <button
+                type="button"
+                className={tab === "custom" ? "text-[var(--accent)]" : "text-[var(--muted)]"}
+                onClick={() => setTab("custom")}
+              >
+                Custom stdin
+              </button>
+            </div>
+            <textarea
+              className="mt-2 mb-3 h-20 w-full resize-y rounded-lg border border-[var(--line)] bg-black/30 p-2 font-mono text-xs outline-none focus:border-[var(--accent-dim)]"
+              value={stdin}
+              onChange={(e) => setStdin(e.target.value)}
+              spellCheck={false}
+            />
+          </div>
+        )}
+
+        <div
+          className={
+            panel === "tests" || !RUNNER_ENABLED
+              ? "max-h-48 flex-1 overflow-y-auto px-4 py-3"
+              : "hidden"
+          }
+        >
           {!result && (
             <p className="font-mono text-xs text-[var(--muted)]">
-              Write C, then Run (custom I/O) or Submit (sample tests).{" "}
+              {RUNNER_ENABLED
+                ? "Run opens an interactive terminal — type input as the program asks for it. Submit checks every test case."
+                : "Write C, then Run (custom I/O) or Submit (sample tests)."}{" "}
               <span className="text-[var(--text)]/70">⌘/Ctrl+Enter</span> submits.
             </p>
           )}
           {result && (
             <div className="space-y-2">
-              <p className={`font-mono text-sm font-600 ${statusClass}`}>
+              <p className={`font-mono text-sm font-semibold ${statusClass}`}>
                 {verdictLabel(result.verdict)}
                 {result.message ? ` — ${result.message}` : ""}
               </p>
@@ -365,4 +428,5 @@ export function ProblemWorkspace({ problem, prevId, nextId, contestId }: Props) 
     </div>
   );
 }
+
 

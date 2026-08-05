@@ -3,10 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "prisma generate && next build",
+    "dev": "npm run monaco && next dev",
+    "build": "npm run monaco && prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
+    "monaco": "node scripts/copy-monaco.mjs",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
@@ -24,6 +25,7 @@
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.8",
     "lucide-react": "^1.28.0",
+    "monaco-editor": "^0.56.0",
     "next": "15.5.22",
     "nodemailer": "^9.0.4",
     "react": "19.1.0",
@@ -46,3 +48,4 @@
     "typescript": "^5"
   }
 }
+

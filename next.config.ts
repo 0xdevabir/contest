@@ -1,12 +1,26 @@
 import type { NextConfig } from "next";
 
+// The interactive terminal opens a WebSocket to the runner, which is a separate
+// origin, so it has to be allowed explicitly alongside 'self'.
+const runnerOrigin = (() => {
+  const raw = process.env.NEXT_PUBLIC_RUNNER_URL?.trim();
+  if (!raw) return "";
+  try {
+    const { host, protocol } = new URL(raw);
+    const secure = protocol === "https:" || protocol === "wss:";
+    return ` ${secure ? "https" : "http"}://${host} ${secure ? "wss" : "ws"}://${host}`;
+  } catch {
+    return "";
+  }
+})();
+
 const contentSecurityPolicy = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  "connect-src 'self'",
+  `connect-src 'self'${runnerOrigin}`,
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",
@@ -35,9 +49,16 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      {
+        // Monaco is many small files; without this the browser revalidates every
+        // one on each page load. Not immutable, so a version bump still lands.
+        source: "/monaco/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=604800" }],
+      },
     ];
   },
 };
 
 export default nextConfig;
+
 

@@ -1,0 +1,22 @@
+{
+  "name": "contest-hub-runner",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Sandboxed interactive C execution service for Contest Hub",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --env-file=.env server.js",
+    "build:image": "docker build -t contest-hub-sandbox -f sandbox.Dockerfile .",
+    "test": "node test-runner.js",
+    "test:e2e": "node --env-file=.env test-e2e.js",
+    "test:integration": "node test-integration.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
