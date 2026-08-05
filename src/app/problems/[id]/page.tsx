@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { getSession } from "@/lib/auth";
 import { getAllProblemIds, getProblem } from "@/lib/problems";
+import { getProblemSolvers } from "@/lib/solvers";
 import { ProblemWorkspace } from "@/components/ProblemWorkspace";
 
 type Props = {
@@ -8,15 +10,51 @@ type Props = {
   searchParams: Promise<{ contest?: string }>;
 };
 
+export const dynamic = "force-dynamic";
+
 export function generateStaticParams() {
   return getAllProblemIds().map((id) => ({ id }));
 }
 
-export async function generateMetadata({ params }: Props) {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const problem = getProblem(id);
+  if (!problem) {
+    return {
+      title: "Problem not found",
+      robots: { index: false, follow: false },
+    };
+  }
+  const summary = problem.statement
+    .replace(/\s+/g, " ")
+    .replace(/[#*_`>]/g, "")
+    .trim()
+    .slice(0, 160);
+  const description =
+    `Solve "${problem.title}" — a ${problem.difficulty.toLowerCase()} C programming problem` +
+    (problem.topic ? ` on ${problem.topic}. ` : ". ") +
+    `Constraints: ${problem.constraints}. ${summary}`;
   return {
-    title: problem ? problem.title : "Problem",
+    title: `${problem.title} — ${problem.difficulty} C problem`,
+    description,
+    keywords: [
+      `${problem.title} C solution`,
+      `${problem.difficulty} C problem`,
+      "C programming practice",
+      "online judge",
+      "competitive programming problem",
+    ],
+    alternates: { canonical: `/problems/${id}` },
+    openGraph: {
+      title: `${problem.title} — ${problem.difficulty} C problem`,
+      description,
+      url: `/problems/${id}`,
+      type: "article",
+    },
+    twitter: {
+      title: `${problem.title} — ${problem.difficulty} C problem`,
+      description,
+    },
   };
 }
 
@@ -26,11 +64,21 @@ export default async function ProblemPage({ params, searchParams }: Props) {
   const problem = getProblem(id);
   if (!problem) notFound();
 
-  let loggedIn = false;
+  let session = null;
   try {
-    loggedIn = Boolean(await getSession());
+    session = await getSession();
   } catch {
-    loggedIn = false;
+    session = null;
+  }
+
+  let solvers: Awaited<ReturnType<typeof getProblemSolvers>> = {
+    total: 0,
+    solvers: [],
+  };
+  try {
+    solvers = await getProblemSolvers(id);
+  } catch (err) {
+    console.error("problem solvers load failed", err);
   }
 
   const ids = getAllProblemIds();
@@ -44,9 +92,10 @@ export default async function ProblemPage({ params, searchParams }: Props) {
       prevId={prevId}
       nextId={nextId}
       contestId={contest || null}
-      loggedIn={loggedIn}
+      loggedIn={Boolean(session)}
+      currentUserId={session?.id ?? null}
+      initialSolvers={solvers.solvers}
+      initialSolverCount={solvers.total}
     />
   );
 }
-
-

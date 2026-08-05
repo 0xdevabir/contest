@@ -109,4 +109,12 @@ export type JudgeResponse = {
   timeMs?: number;
 };
 
+export type ProblemSolver = {
+  userId: string;
+  name: string;
+  university: string;
+  firstSolvedAt: string;
+};
+
+
 

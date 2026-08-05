@@ -16,9 +16,11 @@ import {
   Square,
 } from "lucide-react";
 import { CodeEditor } from "./CodeEditor";
+import { AcceptedCelebration } from "./AcceptedCelebration";
+import { ProblemSolvers } from "./ProblemSolvers";
 import { difficultyClass } from "@/lib/difficulty";
 import type { TerminalHandle } from "./InteractiveTerminal";
-import type { JudgeResponse, JudgeVerdict, Problem } from "@/lib/types";
+import type { JudgeResponse, JudgeVerdict, Problem, ProblemSolver } from "@/lib/types";
 import { clearDraft, loadDraft, loadSolved, markSolved, saveDraft } from "@/lib/progress";
 
 const InteractiveTerminal = dynamic(
@@ -144,6 +146,9 @@ type Props = {
   nextId?: string | null;
   contestId?: string | null;
   loggedIn?: boolean;
+  currentUserId?: string | null;
+  initialSolvers?: ProblemSolver[];
+  initialSolverCount?: number;
 };
 
 export function ProblemWorkspace({
@@ -152,6 +157,9 @@ export function ProblemWorkspace({
   nextId,
   contestId,
   loggedIn = false,
+  currentUserId = null,
+  initialSolvers = [],
+  initialSolverCount = 0,
 }: Props) {
   const [code, setCode] = useState(problem.starterCode);
   const [stdin, setStdin] = useState(problem.sampleInput);
@@ -164,9 +172,11 @@ export function ProblemWorkspace({
     RUNNER_ENABLED ? "terminal" : "tests"
   );
   const [termRunning, setTermRunning] = useState(false);
+  const [celebrate, setCelebrate] = useState(false);
   const [shortcut, setShortcut] = useState("Ctrl");
   // On phones the statement and editor can't share the screen — tab between them.
   const [mobilePane, setMobilePane] = useState<"question" | "code">("question");
+  const [solversRefresh, setSolversRefresh] = useState(0);
   const terminalRef = useRef<TerminalHandle | null>(null);
 
   useEffect(() => {
@@ -181,6 +191,8 @@ export function ProblemWorkspace({
     setStdin(problem.sampleInput);
     setResult(null);
     setSolved(loadSolved().has(problem.id));
+    setCelebrate(false);
+    setSolversRefresh(0);
     setMobilePane("question");
   }, [problem.id, problem.starterCode, problem.sampleInput]);
 
@@ -222,6 +234,8 @@ export function ProblemWorkspace({
         if (mode === "submit" && data.verdict === "AC") {
           markSolved(problem.id);
           setSolved(true);
+          setCelebrate(true);
+          if (!contestId) setSolversRefresh((n) => n + 1);
         }
       } catch {
         setResult({
@@ -279,12 +293,25 @@ export function ProblemWorkspace({
     [result]
   );
   const totalTests = result?.results?.length ?? 0;
+  const slowestMs = useMemo(() => {
+    const times = (result?.results ?? []).map((r) => r.timeMs).filter((t) => typeof t === "number");
+    return times.length ? Math.max(...times) : null;
+  }, [result]);
   const loginHref = `/login?next=${encodeURIComponent(
     `/problems/${problem.id}${contestId ? `?contest=${contestId}` : ""}`
   )}`;
 
   return (
     <div className="mx-auto max-w-[1500px] px-3 py-3 sm:px-6 sm:py-5">
+      <AcceptedCelebration
+        open={celebrate}
+        onClose={() => setCelebrate(false)}
+        problemTitle={problem.title}
+        passed={passed}
+        total={totalTests}
+        timeMs={slowestMs}
+        nextHref={nextId ? `/problems/${nextId}` : null}
+      />
       <div
         role="tablist"
         aria-label="Problem view"
@@ -400,6 +427,16 @@ export function ProblemWorkspace({
               This one is open-ended: there is no fixed answer to check. Write your program, press
               Run, and read the output yourself.
             </p>
+          )}
+
+          {!problem.openEnded && (
+            <ProblemSolvers
+              problemId={problem.id}
+              initialTotal={initialSolverCount}
+              initialSolvers={initialSolvers}
+              currentUserId={currentUserId}
+              refreshKey={solversRefresh}
+            />
           )}
         </div>
 
@@ -760,6 +797,7 @@ export function ProblemWorkspace({
     </div>
   );
 }
+
 
 
 
