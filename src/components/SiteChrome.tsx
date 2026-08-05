@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { Menu, X } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
 import { NavAuth } from "@/components/NavAuth";
 import { BrandMark, Wordmark } from "@/components/BrandMark";
@@ -33,6 +35,13 @@ const FOOTER_LINKS: { heading: string; links: { href: string; label: string }[] 
   },
 ];
 
+const MOBILE_LINKS = [
+  { href: "/problems", label: "Problems" },
+  { href: "/sets", label: "Sets" },
+  { href: "/contests", label: "Contests" },
+  { href: "/leaderboard", label: "Leaderboard" },
+];
+
 /**
  * Public marketing chrome. Admin routes render children alone so the
  * Command Center can own the full viewport with its own sidebar.
@@ -45,36 +54,139 @@ export function SiteChrome({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setMenuOpen(false);
+    }
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
+
   if (pathname.startsWith("/admin")) {
     return <>{children}</>;
   }
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_82%,transparent)] backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
-          <Link href="/" className="flex shrink-0 items-center gap-2.5">
-            <BrandMark size={28} />
-            <Wordmark className="text-[15px] sm:text-[17px]" />
+      <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_82%,transparent)] pt-[env(safe-area-inset-top)] backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-3.5">
+          <Link href="/" className="flex min-w-0 shrink items-center gap-2 sm:gap-2.5">
+            <BrandMark size={26} />
+            <Wordmark className="truncate text-[14px] sm:text-[17px]" />
           </Link>
 
-          <nav className="flex flex-wrap items-center justify-end gap-x-3.5 gap-y-2 text-sm sm:gap-x-5">
+          <nav className="hidden items-center justify-end gap-x-5 text-sm md:flex">
             <Link href="/problems" className="link-quiet">
               Problems
             </Link>
-            <Link href="/sets" className="link-quiet hidden sm:inline">
+            <Link href="/sets" className="link-quiet">
               Sets
             </Link>
             <NavAuth user={user} />
           </nav>
+
+          <div className="flex items-center gap-2 md:hidden">
+            {!user ? (
+              <Link href="/login" className="btn btn-ghost !px-3 !py-2 !text-xs">
+                Log in
+              </Link>
+            ) : (
+              <Link
+                href={user.role === "ADMIN" ? "/admin" : "/problems"}
+                className="max-w-24 truncate text-xs text-[var(--muted)]"
+                title={user.email}
+              >
+                {user.name.split(/\s+/)[0]}
+              </Link>
+            )}
+            <button
+              type="button"
+              className="btn btn-ghost !px-2.5 !py-2"
+              aria-expanded={menuOpen}
+              aria-controls="mobile-nav"
+              onClick={() => setMenuOpen((v) => !v)}
+            >
+              {menuOpen ? <X size={18} aria-hidden /> : <Menu size={18} aria-hidden />}
+              <span className="sr-only">{menuOpen ? "Close menu" : "Open menu"}</span>
+            </button>
+          </div>
         </div>
+
+        {menuOpen && (
+          <>
+            <button
+              type="button"
+              className="fixed inset-0 top-[calc(3.25rem+env(safe-area-inset-top))] z-40 bg-black/55 md:hidden"
+              aria-label="Close menu"
+              onClick={() => setMenuOpen(false)}
+            />
+            <div
+              id="mobile-nav"
+              className="absolute inset-x-0 top-full z-50 border-b border-[var(--line)] bg-[var(--bg-elevated)] px-4 py-4 shadow-2xl md:hidden"
+            >
+              <nav className="flex flex-col gap-1">
+                {MOBILE_LINKS.map((link) => {
+                  const active =
+                    pathname === link.href || pathname.startsWith(`${link.href}/`);
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className={`rounded-lg px-3 py-3 text-sm ${
+                        active
+                          ? "bg-[rgba(62,207,142,0.1)] text-[var(--accent)]"
+                          : "text-[var(--text)] hover:bg-white/[0.04]"
+                      }`}
+                    >
+                      {link.label}
+                    </Link>
+                  );
+                })}
+                {user?.role === "ADMIN" && (
+                  <Link
+                    href="/admin"
+                    className="rounded-lg px-3 py-3 text-sm text-[var(--accent)] hover:bg-white/[0.04]"
+                  >
+                    Admin
+                  </Link>
+                )}
+              </nav>
+              <div className="mt-3 border-t border-[var(--line)] pt-3">
+                {!user ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Link href="/login" className="btn btn-ghost !py-2.5 !text-sm">
+                      Log in
+                    </Link>
+                    <Link href="/register" className="btn btn-primary !py-2.5 !text-sm">
+                      Register
+                    </Link>
+                  </div>
+                ) : (
+                  <MobileLogout />
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </header>
 
       <main className="flex-1">{children}</main>
 
-      <footer className="mt-16 border-t border-[var(--line)] bg-black/25">
-        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
-          <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(3,1fr)]">
+      <footer className="mt-12 border-t border-[var(--line)] bg-black/25 pb-[env(safe-area-inset-bottom)] sm:mt-16">
+        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12">
+          <div className="grid gap-8 sm:gap-10 md:grid-cols-[1.4fr_repeat(3,1fr)]">
             <div>
               <div className="flex items-center gap-2.5">
                 <BrandMark size={28} />
@@ -110,5 +222,24 @@ export function SiteChrome({
         </div>
       </footer>
     </div>
+  );
+}
+
+function MobileLogout() {
+  const router = useRouter();
+
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.refresh();
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => void logout()}
+      className="btn btn-ghost w-full !py-2.5 !text-sm"
+    >
+      Log out
+    </button>
   );
 }

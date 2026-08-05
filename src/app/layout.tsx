@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Syne, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import { getSession } from "@/lib/auth";
 import { SiteChrome } from "@/components/SiteChrome";
@@ -38,6 +38,13 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#080b10",
+};
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -67,3 +74,4 @@ export default async function RootLayout({
     </html>
   );
 }
+

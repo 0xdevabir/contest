@@ -14,11 +14,11 @@ type Props = {
  */
 export function PageHeader({ eyebrow, title, lead, actions }: Props) {
   return (
-    <header className="flex flex-wrap items-end justify-between gap-x-10 gap-y-5 border-b border-[var(--line-soft)] pb-7">
+    <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4 border-b border-[var(--line-soft)] pb-5 sm:gap-x-10 sm:pb-7">
       <div className="min-w-0">
         {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
         <h1
-          className={`font-display text-[1.9rem] leading-[1.08] font-bold sm:text-[2.3rem] ${
+          className={`font-display text-[1.65rem] leading-[1.08] font-bold sm:text-[2.3rem] ${
             eyebrow ? "mt-2.5" : ""
           }`}
         >
@@ -34,3 +34,4 @@ export function PageHeader({ eyebrow, title, lead, actions }: Props) {
     </header>
   );
 }
+

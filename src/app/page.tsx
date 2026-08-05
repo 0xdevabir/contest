@@ -73,11 +73,11 @@ export default function HomePage() {
     <>
       {/* ---------------- hero ---------------- */}
       <section className="border-b border-[var(--line)]">
-        <div className="mx-auto grid max-w-7xl gap-14 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center lg:gap-12 lg:py-28">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 sm:py-20 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center lg:gap-12 lg:py-28">
           <div className="animate-fade-up min-w-0">
             <p className="eyebrow">{meta.subtitle}</p>
 
-            <h1 className="display-hero mt-5 max-w-[34rem] text-[2.4rem] font-bold sm:text-[3rem] lg:text-[3.35rem]">
+            <h1 className="display-hero mt-5 max-w-[34rem] text-[2rem] font-bold sm:text-[3rem] lg:text-[3.35rem]">
               Practice C the way the exam actually asks.
             </h1>
 
@@ -273,5 +273,6 @@ export default function HomePage() {
     </>
   );
 }
+
 
 

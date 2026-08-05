@@ -242,8 +242,8 @@ export function ContestEditor({
         <ProblemSelector problems={problems} selected={selected} onChange={setSelected} />
       </EditorSection>
 
-      <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--line)] bg-[#111821]/95 p-3 shadow-2xl backdrop-blur">
-        <div aria-live="polite" className="min-h-5 text-xs">
+      <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--line)] bg-[#111821]/95 p-3 shadow-2xl backdrop-blur mb-[env(safe-area-inset-bottom)]">
+        <div aria-live="polite" className="min-h-5 min-w-0 flex-1 text-xs">
           {error && <span className="text-[var(--danger)]">{error}</span>}
           {success && (
             <span className="inline-flex items-center gap-1 text-[var(--accent)]">
@@ -252,17 +252,17 @@ export function ContestEditor({
           )}
           {!error && !success && (
             <span className="text-[var(--muted)]">
-              {selected.length} problems · C language · changes stay draft until go-live
+              {selected.length} problems · C · draft until go-live
             </span>
           )}
         </div>
         <button
           type="submit"
-          className="btn btn-primary !py-2 !text-xs"
+          className="btn btn-primary shrink-0 !py-2 !text-xs"
           disabled={busy || selected.length === 0}
         >
           <Save size={14} aria-hidden="true" />
-          {busy ? "Saving…" : initial?.id ? "Save changes" : "Create contest"}
+          {busy ? "Saving…" : initial?.id ? "Save" : "Create"}
         </button>
       </div>
     </form>
@@ -350,3 +350,4 @@ function Toggle({
     </label>
   );
 }
+

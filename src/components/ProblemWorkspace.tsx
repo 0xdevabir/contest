@@ -165,6 +165,8 @@ export function ProblemWorkspace({
   );
   const [termRunning, setTermRunning] = useState(false);
   const [shortcut, setShortcut] = useState("Ctrl");
+  // On phones the statement and editor can't share the screen — tab between them.
+  const [mobilePane, setMobilePane] = useState<"question" | "code">("question");
   const terminalRef = useRef<TerminalHandle | null>(null);
 
   useEffect(() => {
@@ -179,6 +181,7 @@ export function ProblemWorkspace({
     setStdin(problem.sampleInput);
     setResult(null);
     setSolved(loadSolved().has(problem.id));
+    setMobilePane("question");
   }, [problem.id, problem.starterCode, problem.sampleInput]);
 
   useEffect(() => {
@@ -235,6 +238,7 @@ export function ProblemWorkspace({
   );
 
   const handleRun = useCallback(() => {
+    setMobilePane("code");
     if (RUNNER_ENABLED) {
       setPanel("terminal");
       terminalRef.current?.run(code);
@@ -244,6 +248,7 @@ export function ProblemWorkspace({
   }, [callJudge, code]);
 
   const handleSubmit = useCallback(() => {
+    setMobilePane("code");
     setPanel("tests");
     void callJudge("submit");
   }, [callJudge]);
@@ -279,10 +284,48 @@ export function ProblemWorkspace({
   )}`;
 
   return (
-    <div className="mx-auto grid max-w-[1500px] gap-4 px-4 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.02fr)] lg:gap-5">
+    <div className="mx-auto max-w-[1500px] px-3 py-3 sm:px-6 sm:py-5">
+      <div
+        role="tablist"
+        aria-label="Problem view"
+        className="mb-3 grid grid-cols-2 gap-1 rounded-xl border border-[var(--line)] bg-[var(--bg-panel)] p-1 lg:hidden"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mobilePane === "question"}
+          className={`rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+            mobilePane === "question"
+              ? "bg-[rgba(62,207,142,0.12)] text-[var(--accent)]"
+              : "text-[var(--muted)]"
+          }`}
+          onClick={() => setMobilePane("question")}
+        >
+          Question
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mobilePane === "code"}
+          className={`rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+            mobilePane === "code"
+              ? "bg-[rgba(62,207,142,0.12)] text-[var(--accent)]"
+              : "text-[var(--muted)]"
+          }`}
+          onClick={() => setMobilePane("code")}
+        >
+          Code
+        </button>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.02fr)] lg:gap-5">
       {/* ---------------- the question ---------------- */}
-      <section className="panel flex flex-col overflow-hidden lg:h-[calc(100dvh-6.25rem)]">
-        <div className="border-b border-[var(--line)] px-5 py-4">
+      <section
+        className={`panel flex-col overflow-hidden lg:flex lg:h-[calc(100dvh-6.25rem)] ${
+          mobilePane === "question" ? "flex max-h-[calc(100dvh-8.5rem)]" : "hidden"
+        }`}
+      >
+        <div className="border-b border-[var(--line)] px-4 py-4 sm:px-5">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--muted)]">
             <Link href={`/sets/${problem.set}`} className="hover:text-[var(--text)]">
               Set {problem.set}
@@ -297,7 +340,9 @@ export function ProblemWorkspace({
             )}
           </div>
 
-          <h1 className="font-display mt-2 text-2xl leading-tight font-bold">{problem.title}</h1>
+          <h1 className="font-display mt-2 text-xl leading-tight font-bold sm:text-2xl">
+            {problem.title}
+          </h1>
 
           <div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-[var(--muted)]">
             <span className={`font-medium ${difficultyClass(problem.difficulty)}`}>
@@ -310,7 +355,7 @@ export function ProblemWorkspace({
           </div>
         </div>
 
-        <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5 text-sm leading-relaxed">
+        <div className="flex-1 space-y-6 overflow-y-auto px-4 py-4 text-sm leading-relaxed sm:px-5 sm:py-5">
           <p className="text-[15px] text-[var(--text)]/90">{problem.statement}</p>
 
           <Block title="What your program reads">
@@ -358,49 +403,63 @@ export function ProblemWorkspace({
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-t border-[var(--line)] px-5 py-3">
+        <div className="flex items-center justify-between gap-2 border-t border-[var(--line)] px-4 py-3 sm:px-5">
           {prevId ? (
             <Link href={`/problems/${prevId}`} className="btn btn-ghost !px-3 !py-2 !text-xs">
               <ArrowLeft size={14} aria-hidden />
-              Previous
+              <span className="hidden min-[380px]:inline">Previous</span>
             </Link>
           ) : (
             <span />
           )}
-          {nextId ? (
-            <Link href={`/problems/${nextId}`} className="btn btn-ghost !px-3 !py-2 !text-xs">
-              Next problem
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="btn btn-primary !px-3 !py-2 !text-xs lg:hidden"
+              onClick={() => setMobilePane("code")}
+            >
+              Write code
               <ArrowRight size={14} aria-hidden />
-            </Link>
-          ) : (
-            <span />
-          )}
+            </button>
+            {nextId ? (
+              <Link href={`/problems/${nextId}`} className="btn btn-ghost !px-3 !py-2 !text-xs">
+                <span className="hidden min-[380px]:inline">Next</span>
+                <ArrowRight size={14} aria-hidden />
+              </Link>
+            ) : null}
+          </div>
         </div>
       </section>
 
       {/* ---------------- the editor ---------------- */}
-      <section className="panel flex min-h-[70vh] flex-col overflow-hidden lg:h-[calc(100dvh-6.25rem)]">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--line)] px-4 py-3">
+      <section
+        className={`panel min-h-0 flex-col overflow-hidden lg:flex lg:h-[calc(100dvh-6.25rem)] ${
+          mobilePane === "code"
+            ? "flex h-[calc(100dvh-8.5rem)] min-h-[28rem]"
+            : "hidden"
+        }`}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--line)] px-3 py-2.5 sm:px-4 sm:py-3">
           <div className="min-w-0">
             <div className="font-mono text-xs text-[var(--muted)]">main.c</div>
-            <p className="mt-0.5 text-[11px] text-[var(--muted-dim)]">
+            <p className="mt-0.5 hidden text-[11px] text-[var(--muted-dim)] sm:block">
               Your work is saved in this browser as you type.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             <button
               type="button"
-              className="btn btn-ghost !px-3 !py-2 !text-xs"
+              className="btn btn-ghost !px-2.5 !py-2 !text-xs sm:!px-3"
               onClick={resetCode}
               title="Go back to the starter code"
             >
               <RotateCcw size={13} aria-hidden />
-              Start over
+              <span className="hidden min-[420px]:inline">Start over</span>
             </button>
             {termRunning ? (
               <button
                 type="button"
-                className="btn btn-ghost !px-3 !py-2 !text-xs !text-[var(--danger)]"
+                className="btn btn-ghost !px-2.5 !py-2 !text-xs !text-[var(--danger)] sm:!px-3"
                 onClick={() => terminalRef.current?.stop()}
               >
                 <Square size={13} aria-hidden />
@@ -409,7 +468,7 @@ export function ProblemWorkspace({
             ) : (
               <button
                 type="button"
-                className="btn btn-ghost !px-3 !py-2 !text-xs"
+                className="btn btn-ghost !px-2.5 !py-2 !text-xs sm:!px-3"
                 disabled={busy}
                 onClick={handleRun}
                 title="Run your code on the input below without grading it"
@@ -421,7 +480,7 @@ export function ProblemWorkspace({
             {loggedIn ? (
               <button
                 type="button"
-                className="btn btn-primary !px-3.5 !py-2 !text-xs"
+                className="btn btn-primary !px-3 !py-2 !text-xs sm:!px-3.5"
                 disabled={busy || termRunning || !!problem.openEnded}
                 onClick={handleSubmit}
                 title={
@@ -437,16 +496,16 @@ export function ProblemWorkspace({
             ) : (
               <Link
                 href={loginHref}
-                className="btn btn-primary !px-3.5 !py-2 !text-xs"
+                className="btn btn-primary !px-3 !py-2 !text-xs sm:!px-3.5"
                 title="Sign in to submit an answer"
               >
-                Sign in to submit
+                Sign in
               </Link>
             )}
           </div>
         </div>
 
-        <div className="min-h-[340px] flex-1 border-b border-[var(--line)]">
+        <div className="min-h-[220px] flex-1 border-b border-[var(--line)] sm:min-h-[340px]">
           <CodeEditor value={code} onChange={setCode} />
         </div>
 
@@ -478,7 +537,7 @@ export function ProblemWorkspace({
         )}
 
         {RUNNER_ENABLED && (
-          <div className={panel === "terminal" ? "h-56 border-b border-[var(--line)]" : "hidden"}>
+          <div className={panel === "terminal" ? "h-44 border-b border-[var(--line)] sm:h-56" : "hidden"}>
             <InteractiveTerminal
               ref={terminalRef}
               timeLimitMs={INTERACTIVE_TIME_LIMIT_MS}
@@ -538,7 +597,7 @@ export function ProblemWorkspace({
             // Sizes to its content and scrolls past the cap, rather than
             // claiming half the column to hold three lines of help text.
             panel === "tests" || !RUNNER_ENABLED
-              ? "max-h-[42%] shrink-0 overflow-y-auto px-4 py-3"
+              ? "max-h-[36%] shrink-0 overflow-y-auto px-3 py-3 sm:max-h-[42%] sm:px-4"
               : "hidden"
           }
         >
@@ -697,9 +756,11 @@ export function ProblemWorkspace({
           {pending && null}
         </div>
       </section>
+      </div>
     </div>
   );
 }
+
 
 
 

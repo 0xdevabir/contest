@@ -46,11 +46,11 @@ export function CategoriesIndexClient({
   return (
     <div className="mt-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <button
             type="button"
             onClick={() => setActive("ALL")}
-            className={`font-mono text-[11px] uppercase tracking-wide px-3 py-1.5 rounded border transition-colors ${
+            className={`shrink-0 font-mono text-[11px] uppercase tracking-wide px-3 py-1.5 rounded border transition-colors ${
               active === "ALL"
                 ? "border-[var(--accent)] text-[var(--accent)] bg-[var(--accent)]/10"
                 : "border-[var(--line)] text-[var(--muted)] hover:border-[var(--muted)]"
@@ -63,7 +63,7 @@ export function CategoriesIndexClient({
               key={c.tier}
               type="button"
               onClick={() => setActive(c.tier)}
-              className={`font-mono text-[11px] uppercase tracking-wide px-3 py-1.5 rounded border transition-colors ${
+              className={`shrink-0 font-mono text-[11px] uppercase tracking-wide px-3 py-1.5 rounded border transition-colors ${
                 active === c.tier
                   ? "border-[var(--accent)] text-[var(--accent)] bg-[var(--accent)]/10"
                   : "border-[var(--line)] text-[var(--muted)] hover:border-[var(--muted)]"
@@ -157,3 +157,4 @@ export function CategoriesIndexClient({
     </div>
   );
 }
+
