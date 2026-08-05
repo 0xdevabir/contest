@@ -162,7 +162,6 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
           maxSubmissionsPerProblem: rules.maxSubmissionsPerProblem,
           languages: rules.languages,
           notes: rules.notes ?? "",
-          allowPracticeAfter: rules.allowPracticeAfter,
         }}
         registered={registered}
         loggedIn={!!session}
@@ -172,3 +171,4 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
     </>
   );
 }
+

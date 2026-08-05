@@ -44,9 +44,6 @@ export function ContestEditor({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [allowPracticeAfter, setAllowPracticeAfter] = useState(
-    initial?.rules.allowPracticeAfter ?? true
-  );
   const [publishAfterEnd, setPublishAfterEnd] = useState(
     initial?.rules.publishAfterEnd ?? false
   );
@@ -76,7 +73,7 @@ export function ContestEditor({
         penaltyPerWrong: Number(data.get("penaltyPerWrong") || 0),
         maxSubmissionsPerProblem: Number(data.get("maxSubmissionsPerProblem") || 0),
         publishAfterEnd,
-        allowPracticeAfter,
+        allowPracticeAfter: true,
         showSamples,
         languages: ["c"],
         notes: String(data.get("notes") || ""),
@@ -212,7 +209,7 @@ export function ContestEditor({
             value={initial?.rules.maxSubmissionsPerProblem ?? 0}
           />
         </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
           <Toggle
             label="Show sample test cases"
             description="Participants can see sample input and output."
@@ -221,15 +218,9 @@ export function ContestEditor({
           />
           <Toggle
             label="Publish after contest ends"
-            description="Show the ended contest, final standings, and problem list publicly."
+            description="Show final standings publicly. Published problems stay open for practice."
             checked={publishAfterEnd}
             onChange={setPublishAfterEnd}
-          />
-          <Toggle
-            label="Allow practice after contest"
-            description="Let users solve archived problems outside contest scoring."
-            checked={allowPracticeAfter}
-            onChange={setAllowPracticeAfter}
           />
         </div>
         <label className="mt-4 block text-xs font-medium">
@@ -361,3 +352,4 @@ function Toggle({
     </label>
   );
 }
+

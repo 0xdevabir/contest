@@ -1,6 +1,8 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getSession } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { isContestOpen } from "@/lib/contests";
 import { getAllProblemIds, getProblem } from "@/lib/problems";
 import { getProblemSolvers } from "@/lib/solvers";
 import { ProblemWorkspace } from "@/components/ProblemWorkspace";
@@ -80,6 +82,68 @@ export default async function ProblemPage({ params, searchParams }: Props) {
     session = null;
   }
 
+  let contestContext: {
+    id: string;
+    title: string;
+    slug: string;
+    problemIds: string[];
+  } | null = null;
+
+  if (contest) {
+    if (!session) {
+      redirect(
+        `/login?next=${encodeURIComponent(`/problems/${id}?contest=${contest}`)}`
+      );
+    }
+
+    const liveContest = await prisma.contest.findUnique({
+      where: { id: contest },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        status: true,
+        startsAt: true,
+        endsAt: true,
+        problems: {
+          orderBy: { order: "asc" },
+          select: { problemId: true },
+        },
+        registrations: {
+          where: { userId: session.id },
+          take: 1,
+          select: { id: true },
+        },
+      },
+    });
+
+    if (!liveContest) notFound();
+
+    const belongsToContest = liveContest.problems.some(
+      (entry) => entry.problemId === id
+    );
+    const canCompete =
+      liveContest.registrations.length > 0 &&
+      isContestOpen(
+        liveContest.status,
+        liveContest.startsAt,
+        liveContest.endsAt
+      );
+
+    // Never silently fall back to practice mode: that could make a contestant
+    // think a submission counted when it did not.
+    if (!belongsToContest || !canCompete) {
+      redirect(`/contests/${liveContest.slug}`);
+    }
+
+    contestContext = {
+      id: liveContest.id,
+      title: liveContest.title,
+      slug: liveContest.slug,
+      problemIds: liveContest.problems.map((entry) => entry.problemId),
+    };
+  }
+
   let solvers: Awaited<ReturnType<typeof getProblemSolvers>> = {
     total: 0,
     solvers: [],
@@ -90,7 +154,7 @@ export default async function ProblemPage({ params, searchParams }: Props) {
     console.error("problem solvers load failed", err);
   }
 
-  const ids = getAllProblemIds();
+  const ids = contestContext?.problemIds ?? getAllProblemIds();
   const idx = ids.indexOf(id);
   const prevId = idx > 0 ? ids[idx - 1] : null;
   const nextId = idx >= 0 && idx < ids.length - 1 ? ids[idx + 1] : null;
@@ -120,7 +184,11 @@ export default async function ProblemPage({ params, searchParams }: Props) {
         problem={problem}
         prevId={prevId}
         nextId={nextId}
-        contestId={contest || null}
+        contestId={contestContext?.id ?? null}
+        contestHref={
+          contestContext ? `/contests/${contestContext.slug}` : null
+        }
+        contestTitle={contestContext?.title ?? null}
         loggedIn={Boolean(session)}
         currentUserId={session?.id ?? null}
         initialSolvers={solvers.solvers}
@@ -129,3 +197,4 @@ export default async function ProblemPage({ params, searchParams }: Props) {
     </>
   );
 }
+

@@ -21,6 +21,7 @@ import type {
   ContestProblemStat,
   ScoreboardRow,
 } from "@/lib/contest-dashboard";
+import { contestProblemHref } from "@/lib/contest-access";
 import { UNIVERSITIES, universityLabel } from "@/lib/universities";
 import { ContestCountdown, formatMinutes, useServerClock } from "./ContestClock";
 import { ContestRegisterButton } from "@/components/ContestRegisterButton";
@@ -33,7 +34,6 @@ type Rules = {
   maxSubmissionsPerProblem: number;
   languages: string[];
   notes: string;
-  allowPracticeAfter: boolean;
 };
 
 type Props = {
@@ -119,7 +119,6 @@ export function ContestDashboard({
             locked={locked}
             registered={registered}
             loggedIn={loggedIn}
-            allowPracticeAfter={rules.allowPracticeAfter}
           />
         )}
         {tab === "standings" && (
@@ -231,7 +230,7 @@ function ExamBar({
           </div>
 
           <div className="flex items-center gap-2">
-            {running && (
+            {data.phase !== "ENDED" && (
               <ContestRegisterButton
                 contestId={contestId}
                 registered={registered}
@@ -318,14 +317,12 @@ function ProblemBoard({
   locked,
   registered,
   loggedIn,
-  allowPracticeAfter,
 }: {
   contestId: string;
   data: ContestDashboardData;
   locked: boolean;
   registered: boolean;
   loggedIn: boolean;
-  allowPracticeAfter: boolean;
 }) {
   const solvedTotal = data.problems.filter((p) => p.mine?.solved).length;
   const pct = data.problems.length
@@ -370,6 +367,22 @@ function ProblemBoard({
         </div>
       )}
 
+      {data.phase === "ENDED" && (
+        <p className="mb-4 flex items-center gap-2 rounded-lg border border-[var(--accent-border)] bg-[var(--accent-surface)] px-3.5 py-2.5 text-sm text-[var(--accent)]">
+          <Check size={14} aria-hidden="true" />
+          Practice mode is open. Solve any problem at your own pace; new submissions
+          update your practice progress without changing the final standings.
+        </p>
+      )}
+
+      {data.phase === "RUNNING" && registered && (
+        <p className="mb-4 flex items-center gap-2 rounded-lg border border-[var(--accent-border)] bg-[var(--accent-surface)] px-3.5 py-2.5 text-sm text-[var(--accent)]">
+          <Check size={14} aria-hidden="true" />
+          Contest mode is active. Every submission from these problem cards counts
+          toward your live score and penalty.
+        </p>
+      )}
+
       {locked && (
         <p className="mb-4 flex items-center gap-2 rounded-lg border border-[var(--warn-border)] bg-[var(--warn-surface)] px-3.5 py-2.5 text-sm text-[var(--warn)]">
           <Lock size={14} aria-hidden="true" />
@@ -390,7 +403,6 @@ function ProblemBoard({
             phase={data.phase}
             participants={data.totals.participants}
             registered={registered}
-            allowPracticeAfter={allowPracticeAfter}
           />
         ))}
       </div>
@@ -404,21 +416,19 @@ function ProblemCard({
   phase,
   participants,
   registered,
-  allowPracticeAfter,
 }: {
   problem: ContestProblemStat;
   contestId: string;
   phase: ContestDashboardData["phase"];
   participants: number;
   registered: boolean;
-  allowPracticeAfter: boolean;
 }) {
-  const href =
-    phase === "RUNNING" && registered
-      ? `/problems/${problem.problemId}?contest=${contestId}`
-      : phase === "ENDED" && allowPracticeAfter
-        ? `/problems/${problem.problemId}`
-        : null;
+  const href = contestProblemHref({
+    phase,
+    registered,
+    contestId,
+    problemId: problem.problemId,
+  });
 
   const solved = problem.mine?.solved ?? false;
   const attempts = problem.mine?.attempts ?? 0;
@@ -506,7 +516,7 @@ function ProblemCard({
         {body}
         <p className="mt-3 flex items-center gap-1.5 font-mono text-[11px] text-[var(--muted)]">
           <Lock size={11} aria-hidden="true" />
-          {phase === "ENDED" ? "Closed for practice" : "Locked"}
+          Locked
         </p>
       </div>
     );
@@ -913,3 +923,4 @@ function Empty({ text }: { text: string }) {
     </div>
   );
 }
+

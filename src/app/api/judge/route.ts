@@ -5,6 +5,7 @@ import { compileAndJudge, runCustom } from "@/lib/judge";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { effectiveContestStatus, isContestOpen } from "@/lib/contests";
+import { contestSubmissionError } from "@/lib/contest-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -119,16 +120,20 @@ export async function POST(req: NextRequest) {
       include: { problems: { select: { problemId: true } } },
     });
 
-    if (!contest || !isContestOpen(contest.status, contest.startsAt, contest.endsAt)) {
-      const ended =
-        contest && effectiveContestStatus(contest.status, contest.endsAt) === "ENDED";
+    const contestOpen = Boolean(
+      contest && isContestOpen(contest.status, contest.startsAt, contest.endsAt)
+    );
+    if (!contest || !contestOpen) {
+      const message = contestSubmissionError({
+        contestOpen,
+        contestEnded:
+          contest !== null &&
+          effectiveContestStatus(contest.status, contest.endsAt) === "ENDED",
+        problemIncluded: false,
+        registered: false,
+      });
       return NextResponse.json(
-        {
-          ok: false,
-          message: ended
-            ? "This contest has ended — open the problem outside the contest to keep practising."
-            : "Contest is not live",
-        },
+        { ok: false, message },
         { status: 400 }
       );
     }
@@ -137,7 +142,15 @@ export async function POST(req: NextRequest) {
     const inContest = contest.problems.some((p) => p.problemId === body.problemId);
     if (!inContest) {
       return NextResponse.json(
-        { ok: false, message: "This problem is not part of the contest" },
+        {
+          ok: false,
+          message: contestSubmissionError({
+            contestOpen: true,
+            contestEnded: false,
+            problemIncluded: false,
+            registered: false,
+          }),
+        },
         { status: 403 }
       );
     }
@@ -146,7 +159,18 @@ export async function POST(req: NextRequest) {
       where: { contestId_userId: { contestId: body.contestId, userId: session.id } },
     });
     if (!reg) {
-      return NextResponse.json({ ok: false, message: "Register for the contest first" }, { status: 403 });
+      return NextResponse.json(
+        {
+          ok: false,
+          message: contestSubmissionError({
+            contestOpen: true,
+            contestEnded: false,
+            problemIncluded: true,
+            registered: false,
+          }),
+        },
+        { status: 403 }
+      );
     }
 
     // Enforce maxSubmissionsPerProblem if configured
@@ -195,6 +219,7 @@ export async function POST(req: NextRequest) {
     saved: Boolean(session),
   });
 }
+
 
 
 

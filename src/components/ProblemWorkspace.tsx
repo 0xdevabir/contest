@@ -145,6 +145,8 @@ type Props = {
   prevId?: string | null;
   nextId?: string | null;
   contestId?: string | null;
+  contestHref?: string | null;
+  contestTitle?: string | null;
   loggedIn?: boolean;
   currentUserId?: string | null;
   initialSolvers?: ProblemSolver[];
@@ -156,6 +158,8 @@ export function ProblemWorkspace({
   prevId,
   nextId,
   contestId,
+  contestHref = null,
+  contestTitle = null,
   loggedIn = false,
   currentUserId = null,
   initialSolvers = [],
@@ -300,6 +304,8 @@ export function ProblemWorkspace({
   const loginHref = `/login?next=${encodeURIComponent(
     `/problems/${problem.id}${contestId ? `?contest=${contestId}` : ""}`
   )}`;
+  const problemHref = (problemId: string) =>
+    `/problems/${problemId}${contestId ? `?contest=${contestId}` : ""}`;
 
   return (
     <div className="mx-auto max-w-[1500px] px-3 py-3 sm:px-6 sm:py-5">
@@ -310,7 +316,7 @@ export function ProblemWorkspace({
         passed={passed}
         total={totalTests}
         timeMs={slowestMs}
-        nextHref={nextId ? `/problems/${nextId}` : null}
+        nextHref={nextId ? problemHref(nextId) : contestHref}
       />
       <div
         role="tablist"
@@ -354,8 +360,11 @@ export function ProblemWorkspace({
       >
         <div className="border-b border-[var(--line)] px-4 py-4 sm:px-5">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--muted)]">
-            <Link href="/problems" className="hover:text-[var(--text)]">
-              Problems
+            <Link
+              href={contestHref ?? "/problems"}
+              className="max-w-48 truncate hover:text-[var(--text)]"
+            >
+              {contestTitle ?? "Problems"}
             </Link>
             <span aria-hidden>·</span>
             <span>Question {problem.question}</span>
@@ -433,7 +442,7 @@ export function ProblemWorkspace({
 
         <div className="flex items-center justify-between gap-2 border-t border-[var(--line)] px-4 py-3 sm:px-5">
           {prevId ? (
-            <Link href={`/problems/${prevId}`} className="btn btn-ghost !px-3 !py-2 !text-xs">
+            <Link href={problemHref(prevId)} className="btn btn-ghost !px-3 !py-2 !text-xs">
               <ArrowLeft size={14} aria-hidden />
               <span className="hidden min-[380px]:inline">Previous</span>
             </Link>
@@ -450,7 +459,7 @@ export function ProblemWorkspace({
               <ArrowRight size={14} aria-hidden />
             </button>
             {nextId ? (
-              <Link href={`/problems/${nextId}`} className="btn btn-ghost !px-3 !py-2 !text-xs">
+              <Link href={problemHref(nextId)} className="btn btn-ghost !px-3 !py-2 !text-xs">
                 <span className="hidden min-[380px]:inline">Next</span>
                 <ArrowRight size={14} aria-hidden />
               </Link>
@@ -798,3 +807,4 @@ export function ProblemWorkspace({
     </div>
   );
 }
+

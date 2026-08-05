@@ -101,7 +101,8 @@ export async function getContestDashboard(
     createdAt: Date;
   }
 ): Promise<ContestDashboardData> {
-  const [registrations, contestProblems, submissions] = await Promise.all([
+  const [registrations, contestProblems, submissions, practiceSolves] =
+    await Promise.all([
     prisma.contestRegistration.findMany({
       where: { contestId },
       select: { userId: true, user: { select: { name: true, university: true } } },
@@ -122,12 +123,19 @@ export async function getContestDashboard(
         createdAt: true,
       },
     }),
+    opts.viewerId
+      ? prisma.solvedProblem.findMany({
+          where: { userId: opts.viewerId },
+          select: { problemId: true },
+        })
+      : Promise.resolve([]),
   ]);
 
   return buildContestDashboard({
     registrations,
     contestProblems,
     submissions,
+    practiceSolvedIds: practiceSolves.map((solve) => solve.problemId),
     ...opts,
   });
 }
@@ -147,6 +155,7 @@ export function buildContestDashboard(input: {
   rules: Prisma.JsonValue | null | undefined;
   createdAt: Date;
   now?: number;
+  practiceSolvedIds?: string[];
 }): ContestDashboardData {
   const { registrations, contestProblems, submissions } = input;
   const opts = input;
@@ -306,9 +315,19 @@ export function buildContestDashboard(input: {
   const viewer = opts.viewerId
     ? (allRows.find((r) => r.userId === opts.viewerId) ?? null)
     : null;
+  const practiceSolved = new Set(input.practiceSolvedIds ?? []);
 
   const problems: ContestProblemStat[] = contestProblems.map((p) => {
     const meta = getProblem(p.problemId);
+    const contestProgress = mine.get(p.problemId) ?? {
+      solved: false,
+      attempts: 0,
+      solvedAtMin: null,
+    };
+    const personalProgress =
+      phase === "ENDED" && practiceSolved.has(p.problemId)
+        ? { ...contestProgress, solved: true }
+        : contestProgress;
     return {
       problemId: p.problemId,
       label: p.label,
@@ -319,9 +338,7 @@ export function buildContestDashboard(input: {
       solvedCount: solvedCount.get(p.problemId) ?? 0,
       attemptedCount: attemptedBy.get(p.problemId)?.size ?? 0,
       firstSolver: firstSolver.get(p.problemId) ?? null,
-      mine: opts.viewerId
-        ? (mine.get(p.problemId) ?? { solved: false, attempts: 0, solvedAtMin: null })
-        : null,
+      mine: opts.viewerId ? personalProgress : null,
     };
   });
 
@@ -347,3 +364,4 @@ export function buildContestDashboard(input: {
     },
   };
 }
+

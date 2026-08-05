@@ -7,6 +7,10 @@ import {
   type DashboardRegistration,
   type DashboardSubmission,
 } from "../src/lib/contest-dashboard";
+import {
+  contestProblemHref,
+  contestSubmissionError,
+} from "../src/lib/contest-access";
 
 const START = new Date("2026-01-01T10:00:00Z");
 const END = new Date("2026-01-01T12:00:00Z"); // 120 minutes
@@ -133,6 +137,29 @@ check("Grace second", ended.rows[1].name, "Grace");
 check("late attempt revealed", ended.problems[0].attemptedCount, 4);
 check("accepted total revealed", ended.totals.accepted, 5);
 
+const pastPractice = buildContestDashboard({
+  registrations,
+  contestProblems,
+  submissions,
+  viewerId: "u1",
+  startsAt: START,
+  endsAt: END,
+  rules: RULES,
+  createdAt: START,
+  now: END.getTime() + 60_000,
+  practiceSolvedIds: ["p2"],
+});
+check(
+  "past practice solve appears in personal progress",
+  pastPractice.problems.find((problem) => problem.problemId === "p2")!.mine!.solved,
+  true
+);
+check(
+  "past practice progress includes contest and practice solves",
+  pastPractice.totals.solvedByViewer,
+  2
+);
+
 // Viewer specifics are never frozen.
 const viewer = frozen.problems.find((p) => p.problemId === "p1")!;
 check("viewer sees own solve", viewer.mine!.solved, true);
@@ -144,7 +171,90 @@ check("problem A attempted by", viewer.attemptedCount, 3);
 check("viewer's own runs listed", frozen.mySubmissions.length, 6);
 check("newest run first", frozen.mySubmissions[0].atMin, 70);
 
+console.log("\n--- contest access ---");
+check(
+  "joined contestant opens a live problem in contest mode",
+  contestProblemHref({
+    phase: "RUNNING",
+    registered: true,
+    contestId: "contest-1",
+    problemId: "problem-a",
+  }),
+  "/problems/problem-a?contest=contest-1"
+);
+check(
+  "unregistered contestant cannot open a live problem",
+  contestProblemHref({
+    phase: "RUNNING",
+    registered: false,
+    contestId: "contest-1",
+    problemId: "problem-a",
+  }),
+  null
+);
+check(
+  "past problem always opens as normal practice",
+  contestProblemHref({
+    phase: "ENDED",
+    registered: false,
+    contestId: "contest-1",
+    problemId: "problem-a",
+  }),
+  "/problems/problem-a"
+);
+check(
+  "problems stay locked before the start",
+  contestProblemHref({
+    phase: "BEFORE",
+    registered: true,
+    contestId: "contest-1",
+    problemId: "problem-a",
+  }),
+  null
+);
+check(
+  "joined user may submit a listed problem during a live contest",
+  contestSubmissionError({
+    contestOpen: true,
+    contestEnded: false,
+    problemIncluded: true,
+    registered: true,
+  }),
+  null
+);
+check(
+  "live contest rejects users who did not join",
+  contestSubmissionError({
+    contestOpen: true,
+    contestEnded: false,
+    problemIncluded: true,
+    registered: false,
+  }),
+  "Register for the contest first"
+);
+check(
+  "live contest rejects a problem outside its exam",
+  contestSubmissionError({
+    contestOpen: true,
+    contestEnded: false,
+    problemIncluded: false,
+    registered: true,
+  }),
+  "This problem is not part of the contest"
+);
+check(
+  "ended contest sends submissions to practice mode",
+  contestSubmissionError({
+    contestOpen: false,
+    contestEnded: true,
+    problemIncluded: true,
+    registered: true,
+  }),
+  "This contest has ended — reopen the problem from the past contest to practise."
+);
+
 console.log(
   process.exitCode === 1 ? "\nSOME CHECKS FAILED" : "\nAll scoring checks passed."
 );
+
 
