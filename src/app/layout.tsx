@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Syne, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -46,24 +47,21 @@ export default function RootLayout({
         <div className="min-h-screen">
           <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_85%,transparent)] backdrop-blur-md">
             <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-              <a href="/" className="group flex items-baseline gap-2">
+              <Link href="/" className="group flex items-baseline gap-2">
                 <span className="font-display text-xl font-extrabold tracking-tight sm:text-2xl">
                   Contest<span className="text-[var(--accent)]">Hub</span>
                 </span>
                 <span className="hidden text-xs text-[var(--muted)] sm:inline">
                   C · no login · instant judge
                 </span>
-              </a>
+              </Link>
               <nav className="flex items-center gap-3 text-sm text-[var(--muted)]">
-                <a href="/sets" className="hover:text-[var(--text)] transition-colors">
+                <Link href="/sets" className="transition-colors hover:text-[var(--text)]">
                   Sets
-                </a>
-                <a
-                  href="/sets/1"
-                  className="btn btn-primary !py-2 !px-3 !text-xs"
-                >
+                </Link>
+                <Link href="/sets/1" className="btn btn-primary !px-3 !py-2 !text-xs">
                   Start Set 1
-                </a>
+                </Link>
               </nav>
             </div>
           </header>

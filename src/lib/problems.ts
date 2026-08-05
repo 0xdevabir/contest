@@ -20,9 +20,12 @@ export function getProblem(id: string): Problem | undefined {
 }
 
 export function getAllProblemIds(): string[] {
-  return Object.keys(getBank().problems);
+  return Object.values(getBank().problems)
+    .sort((a, b) => a.set - b.set || a.question - b.question)
+    .map((p) => p.id);
 }
 
 export function getMeta() {
   return getBank().meta;
 }
+

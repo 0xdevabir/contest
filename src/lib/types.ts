@@ -83,4 +83,8 @@ export type JudgeResponse = {
   compileStderr?: string;
   results: TestResult[];
   message?: string;
+  stdout?: string;
+  stderr?: string;
+  timeMs?: number;
 };
+
