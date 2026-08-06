@@ -234,10 +234,14 @@ export function SiteChrome({
             ))}
           </div>
           <hr className="rule my-8" />
-          <div className="flex flex-col justify-between gap-3 font-mono text-[11px] text-[var(--muted-dim)] sm:flex-row">
+          <div className="flex flex-col justify-between gap-3 font-mono text-[11px] text-[var(--muted-dim)] sm:flex-row sm:items-center">
             <span>
               © {new Date().getFullYear()} {BRAND.name} · {BRAND.university}
             </span>
+            <p className="tracking-[0.01em]">
+              Built & maintained by{" "}
+              <span className="font-medium text-[var(--muted)]">{BRAND.developer}</span>
+            </p>
             <span>DIU · NSU · AIUB · BRAC</span>
           </div>
         </div>
@@ -264,3 +268,4 @@ function MobileLogout() {
     </button>
   );
 }
+

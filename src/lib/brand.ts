@@ -85,9 +85,11 @@ export const BRAND = {
   productionSiteUrl: PRODUCTION_SITE_URL,
   twitterHandle: "@diucontesthub",
   supportEmail: "noreply@diucode.devabir.me",
+  developer: "MD ABIR HOSSAIN",
   locale: "en_US",
   language: "en",
   country: "BD",
 } as const;
 
 export type BrandKeyword = (typeof BRAND.keywords)[number];
+
