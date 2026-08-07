@@ -25,7 +25,19 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true, message: "Already verified" });
       }
       const token = await createAuthToken(user.id, "EMAIL_VERIFY", 1000 * 60 * 60 * 24);
-      await sendVerifyEmail(user.email, user.name, token);
+      try {
+        await sendVerifyEmail(user.email, user.name, token);
+      } catch (err) {
+        console.error("verify email mail failed", err);
+        return NextResponse.json(
+          {
+            ok: false,
+            message:
+              "Could not send the verification email. Check SMTP settings and try again.",
+          },
+          { status: 503 }
+        );
+      }
       return NextResponse.json({ ok: true, message: "Verification email sent" });
     }
 
@@ -36,24 +48,49 @@ export async function POST(req: Request) {
 
     const email = parsed.data.email.toLowerCase();
     const user = await prisma.user.findUnique({ where: { email } });
-    // Always succeed to avoid email enumeration
-    if (user) {
-      const recentCode = await prisma.authToken.findFirst({
-        where: {
-          userId: user.id,
-          type: "PASSWORD_RESET",
-          createdAt: { gt: new Date(Date.now() - 1000 * 60) },
-          expiresAt: { gt: new Date() },
-        },
+    // Unknown emails still look like success so accounts cannot be probed.
+    if (!user) {
+      return NextResponse.json({
+        ok: true,
+        message: "If that email exists, an 8-digit reset code was sent.",
       });
-      if (!recentCode) {
-        const code = await createPasswordResetCode(user.id);
-        try {
-          await sendPasswordResetCode(user.email, user.name, code);
-        } catch (err) {
-          console.error("reset code mail failed", err);
-        }
-      }
+    }
+
+    const recentCode = await prisma.authToken.findFirst({
+      where: {
+        userId: user.id,
+        type: "PASSWORD_RESET",
+        createdAt: { gt: new Date(Date.now() - 1000 * 60) },
+        expiresAt: { gt: new Date() },
+      },
+    });
+    if (recentCode) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "Please wait about a minute before requesting another code.",
+        },
+        { status: 429 }
+      );
+    }
+
+    const code = await createPasswordResetCode(user.id);
+    try {
+      await sendPasswordResetCode(user.email, user.name, code);
+    } catch (err) {
+      console.error("reset code mail failed", err);
+      // Burn the unused code so a later retry can mint a fresh one immediately.
+      await prisma.authToken
+        .deleteMany({ where: { userId: user.id, type: "PASSWORD_RESET" } })
+        .catch(() => undefined);
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "Could not send the reset email. The mail server rejected the request — check SMTP credentials and try again.",
+        },
+        { status: 503 }
+      );
     }
 
     return NextResponse.json({
@@ -65,4 +102,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, message: "Request failed" }, { status: 500 });
   }
 }
-

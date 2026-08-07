@@ -25,13 +25,24 @@ export async function sendMail(opts: {
 }) {
   const from = process.env.SMTP_FROM || process.env.SMTP_USER!;
   const tx = transporter();
-  await tx.sendMail({
-    from,
-    to: opts.to,
-    subject: opts.subject,
-    html: opts.html,
-    text: opts.text,
-  });
+  try {
+    await tx.sendMail({
+      from,
+      to: opts.to,
+      subject: opts.subject,
+      html: opts.html,
+      text: opts.text,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    // Surface auth failures clearly — silent catch higher up used to look like success.
+    if (/Invalid login|EAUTH|535/i.test(message)) {
+      throw new Error(
+        "SMTP login was rejected. Use a real mailbox on SMTP_USER and an app password on SMTP_PASS."
+      );
+    }
+    throw err;
+  }
 }
 
 export function appUrl(path = "") {
@@ -75,5 +86,6 @@ export async function sendPasswordResetCode(to: string, name: string, code: stri
     html: `<p>Hi ${safeName},</p><p>Use this code to reset your ${BRAND.name} password:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${safeCode}</p><p>This code expires in 10 minutes. If you did not request this, ignore the email.</p>`,
   });
 }
+
 
 

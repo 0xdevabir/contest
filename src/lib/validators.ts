@@ -31,6 +31,11 @@ export const forgotSchema = z.object({
   email: z.string().trim().email(),
 });
 
+export const verifyResetCodeSchema = z.object({
+  email: z.string().trim().email(),
+  code: z.string().trim().regex(/^\d{8}$/, "Enter the 8-digit code"),
+});
+
 export const resetSchema = z.object({
   email: z.string().trim().email(),
   code: z.string().trim().regex(/^\d{8}$/, "Enter the 8-digit code"),

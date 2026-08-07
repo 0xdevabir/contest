@@ -59,6 +59,30 @@ export async function createPasswordResetCode(userId: string) {
   return code;
 }
 
+function matchesPasswordResetCode(
+  userId: string,
+  code: string,
+  storedHash: string
+) {
+  const expected = Buffer.from(storedHash, "hex");
+  const actual = Buffer.from(hashToken(`${userId}:${code}`), "hex");
+  return expected.length === actual.length && timingSafeEqual(expected, actual);
+}
+
+/** Confirm the code is valid without burning it — used between the OTP and password steps. */
+export async function verifyPasswordResetCode(userId: string, code: string) {
+  const row = await prisma.authToken.findFirst({
+    where: { userId, type: "PASSWORD_RESET" },
+    orderBy: { createdAt: "desc" },
+  });
+  if (!row) return false;
+  if (row.expiresAt.getTime() < Date.now()) {
+    await prisma.authToken.delete({ where: { id: row.id } }).catch(() => undefined);
+    return false;
+  }
+  return matchesPasswordResetCode(userId, code, row.token);
+}
+
 export async function consumePasswordResetCode(userId: string, code: string) {
   const row = await prisma.authToken.findFirst({
     where: { userId, type: "PASSWORD_RESET" },
@@ -70,9 +94,7 @@ export async function consumePasswordResetCode(userId: string, code: string) {
     return false;
   }
 
-  const expected = Buffer.from(row.token, "hex");
-  const actual = Buffer.from(hashToken(`${userId}:${code}`), "hex");
-  if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
+  if (!matchesPasswordResetCode(userId, code, row.token)) {
     return false;
   }
 
@@ -91,4 +113,5 @@ export async function consumeAuthToken(token: string, type: TokenType) {
   await prisma.authToken.delete({ where: { id: row.id } });
   return row.userId;
 }
+
 
