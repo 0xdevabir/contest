@@ -1,4 +1,3 @@
-import { execSync } from "node:child_process";
 import { beforeAll, afterAll, afterEach } from "vitest";
 
 /**
@@ -16,14 +15,23 @@ if (hasTestDb) {
   process.env.DIRECT_URL = process.env.TEST_DATABASE_URL;
 }
 
+// Vite's config loader reads .env into process.env for every test file
+// regardless of mode. A developer's real RUNNER_TOKEN/NEXT_PUBLIC_RUNNER_URL
+// (or JUDGE0_URL) would otherwise make src/lib/judge.ts's compileAndJudge()
+// reach out to a real external judge during the test run — never hermetic,
+// and exactly what F-1/F-2's local-judge-path tests are not meant to hit.
+delete process.env.NEXT_PUBLIC_RUNNER_URL;
+delete process.env.RUNNER_TOKEN;
+delete process.env.JUDGE0_URL;
+
 let prismaModule: typeof import("@/lib/db") | undefined;
 
 beforeAll(async () => {
+  // Migrations run once for the whole run in tests/global-setup.ts, not here
+  // — running `prisma migrate deploy` per test file was slow enough to blow
+  // past the per-file hook timeout once more than a couple of files needed
+  // the DB.
   if (!hasTestDb) return;
-  execSync("npx prisma migrate deploy", {
-    stdio: "inherit",
-    env: { ...process.env },
-  });
   prismaModule = await import("@/lib/db");
 });
 
@@ -36,6 +44,9 @@ beforeAll(async () => {
 export async function resetDb(): Promise<void> {
   if (!prismaModule) return;
   const { prisma } = prismaModule;
+  // Same isolated-registry issue as $disconnect above: a file that mocks
+  // "@/lib/db" gets a stub here with only the models it mocked.
+  if (typeof prisma.submission?.deleteMany !== "function") return;
   await prisma.$transaction([
     prisma.submission.deleteMany(),
     prisma.solvedProblem.deleteMany(),
@@ -54,6 +65,9 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
-  if (!prismaModule) return;
+  // A test file that mocks "@/lib/db" (e.g. src/lib/leaderboard.test.ts)
+  // replaces this module in its own isolated registry, including the copy
+  // this setup file sees — guard rather than assume the real client.
+  if (!prismaModule || typeof prismaModule.prisma.$disconnect !== "function") return;
   await prismaModule.prisma.$disconnect();
 });

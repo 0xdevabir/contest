@@ -109,7 +109,13 @@ Measured against the repo at commit `b7ee204`, ~16,700 lines of TypeScript/TSX.
 These are not roadmap items; they are defects. **Phase 0 fixes all four before any
 feature work.** Listed most severe first.
 
-### F-1 — Untrusted student code inherits the server's entire environment (High)
+> **Status**: F-1, F-2, and F-4 are resolved as of Phase 0. F-3 is partially
+> resolved (OOM → `MLE` detection lands in Phase 0; per-run memory accounting
+> is Phase 3). See [PHASE-00](phases/PHASE-00-foundation.md) for the fixes and
+> their permanent regression tests (`src/lib/judge.test.ts`,
+> `tests/integration/judge-route.test.ts`, `tests/golden/`).
+
+### F-1 — Untrusted student code inherits the server's entire environment (High) — RESOLVED (Phase 0)
 
 `src/lib/judge.ts` → `runProcess()` spawns with `env: process.env`. The compiled
 student binary therefore has `DATABASE_URL`, `AUTH_SECRET`, `SMTP_PASS`,
@@ -133,7 +139,7 @@ submits.
 make the in-process local judge refuse to start unless
 `ALLOW_INSECURE_LOCAL_JUDGE=1` is set, so production cannot silently fall into it.
 
-### F-2 — Anonymous, unauthenticated, unmetered code execution (High)
+### F-2 — Anonymous, unauthenticated, unmetered code execution (High) — RESOLVED (Phase 0)
 
 `POST /api/judge` with `mode: "run"` executes arbitrary submitted code **before
 any session check** and with no rate limit, no per-IP quota, and no captcha. Same
@@ -146,7 +152,7 @@ run holds a Node worker for up to the time limit.
 concurrency cap on anonymous runs, shorter limits for anonymous work, and
 anonymous jobs at the back of the queue once Phase 4 lands.
 
-### F-3 — `MLE` is a verdict the judge can never produce (Medium)
+### F-3 — `MLE` is a verdict the judge can never produce (Medium) — PARTIALLY RESOLVED (Phase 0; complete in Phase 3)
 
 `Verdict.MLE` exists in the Prisma enum, is rendered in `ProblemWorkspace.tsx`,
 `ContestDashboard.tsx`, admin filters, and is even advertised in the marketing
@@ -159,7 +165,7 @@ debugging the wrong thing.
 `memory.events` / `oom_kill` counter after each run and map to `MLE`; thread
 `memoryLimitMb` from the problem through to the sandbox.
 
-### F-4 — Only the first test's telemetry is persisted (Medium)
+### F-4 — Only the first test's telemetry is persisted (Medium) — RESOLVED (Phase 0)
 
 `persistSubmission()` in `api/judge/route.ts` writes `result.results[0]`'s
 `timeMs`/`stdout`/`stderr`. On an `AC` over 20 tests, the recorded time is test 1's

@@ -15,7 +15,7 @@
     "db:push:danger": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
-    "test": "vitest run --exclude tests/golden/**",
+    "test": "vitest run --exclude \"tests/golden/**\"",
     "test:watch": "vitest",
     "test:golden": "vitest run tests/golden",
     "typecheck": "tsc --noEmit",

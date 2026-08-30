@@ -1,0 +1,47 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: test, POSTGRES_DB: contesthub_test }
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+        ports: ["5432:5432"]
+    env:
+      # DATABASE_URL/DIRECT_URL are required directly — `prisma migrate deploy`
+      # and `next build` (via prisma generate) both read the datasource block's
+      # env() calls, not TEST_DATABASE_URL. tests/global-setup.ts also copies
+      # TEST_DATABASE_URL into these two at test time for local/dev parity, but
+      # `npx prisma migrate deploy` and `npm run build` here run outside vitest
+      # entirely, so they need the real vars set at the job level.
+      DATABASE_URL: postgresql://postgres:test@localhost:5432/contesthub_test
+      DIRECT_URL: postgresql://postgres:test@localhost:5432/contesthub_test
+      TEST_DATABASE_URL: postgresql://postgres:test@localhost:5432/contesthub_test
+      AUTH_SECRET: test-secret-not-used-anywhere-real
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx prisma migrate deploy
+      - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npm run test -- --coverage
+      - run: npm run build
+
+  judge-conformance:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || contains(github.event.head_commit.message, '[judge]')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: docker build -t contest-hub-sandbox -f runner/sandbox.Dockerfile runner/
+      - run: npm ci && npm run test:golden

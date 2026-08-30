@@ -41,7 +41,6 @@ describe.skipIf(!hasDocker)("judge conformance (Docker sandbox)", () => {
   beforeAll(async () => {
     sandboxReady = await imageExists();
     if (!sandboxReady) {
-      // eslint-disable-next-line no-console
       console.warn(
         "contest-hub-sandbox image not found — build it with `npm run build:image` in runner/ to run the golden suite."
       );
