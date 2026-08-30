@@ -86,7 +86,17 @@ export type JudgeVerdict =
   | "TLE"
   | "MLE"
   | "SKIP"
-  | "ERROR";
+  | "ERROR"
+  /** Partial credit — reserved for Phase 3's group/subtask scoring. */
+  | "PA"
+  /** Output limit exceeded — reserved for Phase 3. */
+  | "OLE"
+  /** Judge infrastructure fault (never the submitter's fault); always retried. */
+  | "IE"
+  /** Queued, not yet picked up — reserved for Phase 4's async queue. */
+  | "PENDING"
+  /** A worker has claimed it — reserved for Phase 4's async queue. */
+  | "JUDGING";
 
 export type TestResult = {
   index: number;

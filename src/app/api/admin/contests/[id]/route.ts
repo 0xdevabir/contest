@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
+import { assertCan } from "@/lib/authz";
+import { toResponse, ValidationError, NotFoundError, ConflictError } from "@/lib/errors";
 import { contestRulesSchema, defaultContestRules } from "@/lib/validators";
 import { getProblem } from "@/lib/problems";
 import { recordAdminAction } from "@/lib/admin-audit";
@@ -24,7 +26,8 @@ const patchSchema = z.object({
 
 export async function GET(_req: Request, { params }: Params) {
   try {
-    await requireAdmin();
+    const session = await getSession();
+    assertCan(session, "system:admin");
     const { id } = await params;
     const contest = await prisma.contest.findUnique({
       where: { id },
@@ -33,48 +36,34 @@ export async function GET(_req: Request, { params }: Params) {
         _count: { select: { registrations: true, submissions: true } },
       },
     });
-    if (!contest) {
-      return NextResponse.json({ ok: false, message: "Not found" }, { status: 404 });
-    }
+    if (!contest) throw new NotFoundError();
     return NextResponse.json({ ok: true, contest });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "";
-    if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
-      return NextResponse.json({ ok: false, message: msg }, { status: msg === "UNAUTHORIZED" ? 401 : 403 });
-    }
-    return NextResponse.json({ ok: false, message: "Failed" }, { status: 500 });
+    return toResponse(err);
   }
 }
 
 export async function PATCH(req: Request, { params }: Params) {
   try {
-    const admin = await requireAdmin();
+    const session = await getSession();
+    assertCan(session, "system:admin");
+    const admin = session;
     const { id } = await params;
     const body = await req.json();
     const parsed = patchSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json({ ok: false, message: "Invalid data" }, { status: 400 });
-    }
+    if (!parsed.success) throw new ValidationError("Invalid data");
 
     const existing = await prisma.contest.findUnique({ where: { id } });
-    if (!existing) {
-      return NextResponse.json({ ok: false, message: "Not found" }, { status: 404 });
-    }
+    if (!existing) throw new NotFoundError();
 
     const data = parsed.data;
     if (data.problemIds) {
       const invalidProblem = data.problemIds.find((problemId) => !getProblem(problemId));
       if (invalidProblem) {
-        return NextResponse.json(
-          { ok: false, message: `Unknown problem: ${invalidProblem}` },
-          { status: 400 }
-        );
+        throw new ValidationError(`Unknown problem: ${invalidProblem}`);
       }
       if (new Set(data.problemIds).size !== data.problemIds.length) {
-        return NextResponse.json(
-          { ok: false, message: "A problem can only be added once" },
-          { status: 400 }
-        );
+        throw new ValidationError("A problem can only be added once");
       }
     }
     let status = data.status ?? existing.status;
@@ -104,14 +93,11 @@ export async function PATCH(req: Request, { params }: Params) {
     } else if (data.action === "schedule") {
       status = "SCHEDULED";
       if (!startsAt) {
-        return NextResponse.json({ ok: false, message: "startsAt required to schedule" }, { status: 400 });
+        throw new ValidationError("startsAt required to schedule");
       }
     }
     if (startsAt && endsAt && endsAt <= startsAt) {
-      return NextResponse.json(
-        { ok: false, message: "End time must be after start time" },
-        { status: 400 }
-      );
+      throw new ValidationError("End time must be after start time");
     }
 
     const rules = data.rules
@@ -161,31 +147,23 @@ export async function PATCH(req: Request, { params }: Params) {
 
     return NextResponse.json({ ok: true, contest });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "";
-    if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
-      return NextResponse.json({ ok: false, message: msg }, { status: msg === "UNAUTHORIZED" ? 401 : 403 });
-    }
-    console.error(err);
-    return NextResponse.json({ ok: false, message: "Update failed" }, { status: 500 });
+    return toResponse(err);
   }
 }
 
 export async function DELETE(_req: Request, { params }: Params) {
   try {
-    const admin = await requireAdmin();
+    const session = await getSession();
+    assertCan(session, "system:admin");
+    const admin = session;
     const { id } = await params;
     const contest = await prisma.contest.findUnique({
       where: { id },
       select: { status: true },
     });
-    if (!contest) {
-      return NextResponse.json({ ok: false, message: "Not found" }, { status: 404 });
-    }
+    if (!contest) throw new NotFoundError();
     if (contest.status === "LIVE") {
-      return NextResponse.json(
-        { ok: false, message: "End the live contest before deleting it" },
-        { status: 409 }
-      );
+      throw new ConflictError("End the live contest before deleting it");
     }
     await prisma.contest.delete({ where: { id } });
     await recordAdminAction({
@@ -197,13 +175,6 @@ export async function DELETE(_req: Request, { params }: Params) {
     });
     return NextResponse.json({ ok: true });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "";
-    if (msg === "UNAUTHORIZED" || msg === "FORBIDDEN") {
-      return NextResponse.json({ ok: false, message: msg }, { status: msg === "UNAUTHORIZED" ? 401 : 403 });
-    }
-    return NextResponse.json({ ok: false, message: "Delete failed" }, { status: 500 });
+    return toResponse(err);
   }
 }
-
-
-

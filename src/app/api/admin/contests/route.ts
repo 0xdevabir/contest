@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
+import { assertCan } from "@/lib/authz";
+import { toResponse, ValidationError } from "@/lib/errors";
 import { defaultContestRules, contestRulesSchema } from "@/lib/validators";
 import { slugify } from "@/lib/contests";
 import { getProblem } from "@/lib/problems";
@@ -21,7 +23,8 @@ const createSchema = z.object({
 
 export async function GET() {
   try {
-    await requireAdmin();
+    const session = await getSession();
+    assertCan(session, "system:admin");
     const contests = await prisma.contest.findMany({
       orderBy: { createdAt: "desc" },
       include: {
@@ -30,51 +33,34 @@ export async function GET() {
     });
     return NextResponse.json({ ok: true, contests });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "";
-    if (msg === "UNAUTHORIZED") {
-      return NextResponse.json({ ok: false, message: "Login required" }, { status: 401 });
-    }
-    if (msg === "FORBIDDEN") {
-      return NextResponse.json({ ok: false, message: "Admin only" }, { status: 403 });
-    }
-    console.error(err);
-    return NextResponse.json({ ok: false, message: "Failed to list contests" }, { status: 500 });
+    return toResponse(err);
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const admin = await requireAdmin();
+    const session = await getSession();
+    assertCan(session, "system:admin");
+    const admin = session;
+
     const body = await req.json();
     const parsed = createSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json(
-        { ok: false, message: "Invalid contest data", issues: parsed.error.flatten() },
-        { status: 400 }
-      );
+      throw new ValidationError("Invalid contest data", parsed.error.flatten());
     }
 
     const data = parsed.data;
     const invalidProblem = data.problemIds.find((problemId) => !getProblem(problemId));
     if (invalidProblem) {
-      return NextResponse.json(
-        { ok: false, message: `Unknown problem: ${invalidProblem}` },
-        { status: 400 }
-      );
+      throw new ValidationError(`Unknown problem: ${invalidProblem}`);
     }
     if (new Set(data.problemIds).size !== data.problemIds.length) {
-      return NextResponse.json(
-        { ok: false, message: "A problem can only be added once" },
-        { status: 400 }
-      );
+      throw new ValidationError("A problem can only be added once");
     }
     const startDate = data.startsAt ? new Date(data.startsAt) : null;
     const endDate = data.endsAt ? new Date(data.endsAt) : null;
     if (startDate && endDate && endDate <= startDate) {
-      return NextResponse.json(
-        { ok: false, message: "End time must be after start time" },
-        { status: 400 }
-      );
+      throw new ValidationError("End time must be after start time");
     }
     let slug = slugify(data.title);
     if (!slug) slug = `contest-${Date.now().toString(36)}`;
@@ -116,16 +102,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, contest });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "";
-    if (msg === "UNAUTHORIZED") {
-      return NextResponse.json({ ok: false, message: "Login required" }, { status: 401 });
-    }
-    if (msg === "FORBIDDEN") {
-      return NextResponse.json({ ok: false, message: "Admin only" }, { status: 403 });
-    }
-    console.error(err);
-    return NextResponse.json({ ok: false, message: "Create failed" }, { status: 500 });
+    return toResponse(err);
   }
 }
-
-

@@ -77,6 +77,31 @@ const VERDICT: Record<JudgeVerdict, { title: string; hint: string; tone: Tone }>
     hint: "The judge could not finish. Try again in a moment.",
     tone: "warn",
   },
+  PA: {
+    title: "Partial credit",
+    hint: "Some test groups passed and others did not.",
+    tone: "warn",
+  },
+  OLE: {
+    title: "Too much output",
+    hint: "Your program printed far more than expected. Check for a runaway loop.",
+    tone: "warn",
+  },
+  IE: {
+    title: "Judge unavailable",
+    hint: "The judge is not configured. Try again later or contact an admin.",
+    tone: "warn",
+  },
+  PENDING: {
+    title: "Queued",
+    hint: "Your submission is waiting to be judged.",
+    tone: "warn",
+  },
+  JUDGING: {
+    title: "Judging",
+    hint: "Your submission is being judged now.",
+    tone: "warn",
+  },
 };
 
 function toneText(tone: Tone) {

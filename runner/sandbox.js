@@ -202,6 +202,24 @@ export class Sandbox {
     return res;
   }
 
+  /**
+   * Whether the container's cgroup OOM-killed the last process that ran in
+   * it. `docker inspect --format '{{.State.OOMKilled}}'` reflects the whole
+   * container's state, not one specific run, so with this pooled/reused
+   * container this is only reliable while a single run is in flight (which is
+   * how `runBatch` is always used — one run at a time, checked immediately
+   * after). Phase 3 replaces this with per-run cgroup `memory.events` reads,
+   * which are exact regardless of pooling.
+   */
+  async wasOomKilled() {
+    const res = await run(
+      "docker",
+      ["inspect", "-f", "{{.State.OOMKilled}}", this.name],
+      { timeoutMs: 5_000 }
+    );
+    return res.stdout.trim() === "true";
+  }
+
   /** SIGKILL anything still executing without tearing down the container. */
   async killProgram() {
     await run("docker", ["exec", this.name, "pkill", "-9", "-f", "/work/main"], {

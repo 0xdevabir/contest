@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
+import { assertCan } from "@/lib/authz";
+import { toResponse, ValidationError, NotFoundError, ConflictError } from "@/lib/errors";
 import { recordAdminAction } from "@/lib/admin-audit";
 
 export const runtime = "nodejs";
@@ -18,30 +20,24 @@ const updateSchema = z
 
 export async function PATCH(request: Request, { params }: Params) {
   try {
-    const admin = await requireAdmin();
+    const session = await getSession();
+    assertCan(session, "user:manage");
+    const admin = session;
     const { id } = await params;
     const parsed = updateSchema.safeParse(await request.json());
     if (!parsed.success) {
-      return NextResponse.json(
-        { ok: false, message: "Invalid user update" },
-        { status: 400 }
-      );
+      throw new ValidationError("Invalid user update");
     }
 
     const target = await prisma.user.findUnique({
       where: { id },
       select: { id: true, email: true, role: true, status: true },
     });
-    if (!target) {
-      return NextResponse.json({ ok: false, message: "User not found" }, { status: 404 });
-    }
+    if (!target) throw new NotFoundError("User not found");
 
     const data = parsed.data;
     if (id === admin.id && (data.role === "USER" || data.status === "SUSPENDED")) {
-      return NextResponse.json(
-        { ok: false, message: "You cannot demote or suspend your own account" },
-        { status: 409 }
-      );
+      throw new ConflictError("You cannot demote or suspend your own account");
     }
 
     if (
@@ -52,10 +48,7 @@ export async function PATCH(request: Request, { params }: Params) {
         where: { role: "ADMIN", status: "ACTIVE" },
       });
       if (adminCount <= 1) {
-        return NextResponse.json(
-          { ok: false, message: "At least one active administrator is required" },
-          { status: 409 }
-        );
+        throw new ConflictError("At least one active administrator is required");
       }
     }
 
@@ -90,46 +83,32 @@ export async function PATCH(request: Request, { params }: Params) {
     });
 
     return NextResponse.json({ ok: true, user });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "";
-    if (message === "UNAUTHORIZED" || message === "FORBIDDEN") {
-      return NextResponse.json(
-        { ok: false, message: "Admin access required" },
-        { status: message === "UNAUTHORIZED" ? 401 : 403 }
-      );
-    }
-    console.error(error);
-    return NextResponse.json({ ok: false, message: "User update failed" }, { status: 500 });
+  } catch (err) {
+    return toResponse(err);
   }
 }
 
 export async function DELETE(_request: Request, { params }: Params) {
   try {
-    const admin = await requireAdmin();
+    const session = await getSession();
+    assertCan(session, "user:manage");
+    const admin = session;
     const { id } = await params;
     if (id === admin.id) {
-      return NextResponse.json(
-        { ok: false, message: "You cannot delete your own account" },
-        { status: 409 }
-      );
+      throw new ConflictError("You cannot delete your own account");
     }
 
     const target = await prisma.user.findUnique({
       where: { id },
       select: { id: true, email: true, role: true },
     });
-    if (!target) {
-      return NextResponse.json({ ok: false, message: "User not found" }, { status: 404 });
-    }
+    if (!target) throw new NotFoundError("User not found");
     if (target.role === "ADMIN") {
       const adminCount = await prisma.user.count({
         where: { role: "ADMIN", status: "ACTIVE" },
       });
       if (adminCount <= 1) {
-        return NextResponse.json(
-          { ok: false, message: "The last active administrator cannot be deleted" },
-          { status: 409 }
-        );
+        throw new ConflictError("The last active administrator cannot be deleted");
       }
     }
 
@@ -143,15 +122,7 @@ export async function DELETE(_request: Request, { params }: Params) {
     });
 
     return NextResponse.json({ ok: true });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "";
-    if (message === "UNAUTHORIZED" || message === "FORBIDDEN") {
-      return NextResponse.json(
-        { ok: false, message: "Admin access required" },
-        { status: message === "UNAUTHORIZED" ? 401 : 403 }
-      );
-    }
-    console.error(error);
-    return NextResponse.json({ ok: false, message: "User deletion failed" }, { status: 500 });
+  } catch (err) {
+    return toResponse(err);
   }
 }

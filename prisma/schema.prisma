@@ -3,8 +3,11 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Neon's pooled connection (DATABASE_URL) cannot run DDL; migrations need
+  // the direct connection. Point both at the same URL for a non-pooled setup.
+  directUrl = env("DIRECT_URL")
 }
 
 enum Role {
@@ -45,6 +48,16 @@ enum Verdict {
   MLE
   SKIP
   ERROR
+  /// Partial credit — reserved for Phase 3's group/subtask scoring.
+  PA
+  /// Output limit exceeded — reserved for Phase 3.
+  OLE
+  /// Judge infrastructure fault (never the submitter's fault); always retried.
+  IE
+  /// Queued, not yet picked up — reserved for Phase 4's async queue.
+  PENDING
+  /// A worker has claimed it — reserved for Phase 4's async queue.
+  JUDGING
 }
 
 model User {
@@ -173,6 +186,9 @@ model Submission {
   timeMs    Int?
   stdout    String?
   stderr    String?
+  /// Full per-test judge report (all verdicts, times, stdout/stderr per test).
+  /// Nullable and additive — Phase 3 normalises the shape into JudgeReport.
+  report    Json?
   createdAt DateTime @default(now())
 
   user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -197,5 +213,14 @@ model SolvedProblem {
   @@index([problemId])
 }
 
-
+/// Per-flag rollout config, resolved by src/lib/flags.ts. Env var
+/// FLAGS_<SCREAMING_SNAKE> overrides this row when present.
+model FeatureFlag {
+  key            String   @id
+  enabled        Boolean  @default(false)
+  rolloutPercent Int      @default(0)
+  allowRoles     String[] @default([])
+  note           String   @default("")
+  updatedAt      DateTime @updatedAt
+}
 

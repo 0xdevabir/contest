@@ -4,9 +4,64 @@ import { tmpdir } from "os";
 import path from "path";
 import type { JudgeVerdict, TestCase, TestResult } from "./types";
 import { remoteJudgeUrl, runRemote, verdictFromStatus } from "./remote-judge";
+import { log } from "./log";
 
 const MAX_CODE_BYTES = 100_000;
-const MAX_OUTPUT_BYTES = 1_000_000;
+export const MAX_OUTPUT_BYTES = 1_000_000;
+
+/**
+ * Untrusted code gets nothing from our environment. PATH is needed to exec
+ * the compiler/binary, LANG/LC_ALL keep locale-dependent formatting (e.g.
+ * printf of floats) stable across machines, HOME gives libc a writable-looking
+ * home dir some toolchains probe for. Nothing secret-shaped is here.
+ *
+ * Fixes: a submitted program run with `env: process.env` could read every
+ * secret the server holds (DATABASE_URL, AUTH_SECRET, SMTP_PASS, ...) via
+ * `getenv()` and return it as its own stdout. See docs/ULTIMATE_PLAN.md §3 F-1.
+ */
+const SANDBOX_ENV: NodeJS.ProcessEnv = {
+  NODE_ENV: process.env.NODE_ENV,
+  PATH: "/usr/local/bin:/usr/bin:/bin",
+  LANG: "C.UTF-8",
+  LC_ALL: "C.UTF-8",
+  HOME: "/tmp",
+};
+
+let warnedInsecureLocalJudge = false;
+
+/**
+ * The in-process compile-and-run path has none of the sandbox's network
+ * isolation, memory caps, or filesystem restrictions — it is only safe for
+ * local development. Production must go through the Docker runner or a
+ * remote judge; if neither is configured this returns false and callers
+ * refuse to judge instead of silently falling back to the insecure path.
+ */
+export function localJudgeAllowed(): boolean {
+  if (process.env.ALLOW_INSECURE_LOCAL_JUDGE === "1") return true;
+  if (process.env.NODE_ENV === "production") {
+    if (!warnedInsecureLocalJudge) {
+      warnedInsecureLocalJudge = true;
+      log.error(
+        "Judge misconfigured: no runner/remote judge configured and ALLOW_INSECURE_LOCAL_JUDGE is not set in production. Refusing to compile untrusted code in-process."
+      );
+    }
+    return false;
+  }
+  return true;
+}
+
+function judgeNotConfigured(): {
+  verdict: JudgeVerdict;
+  compileStderr?: string;
+  results: TestResult[];
+  message: string;
+} {
+  return {
+    verdict: "IE",
+    results: [],
+    message: "Judge is not configured.",
+  };
+}
 
 function normalizeOutput(s: string): string {
   return s.replace(/\r\n/g, "\n").replace(/\s+$/g, "").replace(/[ \t]+$/gm, "");
@@ -23,6 +78,7 @@ function runProcess(
     cwd?: string;
     input?: string;
     timeoutMs: number;
+    maxOutputBytes?: number;
   }
 ): Promise<{
   code: number | null;
@@ -32,11 +88,12 @@ function runProcess(
   spawnFailed: boolean;
   wallMs: number;
 }> {
+  const cap = opts.maxOutputBytes ?? MAX_OUTPUT_BYTES;
   return new Promise((resolve) => {
     const started = Date.now();
     const child = spawn(cmd, args, {
       cwd: opts.cwd,
-      env: process.env,
+      env: SANDBOX_ENV,
       stdio: ["pipe", "pipe", "pipe"],
     });
 
@@ -52,15 +109,15 @@ function runProcess(
     }, opts.timeoutMs);
 
     child.stdout.on("data", (chunk: Buffer) => {
-      if (stdout.length < MAX_OUTPUT_BYTES) {
+      if (stdout.length < cap) {
         stdout += chunk.toString("utf8");
-        if (stdout.length > MAX_OUTPUT_BYTES) {
-          stdout = stdout.slice(0, MAX_OUTPUT_BYTES);
+        if (stdout.length > cap) {
+          stdout = stdout.slice(0, cap);
         }
       }
     });
     child.stderr.on("data", (chunk: Buffer) => {
-      if (stderr.length < MAX_OUTPUT_BYTES) {
+      if (stderr.length < cap) {
         stderr += chunk.toString("utf8");
       }
     });
@@ -263,6 +320,8 @@ export async function compileAndJudge(opts: {
   code: string;
   tests: TestCase[];
   timeLimitMs: number;
+  /** Halved for anonymous requests — see docs/ULTIMATE_PLAN.md §3 F-2. */
+  maxOutputBytes?: number;
 }): Promise<{
   verdict: JudgeVerdict;
   compileStderr?: string;
@@ -282,11 +341,13 @@ export async function compileAndJudge(opts: {
     try {
       return await judgeViaRunner(runner, opts);
     } catch (err) {
-      console.error("runner judge failed, falling back", err);
+      log.error("runner judge failed, falling back", {}, err);
     }
   }
 
   if (remoteJudgeUrl()) return judgeRemote(opts);
+
+  if (!localJudgeAllowed()) return judgeNotConfigured();
 
   const compiled = await compileCode(opts.code);
   if (!compiled.ok) {
@@ -310,6 +371,7 @@ export async function compileAndJudge(opts: {
         cwd: compiled.dir,
         input,
         timeoutMs: opts.timeLimitMs,
+        maxOutputBytes: opts.maxOutputBytes,
       });
 
       let verdict: JudgeVerdict = "AC";
@@ -343,6 +405,8 @@ export async function runCustom(opts: {
   code: string;
   stdin: string;
   timeLimitMs: number;
+  /** Halved for anonymous requests — see docs/ULTIMATE_PLAN.md §3 F-2. */
+  maxOutputBytes?: number;
 }): Promise<{
   verdict: JudgeVerdict;
   compileStderr?: string;
@@ -380,6 +444,17 @@ export async function runCustom(opts: {
     }
   }
 
+  if (!localJudgeAllowed()) {
+    const notConfigured = judgeNotConfigured();
+    return {
+      verdict: notConfigured.verdict,
+      stdout: "",
+      stderr: "",
+      timeMs: 0,
+      message: notConfigured.message,
+    };
+  }
+
   const compiled = await compileCode(opts.code);
   if (!compiled.ok) {
     await cleanup(compiled.dir);
@@ -398,6 +473,7 @@ export async function runCustom(opts: {
       cwd: compiled.dir,
       input,
       timeoutMs: opts.timeLimitMs,
+      maxOutputBytes: opts.maxOutputBytes,
     });
 
     if (run.timedOut) {

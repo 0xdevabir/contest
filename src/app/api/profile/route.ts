@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import type { University } from "@prisma/client";
 import { getSession, setSessionCookie } from "@/lib/auth";
+import { assertCan } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { THEME_COOKIE, THEME_IDS } from "@/lib/theme";
+import { toResponse, ValidationError } from "@/lib/errors";
 
 export const runtime = "nodejs";
 
@@ -20,24 +22,27 @@ const patchSchema = z.object({
 });
 
 export async function PATCH(req: Request) {
-  const session = await getSession();
-  if (!session) {
-    return NextResponse.json({ ok: false, message: "Sign in required." }, { status: 401 });
+  try {
+    return await handlePatch(req);
+  } catch (err) {
+    return toResponse(err);
   }
+}
+
+async function handlePatch(req: Request): Promise<NextResponse> {
+  const session = await getSession();
+  assertCan(session, "profile:edit", { ownerId: session?.id });
 
   let body: unknown;
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ ok: false, message: "Invalid JSON." }, { status: 400 });
+    throw new ValidationError("Invalid JSON.");
   }
 
   const parsed = patchSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid input." },
-      { status: 400 }
-    );
+    throw new ValidationError(parsed.error.issues[0]?.message ?? "Invalid input.");
   }
 
   const data = parsed.data;
@@ -87,4 +92,3 @@ export async function PATCH(req: Request) {
   }
   return res;
 }
-

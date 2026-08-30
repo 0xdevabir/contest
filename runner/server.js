@@ -2,6 +2,7 @@ import http from "node:http";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { WebSocketServer } from "ws";
 import { Sandbox, imageExists, reapOrphans } from "./sandbox.js";
+import { judgeTests } from "./judge.js";
 
 const PORT = Number(process.env.PORT || 8080);
 const TOKEN = process.env.RUNNER_TOKEN || "";
@@ -54,10 +55,6 @@ function verifyTicket(ticket) {
 function originAllowed(origin) {
   if (!ALLOWED_ORIGINS.length) return true;
   return !!origin && ALLOWED_ORIGINS.includes(origin);
-}
-
-function normalizeOutput(s) {
-  return s.replace(/\r\n/g, "\n").replace(/\s+$/g, "").replace(/[ \t]+$/gm, "");
 }
 
 // ---------------------------------------------------------------- HTTP
@@ -127,35 +124,7 @@ async function judge({ code, tests, timeLimitMs }) {
     const compiled = await box.compile(code);
     if (!compiled.ok) return { verdict: "CE", compileStderr: compiled.output, results: [] };
 
-    const results = [];
-    let overall = "AC";
-
-    for (let i = 0; i < tests.length; i++) {
-      const t = tests[i];
-      const input = t.input.endsWith("\n") || t.input === "" ? t.input : `${t.input}\n`;
-      const run = await box.runBatch(input, limit);
-
-      let verdict = "AC";
-      if (run.timedOut) verdict = "TLE";
-      else if (run.code !== 0) verdict = "RE";
-      else if (normalizeOutput(run.stdout) !== normalizeOutput(t.output)) verdict = "WA";
-
-      results.push({
-        index: i,
-        verdict,
-        timeMs: run.ms,
-        stdout: run.stdout,
-        stderr: run.stderr,
-        expected: t.output,
-        sample: t.sample,
-      });
-
-      if (verdict !== "AC") {
-        overall = verdict;
-        break;
-      }
-    }
-    return { verdict: overall, results };
+    return await judgeTests(box, tests, limit);
   } finally {
     await box.destroy();
     activeSessions--;

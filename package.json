@@ -7,14 +7,19 @@
     "build": "npm run monaco && prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "check:scoring": "tsx scripts/check-contest-scoring.ts",
     "monaco": "node scripts/copy-monaco.mjs",
     "bank:build": "node scripts/build-problem-bank.mjs",
     "db:generate": "prisma generate",
-    "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:push:danger": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "test": "vitest run --exclude tests/golden/**",
+    "test:watch": "vitest",
+    "test:golden": "vitest run tests/golden",
+    "typecheck": "tsc --noEmit",
+    "verify": "npm run typecheck && npm run lint && npm run test"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -22,6 +27,7 @@
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
     "@prisma/client": "^6.19.0",
+    "@sentry/nextjs": "^10.72.0",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
     "bcryptjs": "^3.0.3",
@@ -43,12 +49,14 @@
     "@types/nodemailer": "^8.0.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^9",
     "eslint-config-next": "15.5.22",
     "prisma": "^6.19.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.7",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.1.11"
   }
 }
-

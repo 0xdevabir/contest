@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Verdict } from "@prisma/client";
+import type { TestResult } from "@/lib/types";
 import { getProblem } from "@/lib/problems";
-import { compileAndJudge, runCustom } from "@/lib/judge";
+import { compileAndJudge, runCustom, MAX_OUTPUT_BYTES } from "@/lib/judge";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { effectiveContestStatus, isContestOpen } from "@/lib/contests";
 import { contestSubmissionError } from "@/lib/contest-access";
+import { toResponse, ValidationError, NotFoundError, AuthError, ForbiddenError, RateLimitError } from "@/lib/errors";
+import { consume, retryAfterSeconds, tryAcquireAnonRunSlot, releaseAnonRunSlot } from "@/lib/ratelimit";
+import { clientIp } from "@/lib/request-context";
+import { log } from "@/lib/log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,6 +32,7 @@ async function persistSubmission(opts: {
   timeMs?: number;
   stdout?: string;
   stderr?: string;
+  report?: unknown;
 }) {
   if (!opts.userId) return;
   try {
@@ -41,6 +47,7 @@ async function persistSubmission(opts: {
         timeMs: opts.timeMs ?? null,
         stdout: opts.stdout?.slice(0, 8000) ?? null,
         stderr: opts.stderr?.slice(0, 8000) ?? null,
+        report: opts.report != null ? JSON.parse(JSON.stringify(opts.report)) : undefined,
       },
     });
 
@@ -54,25 +61,47 @@ async function persistSubmission(opts: {
       });
     }
   } catch (err) {
-    console.error("persist submission failed", err);
+    log.error("persist submission failed", { problemId: opts.problemId }, err);
   }
 }
 
+/**
+ * Hidden-test I/O must never reach the browser — otherwise a submitter can
+ * binary-search the entire hidden test suite one WA/AC bit at a time. Sample
+ * tests keep their full output for debugging; anything not marked `sample`
+ * is reduced to just its verdict and timing.
+ */
+function sanitizeResultsForClient(results: TestResult[]): TestResult[] {
+  return results.map((r) =>
+    r.sample
+      ? r
+      : { index: r.index, verdict: r.verdict, timeMs: r.timeMs, stdout: "", stderr: "", sample: r.sample }
+  );
+}
+
 export async function POST(req: NextRequest) {
+  try {
+    return await handlePost(req);
+  } catch (err) {
+    return toResponse(err);
+  }
+}
+
+async function handlePost(req: NextRequest): Promise<NextResponse> {
   let body: Body;
   try {
     body = (await req.json()) as Body;
   } catch {
-    return NextResponse.json({ ok: false, message: "Invalid JSON" }, { status: 400 });
+    throw new ValidationError("Invalid JSON");
   }
 
   const problem = getProblem(body.problemId);
   if (!problem) {
-    return NextResponse.json({ ok: false, message: "Problem not found" }, { status: 404 });
+    throw new NotFoundError("Problem not found");
   }
 
   if (!body.code || typeof body.code !== "string") {
-    return NextResponse.json({ ok: false, message: "Code required" }, { status: 400 });
+    throw new ValidationError("Code required");
   }
 
   let session = null;
@@ -83,22 +112,65 @@ export async function POST(req: NextRequest) {
   }
 
   const mode = body.mode ?? "submit";
+  const ip = clientIp(req);
 
   // Run stays anonymous so people can try input before signing up. Submit is the
   // graded action — that always needs an account so progress and scoreboards stay honest.
   if (mode === "run") {
-    const result = await runCustom({
-      code: body.code,
-      stdin: body.stdin ?? problem.sampleInput ?? "",
-      timeLimitMs: problem.timeLimitMs,
-    });
-    return NextResponse.json({ ok: true, ...result, results: [] });
+    const bucket = session
+      ? { bucket: "run:user", identity: session.id }
+      : { bucket: "run:anon", identity: ip };
+    const limit = session ? { tokens: 60, windowSec: 300 } : { tokens: 10, windowSec: 300 };
+    const rl = await consume(bucket, limit);
+    if (!rl.ok) {
+      throw new RateLimitError(retryAfterSeconds(rl.resetAt), "Too many runs. Try again shortly.");
+    }
+
+    // Anonymous execution additionally competes for a small global concurrency
+    // budget — a saturated queue returns 429 immediately (a clear "try again")
+    // rather than making a guest wait behind other guests' compiles.
+    let anonSlot = false;
+    if (!session) {
+      anonSlot = tryAcquireAnonRunSlot();
+      if (!anonSlot) {
+        throw new RateLimitError(2, "Judge is busy. Try again in a moment.");
+      }
+    }
+
+    try {
+      const result = await runCustom({
+        code: body.code,
+        stdin: body.stdin ?? problem.sampleInput ?? "",
+        timeLimitMs: session ? problem.timeLimitMs : Math.min(problem.timeLimitMs, 2000),
+        maxOutputBytes: session ? undefined : Math.floor(MAX_OUTPUT_BYTES / 2),
+      });
+      return NextResponse.json({ ok: true, ...result, results: [] });
+    } finally {
+      if (anonSlot) releaseAnonRunSlot();
+    }
   }
 
   if (!session) {
-    return NextResponse.json(
-      { ok: false, message: "Sign in to submit an answer." },
-      { status: 401 }
+    throw new AuthError("Sign in to submit an answer.");
+  }
+
+  // Rate limit submissions: per-user, and per-(user, problem) to blunt
+  // verdict-oracle probing against hidden tests.
+  const submitUser = await consume(
+    { bucket: "submit:user", identity: session.id },
+    { tokens: 30, windowSec: 300 }
+  );
+  if (!submitUser.ok) {
+    throw new RateLimitError(retryAfterSeconds(submitUser.resetAt), "Too many submissions. Try again shortly.");
+  }
+  const submitProblem = await consume(
+    { bucket: "submit:problem", identity: `${session.id}:${body.problemId}` },
+    { tokens: 10, windowSec: 60 }
+  );
+  if (!submitProblem.ok) {
+    throw new RateLimitError(
+      retryAfterSeconds(submitProblem.resetAt),
+      "Too many submissions for this problem. Slow down."
     );
   }
 
@@ -114,7 +186,6 @@ export async function POST(req: NextRequest) {
 
   // Contest gate — must be LIVE, problem must belong to contest, user must be registered
   if (body.contestId) {
-
     const contest = await prisma.contest.findUnique({
       where: { id: body.contestId },
       include: { problems: { select: { problemId: true } } },
@@ -132,26 +203,19 @@ export async function POST(req: NextRequest) {
         problemIncluded: false,
         registered: false,
       });
-      return NextResponse.json(
-        { ok: false, message },
-        { status: 400 }
-      );
+      throw new ValidationError(message ?? "This contest is not open.");
     }
 
     // Verify the submitted problem is actually part of this contest
     const inContest = contest.problems.some((p) => p.problemId === body.problemId);
     if (!inContest) {
-      return NextResponse.json(
-        {
-          ok: false,
-          message: contestSubmissionError({
-            contestOpen: true,
-            contestEnded: false,
-            problemIncluded: false,
-            registered: false,
-          }),
-        },
-        { status: 403 }
+      throw new ForbiddenError(
+        contestSubmissionError({
+          contestOpen: true,
+          contestEnded: false,
+          problemIncluded: false,
+          registered: false,
+        }) ?? "This problem is not part of the contest"
       );
     }
 
@@ -159,17 +223,13 @@ export async function POST(req: NextRequest) {
       where: { contestId_userId: { contestId: body.contestId, userId: session.id } },
     });
     if (!reg) {
-      return NextResponse.json(
-        {
-          ok: false,
-          message: contestSubmissionError({
-            contestOpen: true,
-            contestEnded: false,
-            problemIncluded: true,
-            registered: false,
-          }),
-        },
-        { status: 403 }
+      throw new ForbiddenError(
+        contestSubmissionError({
+          contestOpen: true,
+          contestEnded: false,
+          problemIncluded: true,
+          registered: false,
+        }) ?? "Register for the contest first"
       );
     }
 
@@ -187,10 +247,7 @@ export async function POST(req: NextRequest) {
         },
       });
       if (subCount >= maxSubs) {
-        return NextResponse.json(
-          { ok: false, message: `Submission limit (${maxSubs}) reached for this problem` },
-          { status: 429 }
-        );
+        throw new RateLimitError(60, `Submission limit (${maxSubs}) reached for this problem`);
       }
     }
   }
@@ -201,26 +258,30 @@ export async function POST(req: NextRequest) {
     timeLimitMs: problem.timeLimitMs,
   });
 
-  const first = result.results[0];
+  // F-4: persist the slowest test's time (not just the first — an AC over 20
+  // tests otherwise records test 1's time, which is wrong for TLE-margin and
+  // "fastest solution" analytics), and only reveal stdout from a *sample*
+  // test — hidden-test output must never feed the student-facing history page.
+  const failing = result.results.find((r) => r.verdict !== "AC");
+  const shown = failing ?? result.results[result.results.length - 1];
+  const maxTime = result.results.reduce((m, r) => Math.max(m, r.timeMs), 0);
+
   await persistSubmission({
-    userId: session?.id ?? null,
+    userId: session.id,
     problemId: body.problemId,
     contestId: body.contestId,
     code: body.code,
     verdict: result.verdict as Verdict,
-    timeMs: first?.timeMs,
-    stdout: first?.stdout,
-    stderr: result.compileStderr || first?.stderr,
+    timeMs: result.results.length ? maxTime : undefined,
+    stdout: shown?.sample ? shown.stdout : undefined,
+    stderr: result.compileStderr || shown?.stderr,
+    report: result,
   });
 
   return NextResponse.json({
     ok: true,
     ...result,
-    saved: Boolean(session),
+    results: sanitizeResultsForClient(result.results),
+    saved: true,
   });
 }
-
-
-
-
-

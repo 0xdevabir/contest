@@ -22,6 +22,32 @@ const eslintConfig = [
       "public/monaco/**",
     ],
   },
+  {
+    // `console.*` is banned here so every log line goes through
+    // src/lib/log.ts (structured JSON, optional Sentry capture) instead of
+    // bypassing it. Scoped to the files Phase 0 actually migrated onto that
+    // module — the rest of src/ still has legacy console.* calls that widen
+    // to "error" phase by phase as each area is migrated, rather than
+    // failing lint on code this phase didn't touch.
+    files: [
+      "src/lib/errors.ts",
+      "src/lib/authz.ts",
+      "src/lib/flags.ts",
+      "src/lib/ratelimit.ts",
+      "src/lib/request-context.ts",
+      "src/lib/judge.ts",
+      "src/app/api/judge/route.ts",
+      "src/app/api/run-ticket/route.ts",
+      "src/app/api/auth/**/route.ts",
+      "src/app/api/admin/**/route.ts",
+      "src/app/api/profile/**/route.ts",
+      "src/app/api/contests/**/route.ts",
+      "src/app/api/problems/**/route.ts",
+    ],
+    rules: {
+      "no-console": "error",
+    },
+  },
 ];
 
 export default eslintConfig;

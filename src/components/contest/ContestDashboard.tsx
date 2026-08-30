@@ -770,6 +770,11 @@ const VERDICT_LABEL: Record<Verdict, string> = {
   MLE: "Memory limit",
   SKIP: "Not judged",
   ERROR: "Judge error",
+  PA: "Partial",
+  OLE: "Output limit",
+  IE: "Judge unavailable",
+  PENDING: "Queued",
+  JUDGING: "Judging",
 };
 
 function verdictTone(verdict: Verdict) {
