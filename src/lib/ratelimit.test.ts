@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from "vitest";
 import {
   consume,
   retryAfterSeconds,
@@ -7,6 +7,21 @@ import {
   anonRunSlotsInFlight,
   _resetRateLimitsForTests,
 } from "./ratelimit";
+
+// This suite exercises the in-memory driver specifically (notably the
+// fake-timer refill test below, which depends on vitest's fake clock — a
+// real Redis TTL is wall-clock-based server-side and would ignore it). CI
+// sets REDIS_URL for the Redis-gated suites (ratelimit-redis.test.ts); unset
+// it for just this file's run so `consume()` takes the in-memory branch, and
+// restore it afterward so later test files in the same worker still see it.
+let savedRedisUrl: string | undefined;
+beforeAll(() => {
+  savedRedisUrl = process.env.REDIS_URL;
+  delete process.env.REDIS_URL;
+});
+afterAll(() => {
+  if (savedRedisUrl !== undefined) process.env.REDIS_URL = savedRedisUrl;
+});
 
 describe("consume", () => {
   beforeEach(() => _resetRateLimitsForTests());

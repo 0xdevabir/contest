@@ -122,11 +122,11 @@ export function ProblemSolvers({
                       )}
                     </p>
                     <p className="mt-0.5 text-[11px] text-[var(--muted-dim)] sm:hidden">
-                      {solver.university} · {formatSolvedAt(solver.firstSolvedAt)}
+                      {solver.institution} · {formatSolvedAt(solver.firstSolvedAt)}
                     </p>
                   </div>
                   <span className="hidden w-20 shrink-0 text-xs text-[var(--muted)] sm:block">
-                    {solver.university}
+                    {solver.institution}
                   </span>
                   <time
                     dateTime={solver.firstSolvedAt}

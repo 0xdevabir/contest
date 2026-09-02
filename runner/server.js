@@ -1,8 +1,9 @@
 import http from "node:http";
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { randomUUID, createHmac, timingSafeEqual } from "node:crypto";
 import { WebSocketServer } from "ws";
 import { Sandbox, imageExists, reapOrphans } from "./sandbox.js";
-import { judgeTests } from "./judge.js";
+import { judgeTests, runOneCase } from "./judge.js";
+import { listEnabledLanguages } from "./languages.js";
 
 const PORT = Number(process.env.PORT || 8080);
 const TOKEN = process.env.RUNNER_TOKEN || "";
@@ -92,6 +93,36 @@ const server = http.createServer(async (req, res) => {
     return undefined;
   }
 
+  // Phase 3 protocol-v1 session endpoints: one warm container per submission
+  // (D6). src/lib/judge/backends/runner.ts drives these three in sequence —
+  // start once, run once per test case across every group, end once.
+  if (req.method === "POST" && (url.pathname === "/session/start" || url.pathname === "/session/run" || url.pathname === "/session/end")) {
+    if (!tokenMatches(req.headers["x-runner-token"])) {
+      return json(res, 401, { ok: false, message: "Unauthorized" });
+    }
+    let body = "";
+    req.on("data", (c) => {
+      body += c;
+      if (body.length > MAX_CODE_BYTES * 3) req.destroy();
+    });
+    req.on("end", async () => {
+      let parsed;
+      try {
+        parsed = JSON.parse(body);
+      } catch {
+        return json(res, 400, { ok: false, message: "Invalid JSON" });
+      }
+      try {
+        if (url.pathname === "/session/start") return json(res, 200, await sessionStart(parsed));
+        if (url.pathname === "/session/run") return json(res, 200, await sessionRun(parsed));
+        return json(res, 200, await sessionEnd(parsed));
+      } catch (err) {
+        json(res, 500, { ok: false, message: err.message });
+      }
+    });
+    return undefined;
+  }
+
   return json(res, 404, { ok: false, message: "Not found" });
 });
 
@@ -129,6 +160,92 @@ async function judge({ code, tests, timeLimitMs }) {
     await box.destroy();
     activeSessions--;
   }
+}
+
+// ---------------------------------------------------------- session endpoints
+
+const sessions = new Map(); // sessionId -> { box, timer }
+const SESSION_IDLE_MS = 60_000;
+const ENABLED_LANGUAGE_IDS = new Set(listEnabledLanguages().map((l) => l.id));
+
+function touchSession(sessionId) {
+  const entry = sessions.get(sessionId);
+  if (!entry) return;
+  clearTimeout(entry.timer);
+  // A submission that never calls /session/end (a crashed web process, a
+  // dropped connection) must not leak a container forever.
+  entry.timer = setTimeout(() => void destroySession(sessionId), SESSION_IDLE_MS);
+}
+
+async function destroySession(sessionId) {
+  const entry = sessions.get(sessionId);
+  if (!entry) return;
+  sessions.delete(sessionId);
+  clearTimeout(entry.timer);
+  await entry.box.destroy();
+  activeSessions--;
+}
+
+async function sessionStart({ language, code }) {
+  if (!ENABLED_LANGUAGE_IDS.has(language)) {
+    return { ok: false, message: `Unknown or disabled language: "${language}"` };
+  }
+  if (typeof code !== "string" || !code || code.length > MAX_CODE_BYTES) {
+    return { ok: false, message: "Code missing or too large." };
+  }
+  if (activeSessions >= MAX_SESSIONS) {
+    return { ok: false, message: "Judge is busy, try again in a moment." };
+  }
+
+  const sessionId = randomUUID();
+  const box = new Sandbox(language);
+  activeSessions++;
+  sessions.set(sessionId, { box, timer: null });
+  touchSession(sessionId);
+
+  try {
+    await box.start();
+    const started = Date.now();
+    const compiled = await box.compile(code);
+    return {
+      ok: true,
+      sessionId,
+      image: box.language.image,
+      compileOk: compiled.ok,
+      compileStderr: compiled.ok ? undefined : compiled.output,
+      compileMs: compiled.compileMs ?? Date.now() - started,
+    };
+  } catch (err) {
+    await destroySession(sessionId);
+    return { ok: false, message: err.message };
+  }
+}
+
+async function sessionRun({ sessionId, input, limits, checker }) {
+  const entry = sessions.get(sessionId);
+  if (!entry) return { ok: false, message: "Unknown or expired session." };
+  touchSession(sessionId);
+
+  if (checker && (checker.type === "SPECIAL" || checker.type === "INTERACTIVE")) {
+    // Not yet implemented on the runner — D5 requires these to execute
+    // in-sandbox since they're teacher-authored/untrusted, which needs a
+    // dedicated compile+run path for the checker program itself. Failing
+    // clearly here (engine.ts turns this into IE) is safer than silently
+    // running the checker somewhere untrusted.
+    return { ok: false, message: `${checker.type} checkers are not yet implemented on the runner backend.` };
+  }
+
+  try {
+    const outcome = await runOneCase(entry.box, input, limits);
+    return { ok: true, ...outcome, exitCode: outcome.exitCode ?? null };
+  } catch (err) {
+    return { ok: false, message: err.message };
+  }
+}
+
+async function sessionEnd({ sessionId }) {
+  await destroySession(sessionId);
+  return { ok: true };
 }
 
 // ---------------------------------------------------------------- WebSocket

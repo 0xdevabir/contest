@@ -51,9 +51,11 @@ const MOBILE_LINKS = [
 export function SiteChrome({
   user,
   children,
+  assignmentsDueSoon = 0,
 }: {
   user: SessionUser | null;
   children: React.ReactNode;
+  assignmentsDueSoon?: number;
 }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -76,7 +78,11 @@ export function SiteChrome({
     };
   }, [menuOpen]);
 
-  if (pathname.startsWith("/admin")) {
+  // Phase 7's projector display (/contests/[slug]/display) is a separate,
+  // dumb page by design (docs/phases/PHASE-07-live-contest.md D4) — no
+  // navigation, no auth prompt, just the board. Same full-viewport
+  // treatment as /admin.
+  if (pathname.startsWith("/admin") || pathname.endsWith("/display")) {
     return <>{children}</>;
   }
 
@@ -107,7 +113,7 @@ export function SiteChrome({
               Leaderboard
             </Link>
             <ThemeMenu />
-            <NavAuth user={user} />
+            <NavAuth user={user} assignmentsDueSoon={assignmentsDueSoon} />
           </nav>
 
           <div className="flex items-center gap-2 md:hidden">

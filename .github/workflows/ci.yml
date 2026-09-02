@@ -13,6 +13,12 @@ jobs:
           --health-cmd pg_isready --health-interval 5s
           --health-timeout 5s --health-retries 10
         ports: ["5432:5432"]
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+        ports: ["6379:6379"]
     env:
       # DATABASE_URL/DIRECT_URL are required directly — `prisma migrate deploy`
       # and `next build` (via prisma generate) both read the datasource block's
@@ -24,6 +30,10 @@ jobs:
       DIRECT_URL: postgresql://postgres:test@localhost:5432/contesthub_test
       TEST_DATABASE_URL: postgresql://postgres:test@localhost:5432/contesthub_test
       AUTH_SECRET: test-secret-not-used-anywhere-real
+      # Enables the Phase 4 judge-queue-gated tests (src/lib/ratelimit-redis.test.ts,
+      # src/lib/queue/fairness.test.ts, tests/integration/judge-queue.test.ts) —
+      # they self-skip via describe.skipIf(!process.env.REDIS_URL) without it.
+      REDIS_URL: redis://localhost:6379
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -38,10 +48,34 @@ jobs:
 
   judge-conformance:
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' || contains(github.event.head_commit.message, '[judge]')
+    # PHASE-03-judge-engine.md: "The security golden cases are the most
+    # valuable tests in the repository. They must run in CI on every change
+    # to runner/** or src/lib/judge/**" — in addition to the existing manual
+    # triggers (nightly schedule, [judge] in the commit message).
+    if: >-
+      github.event_name == 'schedule' ||
+      contains(github.event.head_commit.message, '[judge]') ||
+      contains(github.event.pull_request.title, '[judge]')
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
-      - run: docker build -t contest-hub-sandbox -f runner/sandbox.Dockerfile runner/
+      - name: Check whether this change touches the judge
+        id: touches-judge
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin "${{ github.event.pull_request.base.sha }}" --depth=1
+            range="${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}"
+          else
+            range="${{ github.event.before }}..${{ github.event.after }}"
+          fi
+          if git diff --name-only $range 2>/dev/null | grep -qE '^(runner/|src/lib/judge/)'; then
+            echo "matched=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "matched=false" >> "$GITHUB_OUTPUT"
+          fi
+      - run: docker build -t contesthub-sandbox-c -f runner/images/c.Dockerfile runner/
+        if: steps.touches-judge.outputs.matched == 'true' || github.event_name == 'schedule' || contains(github.event.head_commit.message, '[judge]')
       - run: npm ci && npm run test:golden
+        if: steps.touches-judge.outputs.matched == 'true' || github.event_name == 'schedule' || contains(github.event.head_commit.message, '[judge]')

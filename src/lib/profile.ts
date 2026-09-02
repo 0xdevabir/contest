@@ -1,4 +1,4 @@
-import type { University, Verdict } from "@prisma/client";
+import type { Verdict } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { normalizeThemeMode, type ThemeMode } from "@/lib/theme";
 import { getCategories, getMeta, getProblem } from "@/lib/problems";
@@ -27,7 +27,10 @@ export type ProfileStats = {
 export type PublicProfile = {
   id: string;
   name: string;
-  university: University;
+  institutionId: string | null;
+  institutionName: string | null;
+  institutionShortName: string | null;
+  institutionVerified: boolean;
   department: string | null;
   studentId: string | null;
   bio: string;
@@ -44,7 +47,7 @@ export type PublicProfile = {
 
 async function rankAmong(
   userId: string,
-  university?: University
+  institutionId?: string | null
 ): Promise<number | null> {
   const grouped = await prisma.solvedProblem.groupBy({
     by: ["userId"],
@@ -58,7 +61,7 @@ async function rankAmong(
     where: {
       id: { in: grouped.map((g) => g.userId) },
       status: "ACTIVE",
-      ...(university ? { university } : {}),
+      ...(institutionId ? { institutionId } : {}),
     },
     select: { id: true },
   });
@@ -69,7 +72,7 @@ async function rankAmong(
 }
 
 export async function getProfileStats(userId: string): Promise<ProfileStats> {
-  const meta = getMeta();
+  const meta = await getMeta();
   const since = new Date();
   since.setHours(0, 0, 0, 0);
   since.setDate(since.getDate() - 119);
@@ -101,7 +104,7 @@ export async function getProfileStats(userId: string): Promise<ProfileStats> {
       }),
       prisma.user.findUnique({
         where: { id: userId },
-        select: { university: true },
+        select: { institutionId: true },
       }),
     ]);
 
@@ -120,7 +123,7 @@ export async function getProfileStats(userId: string): Promise<ProfileStats> {
   }
 
   const solvedSet = new Set(solvedRows.map((r) => r.problemId));
-  const byDifficulty = getCategories().map((c) => ({
+  const byDifficulty = (await getCategories()).map((c) => ({
     tier: c.tier,
     total: c.count,
     solved: c.problems.filter((p) => solvedSet.has(p.id)).length,
@@ -128,7 +131,7 @@ export async function getProfileStats(userId: string): Promise<ProfileStats> {
 
   const [globalRank, uniRank] = await Promise.all([
     rankAmong(userId),
-    user ? rankAmong(userId, user.university) : null,
+    user ? rankAmong(userId, user.institutionId) : null,
   ]);
 
   return {
@@ -143,15 +146,17 @@ export async function getProfileStats(userId: string): Promise<ProfileStats> {
     globalRank,
     uniRank,
     byDifficulty,
-    recentSolves: recentSolves.map((r) => {
-      const p = getProblem(r.problemId);
-      return {
-        problemId: r.problemId,
-        title: p?.title ?? r.problemId,
-        difficulty: (p?.difficulty ?? "EASY") as Difficulty,
-        solvedAt: r.firstSolvedAt,
-      };
-    }),
+    recentSolves: await Promise.all(
+      recentSolves.map(async (r) => {
+        const p = await getProblem(r.problemId);
+        return {
+          problemId: r.problemId,
+          title: p?.title ?? r.problemId,
+          difficulty: (p?.difficulty ?? "EASY") as Difficulty,
+          solvedAt: r.firstSolvedAt,
+        };
+      })
+    ),
     activity,
     verdictBreakdown: verdicts.map((v) => ({
       verdict: v.verdict,
@@ -170,7 +175,9 @@ export async function getPublicProfile(
       id: true,
       name: true,
       email: true,
-      university: true,
+      institutionId: true,
+      institutionVerifiedAt: true,
+      institution: { select: { name: true, shortName: true } },
       department: true,
       studentId: true,
       bio: true,
@@ -192,7 +199,10 @@ export async function getPublicProfile(
   return {
     id: user.id,
     name: user.name,
-    university: user.university,
+    institutionId: user.institutionId,
+    institutionName: user.institution?.name ?? null,
+    institutionShortName: user.institution?.shortName ?? null,
+    institutionVerified: Boolean(user.institutionVerifiedAt),
     department: user.department,
     studentId: isOwner ? user.studentId : null,
     bio: user.bio,
@@ -236,14 +246,16 @@ export async function getUserSubmissions(
 
   return {
     total,
-    items: rows.map((r) => {
-      const p = getProblem(r.problemId);
-      return {
-        ...r,
-        title: p?.title ?? r.problemId,
-        difficulty: p?.difficulty ?? null,
-      };
-    }),
+    items: await Promise.all(
+      rows.map(async (r) => {
+        const p = await getProblem(r.problemId);
+        return {
+          ...r,
+          title: p?.title ?? r.problemId,
+          difficulty: p?.difficulty ?? null,
+        };
+      })
+    ),
   };
 }
 

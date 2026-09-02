@@ -5,9 +5,8 @@ import { getSession } from "@/lib/auth";
 import { assertCan } from "@/lib/authz";
 import { toResponse, ValidationError } from "@/lib/errors";
 import { defaultContestRules, contestRulesSchema } from "@/lib/validators";
-import { slugify } from "@/lib/contests";
-import { getProblem } from "@/lib/problems";
 import { recordAdminAction } from "@/lib/admin-audit";
+import { resolveContestProblems, uniqueContestSlug } from "@/lib/contest-mutations";
 
 export const runtime = "nodejs";
 
@@ -19,6 +18,8 @@ const createSchema = z.object({
   endsAt: z.string().datetime().optional().nullable(),
   rules: contestRulesSchema.partial().optional(),
   problemIds: z.array(z.string()).min(1).max(50),
+  visibility: z.enum(["PUBLIC", "UNLISTED", "INSTITUTION", "PRIVATE"]).default("PUBLIC"),
+  joinPolicy: z.enum(["OPEN", "CODE", "PASSWORD", "ROSTER", "INVITE", "STAFF_ONLY"]).default("OPEN"),
 });
 
 export async function GET() {
@@ -50,47 +51,37 @@ export async function POST(req: Request) {
     }
 
     const data = parsed.data;
-    const invalidProblem = data.problemIds.find((problemId) => !getProblem(problemId));
-    if (invalidProblem) {
-      throw new ValidationError(`Unknown problem: ${invalidProblem}`);
-    }
-    if (new Set(data.problemIds).size !== data.problemIds.length) {
-      throw new ValidationError("A problem can only be added once");
-    }
+    const problemRows = await resolveContestProblems(data.problemIds);
     const startDate = data.startsAt ? new Date(data.startsAt) : null;
     const endDate = data.endsAt ? new Date(data.endsAt) : null;
     if (startDate && endDate && endDate <= startDate) {
       throw new ValidationError("End time must be after start time");
     }
-    let slug = slugify(data.title);
-    if (!slug) slug = `contest-${Date.now().toString(36)}`;
-    const exists = await prisma.contest.findUnique({ where: { slug } });
-    if (exists) slug = `${slug}-${Date.now().toString(36)}`;
-
+    const slug = await uniqueContestSlug(data.title);
     const rules = { ...defaultContestRules, ...data.rules };
-    const labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-    const contest = await prisma.contest.create({
-      data: {
-        title: data.title,
-        slug,
-        description: data.description || "",
-        durationMinutes: data.durationMinutes,
-        startsAt: startDate,
-        endsAt: endDate,
-        status: data.startsAt ? "SCHEDULED" : "DRAFT",
-        rules,
-        createdById: admin.id,
-        problems: {
-          create: data.problemIds.map((problemId, i) => ({
-            problemId,
-            order: i,
-            points: 100,
-            label: labels[i] || `P${i + 1}`,
-          })),
+    const contest = await prisma.$transaction(async (tx) => {
+      const created = await tx.contest.create({
+        data: {
+          title: data.title,
+          slug,
+          description: data.description || "",
+          durationMinutes: data.durationMinutes,
+          startsAt: startDate,
+          endsAt: endDate,
+          status: data.startsAt ? "SCHEDULED" : "DRAFT",
+          rules,
+          visibility: data.visibility,
+          joinPolicy: data.joinPolicy,
+          createdById: admin.id,
+          problems: { create: problemRows },
         },
-      },
-      include: { problems: true },
+        include: { problems: true },
+      });
+      await tx.contestStaff.create({
+        data: { contestId: created.id, userId: admin.id, role: "OWNER", addedById: admin.id },
+      });
+      return created;
     });
     await recordAdminAction({
       actorId: admin.id,

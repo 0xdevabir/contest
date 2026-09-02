@@ -1,15 +1,21 @@
 import {
   Activity,
+  AlertTriangle,
   CheckCircle2,
+  Cpu,
   Database,
+  Gauge,
   KeyRound,
   Mail,
   ServerCog,
   ShieldCheck,
   TerminalSquare,
+  Timer,
   XCircle,
 } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { isEnabled } from "@/lib/flags";
+import { getQueueStats } from "@/lib/queue-stats";
 
 export default async function AdminSystemPage() {
   const started = performance.now();
@@ -20,6 +26,9 @@ export default async function AdminSystemPage() {
     orderBy: { createdAt: "desc" },
     include: { actor: { select: { name: true, email: true } } },
   });
+
+  const judgeQueueOn = await isEnabled("judgeQueue");
+  const queueStats = judgeQueueOn ? await getQueueStats() : null;
 
   const checks = [
     {
@@ -101,6 +110,99 @@ export default async function AdminSystemPage() {
         })}
       </section>
 
+      {queueStats && (
+        <section className="mt-5 overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--bg-panel)]">
+          <div className="flex items-center justify-between border-b border-[var(--line)] px-5 py-4">
+            <div>
+              <h2 className="font-display text-lg font-bold">Judge queue</h2>
+              <p className="mt-0.5 text-xs text-[var(--muted)]">
+                Phase 4 async judging — docs/RUNBOOK.md § Judge queue for alert diagnosis
+              </p>
+            </div>
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+                queueStats.redisUp
+                  ? "border-[var(--accent-border)] bg-[var(--accent-surface)] text-[var(--accent)]"
+                  : "border-[var(--danger-border)] bg-[var(--danger-surface)] text-[var(--danger)]"
+              }`}
+            >
+              {queueStats.redisUp ? <CheckCircle2 size={13} aria-hidden /> : <XCircle size={13} aria-hidden />}
+              Redis {queueStats.redisUp ? "up" : "down"}
+            </span>
+          </div>
+
+          <div className="grid gap-3 p-5 md:grid-cols-2 xl:grid-cols-4">
+            <QueueStat
+              icon={Gauge}
+              label="Queue depth"
+              value={String(queueStats.depthByPriority.reduce((s, d) => s + d.count, 0))}
+              sub={queueStats.depthByPriority.map((d) => `p${d.priority}: ${d.count}`).join(" · ") || "empty"}
+            />
+            <QueueStat
+              icon={Timer}
+              label="Oldest queued job"
+              value={queueStats.oldestQueuedAgeSec != null ? `${queueStats.oldestQueuedAgeSec}s` : "—"}
+              warn={queueStats.oldestQueuedAgeSec != null && queueStats.oldestQueuedAgeSec > 60}
+            />
+            <QueueStat
+              icon={Activity}
+              label="Judged / min"
+              value={String(queueStats.throughput.perMin1)}
+              sub={`${queueStats.throughput.perMin5}/5m · ${queueStats.throughput.perMin15}/15m`}
+            />
+            <QueueStat
+              icon={AlertTriangle}
+              label="IE rate (5m)"
+              value={`${queueStats.ieRatePercent}%`}
+              warn={queueStats.ieRatePercent > 1}
+            />
+          </div>
+
+          <div className="border-t border-[var(--line)] px-5 py-4">
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-[var(--muted)]">
+              <Cpu size={13} aria-hidden />
+              Worker roster
+            </p>
+            {queueStats.workers.length === 0 ? (
+              <p className="text-xs text-[var(--muted)]">No workers have registered yet.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[600px] text-left text-xs">
+                  <thead className="text-[10px] uppercase text-[var(--muted)]">
+                    <tr>
+                      <th className="py-1.5 pr-4 font-medium">Worker</th>
+                      <th className="py-1.5 pr-4 font-medium">Concurrency</th>
+                      <th className="py-1.5 pr-4 font-medium">Judged</th>
+                      <th className="py-1.5 pr-4 font-medium">Failed</th>
+                      <th className="py-1.5 font-medium">Last seen</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--line)]">
+                    {queueStats.workers.map((w) => (
+                      <tr key={w.id}>
+                        <td className="py-1.5 pr-4 font-mono">{w.hostname}</td>
+                        <td className="py-1.5 pr-4">{w.concurrency}</td>
+                        <td className="py-1.5 pr-4">{w.judgedCount}</td>
+                        <td className="py-1.5 pr-4">{w.failedCount}</td>
+                        <td className={`py-1.5 ${w.stale ? "text-[var(--danger)]" : "text-[var(--muted)]"}`}>
+                          {w.stale ? "Stale — " : ""}
+                          {w.lastSeenAt.toLocaleTimeString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {queueStats.stalledOrRequeuedCount > 0 && (
+              <p className="mt-3 text-xs text-[var(--warn)]">
+                {queueStats.stalledOrRequeuedCount} submission(s) currently queued after a requeue.
+              </p>
+            )}
+          </div>
+        </section>
+      )}
+
       <section className="mt-5 overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--bg-panel)]">
         <div className="flex items-center justify-between border-b border-[var(--line)] px-5 py-4">
           <div>
@@ -157,6 +259,33 @@ export default async function AdminSystemPage() {
           </table>
         </div>
       </section>
+    </div>
+  );
+}
+
+function QueueStat({
+  icon: Icon,
+  label,
+  value,
+  sub,
+  warn,
+}: {
+  icon: typeof Gauge;
+  label: string;
+  value: string;
+  sub?: string;
+  warn?: boolean;
+}) {
+  return (
+    <div className="rounded-lg border border-[var(--line)] bg-[var(--sunken)] p-3">
+      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.1em] text-[var(--muted)]">
+        <Icon size={12} aria-hidden />
+        {label}
+      </div>
+      <p className={`mt-1.5 font-mono text-xl font-bold ${warn ? "text-[var(--danger)]" : "text-[var(--text)]"}`}>
+        {value}
+      </p>
+      {sub && <p className="mt-0.5 text-[10px] text-[var(--muted)]">{sub}</p>}
     </div>
   );
 }

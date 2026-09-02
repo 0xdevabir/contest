@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Syne, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import { getSession } from "@/lib/auth";
+import { isEnabled } from "@/lib/flags";
+import { prisma } from "@/lib/db";
 import { Suspense } from "react";
 import { SiteChrome } from "@/components/SiteChrome";
 import { SmoothScroll } from "@/components/SmoothScroll";
@@ -135,6 +137,28 @@ export default async function RootLayout({
     user = null;
   }
 
+  // Phase 6 — a small "assignments due soon" nav badge for students. Kept
+  // to a single cheap count query, and only run for the role that can ever
+  // have one, so this doesn't add DB load to every other page view.
+  let assignmentsDueSoon = 0;
+  if (user && user.role === "STUDENT") {
+    const classroomOn = await isEnabled("classroom", { userId: user.id, role: user.role });
+    if (classroomOn) {
+      const sectionIds = (
+        await prisma.enrollment.findMany({ where: { userId: user.id, status: "ACTIVE" }, select: { sectionId: true } })
+      ).map((e) => e.sectionId);
+      if (sectionIds.length > 0) {
+        assignmentsDueSoon = await prisma.assignment.count({
+          where: {
+            sectionId: { in: sectionIds },
+            published: true,
+            dueAt: { gte: new Date(), lte: new Date(Date.now() + 48 * 60 * 60 * 1000) },
+          },
+        });
+      }
+    }
+  }
+
   const jar = await cookies();
   // The user's stored preference wins; the cookie is what the very first paint
   // has to go on, so it is set on both login and every theme change.
@@ -260,7 +284,7 @@ export default async function RootLayout({
             <RouteProgress />
           </Suspense>
           <SmoothScroll />
-          <SiteChrome user={user}>{children}</SiteChrome>
+          <SiteChrome user={user} assignmentsDueSoon={assignmentsDueSoon}>{children}</SiteChrome>
         </ThemeProvider>
       </body>
     </html>

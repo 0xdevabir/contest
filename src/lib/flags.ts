@@ -14,7 +14,10 @@ export type Flag =
   | "judgeQueue"
   | "classroom"
   | "ratings"
-  | "integrity";
+  | "integrity"
+  | "contestV2"
+  | "liveContest"
+  | "analytics";
 
 export type FlagContext = { userId?: string; role?: Role };
 

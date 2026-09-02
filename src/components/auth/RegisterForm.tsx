@@ -3,12 +3,19 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { UNIVERSITIES } from "@/lib/universities";
+import { InstitutionPicker, type InstitutionOption } from "@/components/InstitutionPicker";
 
-export function RegisterForm({ next }: { next?: string }) {
+export function RegisterForm({
+  next,
+  institutions,
+}: {
+  next?: string;
+  institutions: InstitutionOption[];
+}) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [accountType, setAccountType] = useState<"STUDENT" | "TEACHER">("STUDENT");
 
   const destination =
     next && next.startsWith("/") && !next.startsWith("//") ? next : "/problems";
@@ -22,7 +29,9 @@ export function RegisterForm({ next }: { next?: string }) {
       name: String(fd.get("name") || ""),
       email: String(fd.get("email") || ""),
       password: String(fd.get("password") || ""),
-      university: String(fd.get("university") || ""),
+      institutionId: String(fd.get("institutionId") || ""),
+      accountType,
+      teacherNote: String(fd.get("teacherNote") || ""),
       studentId: String(fd.get("studentId") || ""),
       department: String(fd.get("department") || ""),
     };
@@ -51,7 +60,7 @@ export function RegisterForm({ next }: { next?: string }) {
       <div>
         <h1 className="font-display text-2xl font-bold">Create account</h1>
         <p className="mt-1.5 text-sm text-[var(--muted)]">
-          Save progress, join contests, climb your university leaderboard.
+          Save progress, join contests, climb your institution&apos;s leaderboard.
         </p>
       </div>
 
@@ -75,15 +84,41 @@ export function RegisterForm({ next }: { next?: string }) {
       />
 
       <label className="block">
-        <span className="field-label">University</span>
-        <select name="university" required className="field" defaultValue="DIU">
-          {UNIVERSITIES.map((u) => (
-            <option key={u.code} value={u.code}>
-              {u.name}
-            </option>
-          ))}
-        </select>
+        <span className="field-label">Institution</span>
+        <InstitutionPicker name="institutionId" institutions={institutions} required />
       </label>
+
+      <fieldset>
+        <legend className="field-label">I am a</legend>
+        <div className="mt-1.5 grid grid-cols-2 gap-2">
+          <RoleOption
+            label="Student"
+            active={accountType === "STUDENT"}
+            onClick={() => setAccountType("STUDENT")}
+          />
+          <RoleOption
+            label="Teacher"
+            active={accountType === "TEACHER"}
+            onClick={() => setAccountType("TEACHER")}
+          />
+        </div>
+      </fieldset>
+
+      {accountType === "TEACHER" && (
+        <label className="block">
+          <span className="field-label">Why do you need a teacher account?</span>
+          <textarea
+            name="teacherNote"
+            rows={3}
+            maxLength={500}
+            className="field mt-1.5 resize-y"
+            placeholder="e.g. I teach CSE201 at DIU and want to run contests for my section."
+          />
+          <span className="mt-1.5 block text-xs text-[var(--muted-dim)]">
+            Teacher accounts need admin approval before creating contests or problems.
+          </span>
+        </label>
+      )}
 
       <Field label="Student ID (optional)" name="studentId" />
       <Field label="Department (optional)" name="department" />
@@ -101,6 +136,31 @@ export function RegisterForm({ next }: { next?: string }) {
         </Link>
       </p>
     </form>
+  );
+}
+
+function RoleOption({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+        active
+          ? "border-[var(--accent-dim)] bg-[var(--accent-surface)] text-[var(--accent)]"
+          : "border-[var(--line)] text-[var(--muted)] hover:text-[var(--text)]"
+      }`}
+    >
+      {label}
+    </button>
   );
 }
 
@@ -137,7 +197,3 @@ function Field(props: {
     </label>
   );
 }
-
-
-
-

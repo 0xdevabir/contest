@@ -13,7 +13,7 @@ export function UserActions({
   redirectOnDelete,
 }: {
   userId: string;
-  role: "USER" | "ADMIN";
+  role: "STUDENT" | "TEACHER" | "TA" | "ADMIN";
   status: "ACTIVE" | "SUSPENDED";
   verified: boolean;
   isSelf: boolean;
@@ -96,7 +96,7 @@ export function UserActions({
           <>
             <button
               type="button"
-              onClick={() => void update({ role: role === "ADMIN" ? "USER" : "ADMIN" })}
+              onClick={() => void update({ role: role === "ADMIN" ? "STUDENT" : "ADMIN" })}
               disabled={busy}
               className="grid size-8 place-items-center rounded-lg border border-[var(--line)] text-[var(--muted)] hover:text-[var(--info)]"
               title={role === "ADMIN" ? "Remove admin role" : "Promote to admin"}

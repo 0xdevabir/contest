@@ -35,6 +35,11 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ["lucide-react"],
     viewTransition: true,
   },
+  // bullmq (Phase 4 judge queue) optionally imports @valkey/valkey-glide, an
+  // alternate Redis client we don't use — we only ever pass it an ioredis
+  // connection (src/lib/redis.ts). Silences a benign "module not found"
+  // build warning rather than adding an unused dependency.
+  serverExternalPackages: ["bullmq"],
   poweredByHeader: false,
   compress: true,
   async headers() {

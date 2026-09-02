@@ -10,7 +10,6 @@ import {
   Users,
 } from "lucide-react";
 import { prisma } from "@/lib/db";
-import { universityLabel } from "@/lib/universities";
 
 export default async function AdminPage() {
   try {
@@ -43,7 +42,7 @@ async function getDashboardData() {
     totalSubmissions,
     acceptedSubmissions,
     registrations,
-    universityGroups,
+    institutionGroups,
     recentUsers,
     recentSubmissions,
     liveContestRows,
@@ -57,9 +56,9 @@ async function getDashboardData() {
     prisma.submission.count({ where: { verdict: "AC" } }),
     prisma.contestRegistration.count(),
     prisma.user.groupBy({
-      by: ["university"],
+      by: ["institutionId"],
       _count: { _all: true },
-      orderBy: { _count: { university: "desc" } },
+      orderBy: { _count: { institutionId: "desc" } },
     }),
     prisma.user.findMany({
       take: 5,
@@ -67,7 +66,7 @@ async function getDashboardData() {
       select: {
         id: true,
         name: true,
-        university: true,
+        institution: { select: { shortName: true } },
         emailVerified: true,
         createdAt: true,
       },
@@ -98,6 +97,21 @@ async function getDashboardData() {
     }),
   ]);
 
+  const institutionIds = institutionGroups
+    .map((g) => g.institutionId)
+    .filter((id): id is string => id != null);
+  const institutions = institutionIds.length
+    ? await prisma.institution.findMany({
+        where: { id: { in: institutionIds } },
+        select: { id: true, shortName: true },
+      })
+    : [];
+  const institutionNameById = new Map(institutions.map((i) => [i.id, i.shortName]));
+  const institutionDistribution = institutionGroups.map((g) => ({
+    label: g.institutionId ? (institutionNameById.get(g.institutionId) ?? "Unknown") : "Unaffiliated",
+    count: g._count._all,
+  }));
+
   const daily = Array.from({ length: 7 }, (_, index) => {
     const date = new Date();
     date.setHours(0, 0, 0, 0);
@@ -120,7 +134,7 @@ async function getDashboardData() {
     totalSubmissions,
     acceptedSubmissions,
     registrations,
-    universityGroups,
+    institutionDistribution,
     recentUsers,
     recentSubmissions,
     liveContestRows,
@@ -229,22 +243,22 @@ function Dashboard({ data }: { data: DashboardData }) {
           </div>
         </section>
 
-        <section className="panel p-5" aria-labelledby="university-distribution">
-          <h2 id="university-distribution" className="font-display text-lg font-bold">
-            University distribution
+        <section className="panel p-5" aria-labelledby="institution-distribution">
+          <h2 id="institution-distribution" className="font-display text-lg font-bold">
+            Institution distribution
           </h2>
           <p className="mt-0.5 text-xs text-[var(--muted)]">Registered users</p>
           <div className="mt-5 space-y-4">
-            {data.universityGroups.map((group) => {
+            {data.institutionDistribution.map((group) => {
               const percentage = data.totalUsers
-                ? Math.round((group._count._all / data.totalUsers) * 100)
+                ? Math.round((group.count / data.totalUsers) * 100)
                 : 0;
               return (
-                <div key={group.university}>
+                <div key={group.label}>
                   <div className="mb-1.5 flex justify-between gap-3 text-xs">
-                    <span className="truncate">{universityLabel(group.university)}</span>
+                    <span className="truncate">{group.label}</span>
                     <span className="font-mono text-[var(--muted)]">
-                      {group._count._all} · {percentage}%
+                      {group.count} · {percentage}%
                     </span>
                   </div>
                   <div className="h-1.5 overflow-hidden rounded-full bg-[var(--line)]">
@@ -350,7 +364,7 @@ function Dashboard({ data }: { data: DashboardData }) {
                 <div className="min-w-0">
                   <p className="truncate text-xs font-medium">{user.name}</p>
                   <p className="font-mono text-[10px] text-[var(--muted)]">
-                    {user.university}
+                    {user.institution?.shortName ?? "Unaffiliated"}
                   </p>
                 </div>
               </div>

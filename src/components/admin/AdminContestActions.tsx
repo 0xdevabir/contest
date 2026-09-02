@@ -9,21 +9,26 @@ export function AdminContestActions({
   status,
   durationMinutes,
   compact = false,
+  apiBase = "/api/admin/contests",
 }: {
   contestId: string;
   status: string;
   durationMinutes: number;
   compact?: boolean;
+  /** Admin routes by default; teacher pages pass "/api/teacher/contests"
+   * (which has no DELETE — the delete button is hidden in that case). */
+  apiBase?: string;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const canDelete = apiBase === "/api/admin/contests";
 
   async function patch(body: Record<string, unknown>) {
     setBusy(true);
     setMsg("");
     try {
-      const res = await fetch(`/api/admin/contests/${contestId}`, {
+      const res = await fetch(`${apiBase}/${contestId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -48,7 +53,7 @@ export function AdminContestActions({
     setBusy(true);
     setMsg("");
     try {
-      const response = await fetch(`/api/admin/contests/${contestId}`, {
+      const response = await fetch(`${apiBase}/${contestId}`, {
         method: "DELETE",
       });
       const result = await response.json();
@@ -56,7 +61,7 @@ export function AdminContestActions({
         setMsg(result.message || "Delete failed");
         return;
       }
-      router.push("/admin/contests");
+      router.push(apiBase.startsWith("/api/teacher") ? "/teacher/contests" : "/admin/contests");
       router.refresh();
     } catch {
       setMsg("Network error");
@@ -129,17 +134,19 @@ export function AdminContestActions({
           Schedule (+1h)
         </button>
       )}
-      <button
-        type="button"
-        className={`${compact ? "grid size-8 place-items-center rounded-lg border border-[var(--line)]" : "btn btn-ghost !py-2 !text-xs"} text-[var(--danger)]`}
-        disabled={busy}
-        onClick={remove}
-        title="Delete contest"
-        aria-label="Delete contest"
-      >
-        <Trash2 size={13} aria-hidden="true" />
-        {!compact && "Delete"}
-      </button>
+      {canDelete && (
+        <button
+          type="button"
+          className={`${compact ? "grid size-8 place-items-center rounded-lg border border-[var(--line)]" : "btn btn-ghost !py-2 !text-xs"} text-[var(--danger)]`}
+          disabled={busy}
+          onClick={remove}
+          title="Delete contest"
+          aria-label="Delete contest"
+        >
+          <Trash2 size={13} aria-hidden="true" />
+          {!compact && "Delete"}
+        </button>
+      )}
       {msg && <p className="w-full text-right text-[11px] text-[var(--danger)]">{msg}</p>}
     </div>
   );

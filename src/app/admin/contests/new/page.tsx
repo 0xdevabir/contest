@@ -1,19 +1,10 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { ContestEditor } from "@/components/admin/ContestEditor";
-import { getAllProblemIds, getProblem } from "@/lib/problems";
+import { ContestEditor } from "@/components/contest/ContestEditor";
+import { getProblemOptions } from "@/lib/problems";
 
-export default function NewContestPage() {
-  const problems = getAllProblemIds().map((id) => {
-    const problem = getProblem(id)!;
-    return {
-      id,
-      title: problem.title,
-      set: problem.set,
-      question: problem.question,
-      difficulty: problem.difficulty,
-    };
-  });
+export default async function NewContestPage() {
+  const problems = await getProblemOptions();
 
   return (
     <div className="mx-auto max-w-[1200px] px-4 py-7 sm:px-6 lg:px-8">

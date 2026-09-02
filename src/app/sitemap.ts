@@ -43,7 +43,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Individual problem pages — but only the authored ones to keep the
   // sitemap manageable. Generated volume-practise problems are reachable
   // through the category index anyway.
-  const allIds = getAllProblemIds();
+  const allIds = await getAllProblemIds();
   // Defensive cap: never include more than a few thousand entries.
   const ids = allIds.slice(0, 5000);
   const problemEntries: SitemapEntry[] = ids.map((id) => ({
@@ -89,7 +89,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   // Touch the meta import so it is bundled (and so the bank exists at build).
-  void getMeta();
+  void (await getMeta());
 
   return [...base, ...problemEntries, ...contestEntries];
 }

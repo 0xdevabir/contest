@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
+import { can } from "@/lib/authz";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +16,7 @@ export default async function AdminLayout({
 }) {
   const session = await getSession();
   if (!session) redirect("/login?next=/admin");
-  if (session.role !== "ADMIN") redirect("/");
+  if (!can(session, "system:admin")) redirect("/");
 
   return (
     <div className="flex min-h-screen bg-[var(--bg)]">

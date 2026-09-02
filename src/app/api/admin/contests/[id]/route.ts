@@ -5,8 +5,8 @@ import { getSession } from "@/lib/auth";
 import { assertCan } from "@/lib/authz";
 import { toResponse, ValidationError, NotFoundError, ConflictError } from "@/lib/errors";
 import { contestRulesSchema, defaultContestRules } from "@/lib/validators";
-import { getProblem } from "@/lib/problems";
 import { recordAdminAction } from "@/lib/admin-audit";
+import { replaceContestProblems } from "@/lib/contest-mutations";
 
 export const runtime = "nodejs";
 
@@ -22,6 +22,8 @@ const patchSchema = z.object({
   rules: contestRulesSchema.partial().optional(),
   problemIds: z.array(z.string()).min(1).max(50).optional(),
   action: z.enum(["go-live", "deactivate", "end", "schedule"]).optional(),
+  visibility: z.enum(["PUBLIC", "UNLISTED", "INSTITUTION", "PRIVATE"]).optional(),
+  joinPolicy: z.enum(["OPEN", "CODE", "PASSWORD", "ROSTER", "INVITE", "STAFF_ONLY"]).optional(),
 });
 
 export async function GET(_req: Request, { params }: Params) {
@@ -57,15 +59,6 @@ export async function PATCH(req: Request, { params }: Params) {
     if (!existing) throw new NotFoundError();
 
     const data = parsed.data;
-    if (data.problemIds) {
-      const invalidProblem = data.problemIds.find((problemId) => !getProblem(problemId));
-      if (invalidProblem) {
-        throw new ValidationError(`Unknown problem: ${invalidProblem}`);
-      }
-      if (new Set(data.problemIds).size !== data.problemIds.length) {
-        throw new ValidationError("A problem can only be added once");
-      }
-    }
     let status = data.status ?? existing.status;
     let startsAt = data.startsAt !== undefined
       ? data.startsAt
@@ -105,19 +98,7 @@ export async function PATCH(req: Request, { params }: Params) {
       : undefined;
 
     const contest = await prisma.$transaction(async (tx) => {
-      if (data.problemIds) {
-        await tx.contestProblem.deleteMany({ where: { contestId: id } });
-        const labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        await tx.contestProblem.createMany({
-          data: data.problemIds.map((problemId, i) => ({
-            contestId: id,
-            problemId,
-            order: i,
-            points: 100,
-            label: labels[i] || `P${i + 1}`,
-          })),
-        });
-      }
+      if (data.problemIds) await replaceContestProblems(tx, id, data.problemIds);
 
       return tx.contest.update({
         where: { id },
@@ -128,6 +109,8 @@ export async function PATCH(req: Request, { params }: Params) {
           startsAt,
           endsAt,
           status,
+          visibility: data.visibility,
+          joinPolicy: data.joinPolicy,
           ...(rules ? { rules } : {}),
         },
         include: { problems: { orderBy: { order: "asc" } } },

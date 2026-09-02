@@ -38,8 +38,8 @@ describe("getPracticeLeaderboard", () => {
       { userId: "u2", _count: { problemId: 1 }, _max: { firstSolvedAt: new Date() } },
     ] as never);
     vi.mocked(prisma.user.findMany).mockResolvedValue([
-      { id: "u1", name: "Ada", university: "DIU" },
-      { id: "u2", name: "Linus", university: "NSU" },
+      { id: "u1", name: "Ada", institutionId: "diu", institution: { slug: "diu", shortName: "DIU" } },
+      { id: "u2", name: "Linus", institutionId: "nsu", institution: { slug: "nsu", shortName: "NSU" } },
     ] as never);
     vi.mocked(prisma.solvedProblem.findMany).mockResolvedValue([
       { userId: "u1", problemId: "p1" },
@@ -63,8 +63,8 @@ describe("getPracticeLeaderboard", () => {
       { userId: "u2", _count: { problemId: 1 }, _max: { firstSolvedAt: earlier } },
     ] as never);
     vi.mocked(prisma.user.findMany).mockResolvedValue([
-      { id: "u1", name: "Late", university: "DIU" },
-      { id: "u2", name: "Early", university: "DIU" },
+      { id: "u1", name: "Late", institutionId: "diu", institution: { slug: "diu", shortName: "DIU" } },
+      { id: "u2", name: "Early", institutionId: "diu", institution: { slug: "diu", shortName: "DIU" } },
     ] as never);
     vi.mocked(prisma.solvedProblem.findMany).mockResolvedValue([] as never);
 
@@ -79,8 +79,8 @@ describe("getPracticeLeaderboard", () => {
       { userId: "u2", _count: { problemId: 1 }, _max: { firstSolvedAt: new Date() } },
     ] as never);
     vi.mocked(prisma.user.findMany).mockResolvedValue([
-      { id: "u1", name: "Volume", university: "DIU" },
-      { id: "u2", name: "Depth", university: "DIU" },
+      { id: "u1", name: "Volume", institutionId: "diu", institution: { slug: "diu", shortName: "DIU" } },
+      { id: "u2", name: "Depth", institutionId: "diu", institution: { slug: "diu", shortName: "DIU" } },
     ] as never);
     vi.mocked(prisma.solvedProblem.findMany).mockResolvedValue([
       { userId: "u1", problemId: "p1" },
@@ -93,19 +93,46 @@ describe("getPracticeLeaderboard", () => {
     expect(result.rows[0].name).toBe("Depth");
   });
 
-  it("filters candidate rows by university but keeps global stats unfiltered", async () => {
+  it("filters candidate rows by institution but keeps global stats unfiltered", async () => {
     vi.mocked(prisma.solvedProblem.groupBy).mockResolvedValue([
       { userId: "u1", _count: { problemId: 1 }, _max: { firstSolvedAt: new Date() } },
       { userId: "u2", _count: { problemId: 1 }, _max: { firstSolvedAt: new Date() } },
     ] as never);
     vi.mocked(prisma.user.findMany).mockResolvedValue([
-      { id: "u1", name: "DiuUser", university: "DIU" },
-      { id: "u2", name: "NsuUser", university: "NSU" },
+      { id: "u1", name: "DiuUser", institutionId: "diu", institution: { slug: "diu", shortName: "DIU" } },
+      { id: "u2", name: "NsuUser", institutionId: "nsu", institution: { slug: "nsu", shortName: "NSU" } },
     ] as never);
     vi.mocked(prisma.solvedProblem.findMany).mockResolvedValue([] as never);
 
-    const result = await getPracticeLeaderboard({ university: "DIU" });
+    const result = await getPracticeLeaderboard({ institutionId: "diu" });
     expect(result.rows.map((r) => r.name)).toEqual(["DiuUser"]);
-    expect(result.stats.byUniversity.length).toBe(2);
+    expect(result.stats.byInstitution.length).toBe(2);
+  });
+
+  it("verifiedOnly excludes unverified members from rows", async () => {
+    vi.mocked(prisma.solvedProblem.groupBy).mockResolvedValue([
+      { userId: "u1", _count: { problemId: 1 }, _max: { firstSolvedAt: new Date() } },
+      { userId: "u2", _count: { problemId: 1 }, _max: { firstSolvedAt: new Date() } },
+    ] as never);
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      {
+        id: "u1",
+        name: "Verified",
+        institutionId: "diu",
+        institutionVerifiedAt: new Date(),
+        institution: { slug: "diu", shortName: "DIU" },
+      },
+      {
+        id: "u2",
+        name: "Unverified",
+        institutionId: "diu",
+        institutionVerifiedAt: null,
+        institution: { slug: "diu", shortName: "DIU" },
+      },
+    ] as never);
+    vi.mocked(prisma.solvedProblem.findMany).mockResolvedValue([] as never);
+
+    const result = await getPracticeLeaderboard({ verifiedOnly: true });
+    expect(result.rows.map((r) => r.name)).toEqual(["Verified"]);
   });
 });

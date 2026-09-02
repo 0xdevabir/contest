@@ -68,6 +68,14 @@ export class InternalError extends AppError {
   }
 }
 
+/** Redis/queue unreachable while `judgeQueue` is on — a clear, honest 503 rather than a silent fallback. */
+export class ServiceUnavailableError extends AppError {
+  constructor(message = "Service temporarily unavailable. Try again shortly.") {
+    super("UNAVAILABLE", message, 503);
+    this.name = "ServiceUnavailableError";
+  }
+}
+
 /**
  * Every API route's catch block ends with `return toResponse(err)`. Body shape
  * keeps the pre-existing `{ ok: false, message }` contract the frontend already

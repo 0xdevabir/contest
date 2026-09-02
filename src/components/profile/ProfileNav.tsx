@@ -7,12 +7,14 @@ import {
   Braces,
   LayoutDashboard,
   Settings,
+  Sparkles,
   Trophy,
 } from "lucide-react";
 
 const NAV = [
   { href: "/profile", label: "Overview", icon: LayoutDashboard, exact: true },
   { href: "/profile/progress", label: "Progress", icon: Trophy },
+  { href: "/profile/insights", label: "Insights", icon: Sparkles },
   { href: "/profile/submissions", label: "Submissions", icon: Braces },
   { href: "/profile/settings", label: "Settings", icon: Settings },
 ];

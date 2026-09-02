@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { getSession } from "@/lib/auth";
+import { getSession, revokeAllSessions } from "@/lib/auth";
 import { assertCan } from "@/lib/authz";
 import { toResponse, ValidationError, NotFoundError, ConflictError } from "@/lib/errors";
 import { recordAdminAction } from "@/lib/admin-audit";
@@ -12,7 +12,7 @@ type Params = { params: Promise<{ id: string }> };
 
 const updateSchema = z
   .object({
-    role: z.enum(["USER", "ADMIN"]).optional(),
+    role: z.enum(["STUDENT", "TEACHER", "TA", "ADMIN"]).optional(),
     status: z.enum(["ACTIVE", "SUSPENDED"]).optional(),
     emailVerified: z.boolean().optional(),
   })
@@ -36,14 +36,12 @@ export async function PATCH(request: Request, { params }: Params) {
     if (!target) throw new NotFoundError("User not found");
 
     const data = parsed.data;
-    if (id === admin.id && (data.role === "USER" || data.status === "SUSPENDED")) {
+    const isDemotion = data.role !== undefined && data.role !== "ADMIN";
+    if (id === admin.id && (isDemotion || data.status === "SUSPENDED")) {
       throw new ConflictError("You cannot demote or suspend your own account");
     }
 
-    if (
-      target.role === "ADMIN" &&
-      (data.role === "USER" || data.status === "SUSPENDED")
-    ) {
+    if (target.role === "ADMIN" && (isDemotion || data.status === "SUSPENDED")) {
       const adminCount = await prisma.user.count({
         where: { role: "ADMIN", status: "ACTIVE" },
       });
@@ -70,6 +68,10 @@ export async function PATCH(request: Request, { params }: Params) {
         emailVerified: true,
       },
     });
+
+    if (data.status === "SUSPENDED") {
+      await revokeAllSessions(id, "suspended-by-admin");
+    }
 
     await recordAdminAction({
       actorId: admin.id,

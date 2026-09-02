@@ -52,10 +52,46 @@ export async function resetDb(): Promise<void> {
     prisma.solvedProblem.deleteMany(),
     prisma.contestRegistration.deleteMany(),
     prisma.contestProblem.deleteMany(),
+    // Phase 7 — live contest. Contest-scoped rows (announcements,
+    // clarifications, balloons, contest-bound teams) cascade away with
+    // `contest.deleteMany()` below via onDelete: Cascade. Persistent squads
+    // (Team.contestId === null) don't, and Team.captainId is onDelete:
+    // Restrict, so they must go explicitly before user.deleteMany().
+    prisma.teamMember.deleteMany(),
+    prisma.team.deleteMany(),
     prisma.contest.deleteMany(),
     prisma.adminAuditLog.deleteMany(),
     prisma.authToken.deleteMany(),
     prisma.featureFlag.deleteMany(),
+    // Problem Domain (Phase 2) — children before parents so the FK chain
+    // (TestCase -> TestGroup -> ProblemVersion -> Problem, ProblemTag ->
+    // Problem/Tag) never blocks on a still-referenced row.
+    prisma.testCase.deleteMany(),
+    prisma.testGroup.deleteMany(),
+    prisma.referenceSolution.deleteMany(),
+    prisma.problemTag.deleteMany(),
+    prisma.problemStats.deleteMany(),
+    prisma.problemVersion.deleteMany(),
+    prisma.problem.deleteMany(),
+    prisma.tag.deleteMany(),
+    // Judge queue (Phase 4) — RejudgeBatch.createdById is onDelete: Restrict,
+    // so it must go before User; Submission is already gone above.
+    prisma.rejudgeBatch.deleteMany(),
+    prisma.judgeWorker.deleteMany(),
+    // Classroom (Phase 6) — CourseSection.teacherId, GradeOverride.authorId,
+    // AssignmentExtension.grantedById, GradebookSnapshot.createdById are all
+    // onDelete: Restrict, so every classroom row goes before User.
+    prisma.gradeOverride.deleteMany(),
+    prisma.gradebookSnapshot.deleteMany(),
+    prisma.gradebookColumn.deleteMany(),
+    prisma.assignmentExtension.deleteMany(),
+    prisma.assignmentProblem.deleteMany(),
+    prisma.assignment.deleteMany(),
+    prisma.enrollment.deleteMany(),
+    prisma.courseSection.deleteMany(),
+    prisma.course.deleteMany(),
+    prisma.department.deleteMany(),
+    prisma.semester.deleteMany(),
     prisma.user.deleteMany(),
   ]);
 }

@@ -11,7 +11,9 @@ datasource db {
 }
 
 enum Role {
-  USER
+  STUDENT
+  TEACHER
+  TA
   ADMIN
 }
 
@@ -20,11 +22,14 @@ enum UserStatus {
   SUSPENDED
 }
 
-enum University {
-  DIU
-  NSU
-  AIUB
-  BRAC
+enum InstitutionType {
+  PUBLIC_UNIVERSITY
+  PRIVATE_UNIVERSITY
+  NATIONAL_UNIVERSITY_COLLEGE
+  POLYTECHNIC
+  COLLEGE
+  SCHOOL
+  OTHER
 }
 
 enum TokenType {
@@ -37,6 +42,100 @@ enum ContestStatus {
   SCHEDULED
   LIVE
   ENDED
+}
+
+/// Phase 5 (docs/phases/PHASE-05-contest-engine.md D1). LIVE = on the official
+/// clock and board; VIRTUAL = a personal clock started later, shadow-ranked
+/// into a copy of the official board; PRACTICE = upsolving, no clock, no rank.
+enum ParticipationMode {
+  LIVE
+  VIRTUAL
+  PRACTICE
+}
+
+/// Phase 5 D2. Orthogonal to ContestJoinPolicy — who can *see* the contest.
+enum ContestVisibility {
+  PUBLIC
+  UNLISTED
+  INSTITUTION
+  PRIVATE
+}
+
+/// Phase 5 D2. Orthogonal to ContestVisibility — how one *joins* it.
+enum ContestJoinPolicy {
+  OPEN
+  CODE
+  PASSWORD
+  ROSTER
+  INVITE
+  STAFF_ONLY
+}
+
+/// Phase 5 D5.
+enum ContestRole {
+  OWNER
+  COAUTHOR
+  JUDGE
+  OBSERVER
+}
+
+/// Phase 7 (docs/phases/PHASE-07-live-contest.md D1).
+enum ClarificationStatus {
+  OPEN
+  ANSWERED
+  PROMOTED
+  CLOSED
+}
+
+/// Phase 7 — captain vs. regular member on a Team.
+enum TeamRole {
+  CAPTAIN
+  MEMBER
+}
+
+/// Phase 4's submission state machine (docs/phases/DONE__PHASE-04-judge-queue.md D2).
+/// Existing rows default to DONE — the async path only applies to new
+/// submissions created while `judgeQueue` is enabled.
+enum SubmissionState {
+  QUEUED
+  JUDGING
+  DONE
+  FAILED
+}
+
+/// Mirrors src/lib/types.ts's Difficulty string union ("VERY EASY", "MEDIUM-HARD",
+/// ...) via @map — Prisma enum identifiers can't contain spaces/hyphens, but the
+/// DB column stores the exact legacy label so no data translation is needed
+/// beyond the app-boundary conversion in src/lib/difficulty.ts.
+enum Difficulty {
+  VERY_EASY   @map("VERY EASY")
+  EASY
+  MEDIUM
+  MEDIUM_HARD @map("MEDIUM-HARD")
+  HARD
+  VERY_HARD   @map("VERY HARD")
+  EXTREME
+}
+
+enum ProblemStatus {
+  DRAFT
+  IN_REVIEW
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ProblemVisibility {
+  PUBLIC // in the open archive, solvable without login
+  INSTITUTION // visible to the author's institution only
+  PRIVATE // author + explicitly granted contests/sections only
+}
+
+enum CheckerType {
+  EXACT // byte-identical after trailing-whitespace normalisation
+  TOKEN // whitespace-insensitive token comparison (the sane default)
+  FLOAT // numeric comparison within epsilon
+  SPECIAL // custom checker program
+  INTERACTIVE // interactor process drives the submission
 }
 
 enum Verdict {
@@ -61,40 +160,163 @@ enum Verdict {
 }
 
 model User {
-  id            String     @id @default(cuid())
-  email         String     @unique
-  passwordHash  String
-  name          String
-  university    University
-  studentId     String?
-  department    String?
-  role          Role       @default(USER)
-  status        UserStatus @default(ACTIVE)
-  emailVerified DateTime?
-  lastLoginAt   DateTime?
+  id             String     @id @default(cuid())
+  email          String     @unique
+  passwordHash   String
+  name           String
+  studentId      String?
+  department     String?
+  role           Role       @default(STUDENT)
+  status         UserStatus @default(ACTIVE)
+  emailVerified  DateTime?
+  lastLoginAt    DateTime?
   /// Short public blurb on the profile.
-  bio           String     @default("")
+  bio            String     @default("")
   /// UI theme id from src/lib/theme.ts, or "system" to follow the OS.
-  theme         String     @default("dark")
+  theme          String     @default("dark")
   /// Monaco editor font size in px (12–20).
-  editorFontSize Int       @default(14)
+  editorFontSize Int        @default(14)
   /// When false, /u/[id] returns 404 to strangers.
-  profilePublic Boolean    @default(true)
+  profilePublic  Boolean    @default(true)
   /// Show email on the public profile.
-  showEmail     Boolean    @default(false)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  showEmail      Boolean    @default(false)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
-  tokens              AuthToken[]
-  submissions         Submission[]
-  solvedProblems      SolvedProblem[]
-  contestRegs         ContestRegistration[]
-  contestsCreated     Contest[]              @relation("ContestCreator")
-  adminAuditLogs      AdminAuditLog[]         @relation("AdminAuditActor")
+  institutionId         String?
+  institution           Institution? @relation(fields: [institutionId], references: [id], onDelete: SetNull)
+  /// Non-null once membership is proven (domain match or manual approval).
+  institutionVerifiedAt DateTime?
+  institutionVerifiedBy String?
 
-  @@index([university])
+  /// Teacher accounts are inert until an admin approves them.
+  teacherApprovedAt  DateTime?
+  teacherApprovedBy  String?
+  teacherRequestNote String?   @default("")
+
+  tokens                AuthToken[]
+  submissions           Submission[]
+  solvedProblems        SolvedProblem[]
+  contestRegs           ContestRegistration[]
+  contestsCreated       Contest[]                 @relation("ContestCreator")
+  adminAuditLogs        AdminAuditLog[]           @relation("AdminAuditActor")
+  sessions              Session[]
+  problemsAuthored      Problem[]                 @relation("ProblemAuthor")
+  rejudgeBatches        RejudgeBatch[]            @relation("RejudgeBatchCreator")
+  contestStaffRoles     ContestStaff[]            @relation("ContestStaffUser")
+  contestStaffAdded     ContestStaff[]            @relation("ContestStaffAddedBy")
+  contestParticipations ContestParticipation[]
+  contestSnapshots      ContestStandingSnapshot[]
+
+  /// Phase 7 — live contest.
+  contestAnnouncements          ContestAnnouncement[]
+  contestClarificationsAsked    ContestClarification[] @relation("ClarificationAsker")
+  contestClarificationsAnswered ContestClarification[] @relation("ClarificationAnswerer")
+  teamsCaptained                Team[]                 @relation("TeamCaptain")
+  teamsCoached                  Team[]                 @relation("TeamCoach")
+  teamMemberships               TeamMember[]
+  balloonsDelivered             Balloon[]              @relation("BalloonDeliveredBy")
+
+  /// Phase 6 — classroom.
+  sectionsTeaching             CourseSection[]       @relation("SectionTeacher")
+  enrollments                  Enrollment[]
+  assignmentExtensionsGranted  AssignmentExtension[] @relation("ExtensionGrantedBy")
+  assignmentExtensionsReceived AssignmentExtension[] @relation("ExtensionUser")
+  gradeOverridesReceived       GradeOverride[]       @relation("GradeOverrideUser")
+  gradeOverridesAuthored       GradeOverride[]       @relation("GradeOverrideAuthor")
+  gradebookSnapshotsCreated    GradebookSnapshot[]
+
+  /// Phase 8 — analytics.
+  tagStats   UserTagStat[]
+  dailyStats UserDailyStat[]
+
+  /// Phase 9 — ratings & gamification.
+  rating          UserRating?
+  ratingEvents    RatingEvent[]
+  seasonStandings SeasonStanding[]
+  badges          UserBadge[]
+  streak          UserStreak?
+  certificates    Certificate[]
+
+  /// Phase 10 — academic integrity.
+  similarityPairsAsA      SimilarityPair[]         @relation("SimilarityPairUserA")
+  similarityPairsAsB      SimilarityPair[]         @relation("SimilarityPairUserB")
+  similarityPairsReviewed SimilarityPair[]         @relation("SimilarityPairReviewer")
+  proctorEvents           ProctorEvent[]
+  variantTemplatesCreated ProblemVariantTemplate[] @relation("VariantTemplateCreator")
+  problemVariants         ProblemVariant[]
+  integrityReportsCreated IntegrityReport[]        @relation("IntegrityReportCreator")
+
+  @@index([institutionId, institutionVerifiedAt])
+  @@index([role, teacherApprovedAt])
   @@index([role])
   @@index([status])
+}
+
+model Institution {
+  id          String          @id @default(cuid())
+  slug        String          @unique
+  name        String
+  shortName   String
+  type        InstitutionType @default(PRIVATE_UNIVERSITY)
+  district    String?
+  division    String?
+  websiteUrl  String?
+  logoUrl     String?
+  /// Admin-verified as a real institution. Unverified ones are hidden from
+  /// public leaderboards but can still be selected during registration.
+  verified    Boolean         @default(false)
+  /// Denormalised counters, refreshed by the nightly stats job (Phase 9).
+  memberCount Int             @default(0)
+  solvedCount Int             @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  domains  InstitutionDomain[]
+  users    User[]
+  problems Problem[]
+  contests Contest[]
+
+  /// Phase 6 — classroom.
+  departments Department[]
+  semesters   Semester[]
+
+  @@index([verified, memberCount])
+  @@index([district])
+}
+
+model InstitutionDomain {
+  id            String @id @default(cuid())
+  institutionId String
+  /// Lowercase, no leading '@'. e.g. "diu.edu.bd", "s.diu.edu.bd"
+  domain        String @unique
+  /// Domains that only students get (vs. faculty) can auto-assign a role hint.
+  roleHint      Role?
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  @@index([institutionId])
+}
+
+model Session {
+  id               String    @id @default(cuid())
+  userId           String
+  /// SHA-256 of the refresh token. The token itself is never stored.
+  refreshTokenHash String    @unique
+  userAgent        String    @default("")
+  ip               String    @default("")
+  /// Set when this session is bound to a strict-mode contest (Phase 10).
+  boundContestId   String?
+  createdAt        DateTime  @default(now())
+  lastSeenAt       DateTime  @default(now())
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  revokedReason    String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
 }
 
 model AdminAuditLog {
@@ -141,12 +363,123 @@ model Contest {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  createdBy     User                   @relation("ContestCreator", fields: [createdById], references: [id])
-  problems      ContestProblem[]
-  registrations ContestRegistration[]
-  submissions   Submission[]
+  visibility       ContestVisibility @default(PUBLIC)
+  joinPolicy       ContestJoinPolicy @default(OPEN)
+  /// 8 chars, unambiguous alphabet — read aloud in a classroom.
+  joinCode         String?           @unique
+  joinPasswordHash String?
+
+  institutionId String?
+  /// Set for ROSTER contests (Phase 6).
+  sectionId     String?
+  section       CourseSection? @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  /// Contests cloned from this one keep a pointer for "run it again" analytics.
+  clonedFromId  String?
+  isTemplate    Boolean        @default(false)
+
+  /// Denormalised for listing pages; refreshed on participation change.
+  participantCount Int @default(0)
+
+  createdBy      User                      @relation("ContestCreator", fields: [createdById], references: [id])
+  institution    Institution?              @relation(fields: [institutionId], references: [id], onDelete: SetNull)
+  clonedFrom     Contest?                  @relation("ContestClones", fields: [clonedFromId], references: [id], onDelete: SetNull)
+  clones         Contest[]                 @relation("ContestClones")
+  problems       ContestProblem[]
+  registrations  ContestRegistration[]
+  submissions    Submission[]
+  staff          ContestStaff[]
+  participations ContestParticipation[]
+  snapshots      ContestStandingSnapshot[]
+
+  /// Phase 7 — live contest.
+  announcements  ContestAnnouncement[]
+  clarifications ContestClarification[]
+  teams          Team[]
+  balloons       Balloon[]
+
+  /// Phase 9 — ratings.
+  ratingEvents RatingEvent[]
+
+  /// Phase 10 — academic integrity.
+  proctorEvents ProctorEvent[]
 
   @@index([status])
+  @@index([visibility, status, startsAt])
+  @@index([institutionId, status])
+  @@index([sectionId])
+}
+
+/// Phase 5 D5 — who may administer a contest, beyond its creator.
+model ContestStaff {
+  id        String      @id @default(cuid())
+  contestId String
+  userId    String
+  role      ContestRole @default(JUDGE)
+  addedById String
+  createdAt DateTime    @default(now())
+
+  contest Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  user    User    @relation("ContestStaffUser", fields: [userId], references: [id], onDelete: Cascade)
+  addedBy User    @relation("ContestStaffAddedBy", fields: [addedById], references: [id], onDelete: Restrict)
+
+  @@unique([contestId, userId])
+  @@index([userId])
+}
+
+/// Phase 5 D1 — replaces/absorbs ContestRegistration as the source of truth
+/// once contestV2 is on; ContestRegistration is dual-written during the soak.
+model ContestParticipation {
+  id        String            @id @default(cuid())
+  contestId String
+  userId    String
+  teamId    String?
+  mode      ParticipationMode @default(LIVE)
+  /// Counts toward the ranked standings — a LIVE participant can still be
+  /// unofficial (a teacher racing their own class, a late joiner).
+  official  Boolean           @default(true)
+
+  /// Personal clock: mirrors the contest for LIVE, offset for VIRTUAL, null
+  /// for PRACTICE.
+  startsAt DateTime?
+  endsAt   DateTime?
+
+  registeredAt DateTime  @default(now())
+  /// First page load inside the contest — "registered" vs. "showed up".
+  enteredAt    DateTime?
+
+  contest     Contest      @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+  balloons    Balloon[]
+
+  /// Phase 10 — academic integrity.
+  proctorEvents ProctorEvent[]
+
+  @@unique([contestId, userId, mode])
+  @@index([contestId, mode, official])
+  @@index([userId, mode])
+}
+
+/// Phase 5 D4 — immutable, versioned final/frozen standings. Ratings (Phase 9)
+/// and certificates consume a snapshot, never a live query.
+model ContestStandingSnapshot {
+  id               String   @id @default(cuid())
+  contestId        String
+  version          Int
+  /// "final" | "freeze" | "rejudge" | "manual"
+  reason           String
+  /// Full ranked standings; shape = StandingsPayload (src/lib/scoring/types.ts).
+  standings        Json
+  problemStats     Json     @default("{}")
+  participantCount Int      @default(0)
+  createdById      String?
+  createdAt        DateTime @default(now())
+
+  contest   Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([contestId, version])
+  @@index([contestId, createdAt])
 }
 
 model ContestProblem {
@@ -157,10 +490,125 @@ model ContestProblem {
   points    Int    @default(100)
   label     String @default("A")
 
-  contest Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  /// FK to the real row once the problem has been imported/authored in the DB.
+  problemRefId     String?
+  /// Pinning the version is what makes a past contest reproducible.
+  problemVersionId String?
+  /// Phase 7 — physical-contest balloon color, e.g. "#e11d48". Null = no balloons.
+  balloonColor     String?
+
+  contest        Contest         @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  problemRef     Problem?        @relation(fields: [problemRefId], references: [id])
+  problemVersion ProblemVersion? @relation(fields: [problemVersionId], references: [id])
 
   @@unique([contestId, problemId])
   @@index([contestId, order])
+  @@index([problemRefId])
+  @@index([problemVersionId])
+}
+
+// ---------------------------------------------------------------------------
+// Phase 7 — Live Contest Experience (docs/phases/PHASE-07-live-contest.md)
+// ---------------------------------------------------------------------------
+
+/// D1 — a broadcast announcement, optionally scoped to one problem and
+/// optionally promoted from a private ContestClarification.
+model ContestAnnouncement {
+  id                    String   @id @default(cuid())
+  contestId             String
+  problemId             String? // scoped to one problem, or general
+  title                 String   @default("")
+  body                  String
+  /// Promoted from this clarification, if any.
+  sourceClarificationId String?  @unique
+  authorId              String
+  createdAt             DateTime @default(now())
+
+  contest             Contest               @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  author              User                  @relation(fields: [authorId], references: [id])
+  sourceClarification ContestClarification? @relation("ClarificationPromotion", fields: [sourceClarificationId], references: [id], onDelete: SetNull)
+
+  @@index([contestId, createdAt])
+}
+
+/// D1 — a private thread (asker + staff) that can be promoted to a broadcast
+/// announcement or answered with a canned response.
+model ContestClarification {
+  id           String              @id @default(cuid())
+  contestId    String
+  userId       String
+  teamId       String?
+  problemId    String?
+  question     String
+  answer       String?
+  status       ClarificationStatus @default(OPEN)
+  answeredById String?
+  answeredAt   DateTime?
+  createdAt    DateTime            @default(now())
+
+  contest      Contest              @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  user         User                 @relation("ClarificationAsker", fields: [userId], references: [id], onDelete: Cascade)
+  answeredBy   User?                @relation("ClarificationAnswerer", fields: [answeredById], references: [id], onDelete: SetNull)
+  announcement ContestAnnouncement? @relation("ClarificationPromotion")
+
+  @@index([contestId, status, createdAt])
+  @@index([userId])
+}
+
+/// D3 — a team is a participation wrapper: ContestParticipation.teamId points
+/// here, and the scoreboard groups by teamId ?? userId. `contestId` null
+/// means a persistent squad (coach view) not tied to one contest.
+model Team {
+  id            String   @id @default(cuid())
+  contestId     String?
+  name          String
+  joinCode      String   @unique
+  captainId     String
+  coachId       String?
+  institutionId String?
+  createdAt     DateTime @default(now())
+
+  contest Contest?     @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  captain User         @relation("TeamCaptain", fields: [captainId], references: [id])
+  coach   User?        @relation("TeamCoach", fields: [coachId], references: [id], onDelete: SetNull)
+  members TeamMember[]
+
+  @@unique([contestId, name])
+  @@index([coachId])
+  @@index([joinCode])
+}
+
+model TeamMember {
+  teamId   String
+  userId   String
+  role     TeamRole @default(MEMBER)
+  joinedAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, userId])
+  @@index([userId])
+}
+
+/// D — physical-contest balloon delivery queue. One row per (participation,
+/// problem) pair the moment that pair is first solved.
+model Balloon {
+  id              String    @id @default(cuid())
+  contestId       String
+  participationId String
+  problemId       String
+  color           String
+  deliveredAt     DateTime?
+  deliveredById   String?
+  createdAt       DateTime  @default(now())
+
+  contest       Contest              @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  participation ContestParticipation @relation(fields: [participationId], references: [id], onDelete: Cascade)
+  deliveredBy   User?                @relation("BalloonDeliveredBy", fields: [deliveredById], references: [id], onDelete: SetNull)
+
+  @@unique([participationId, problemId])
+  @@index([contestId, deliveredAt])
 }
 
 model ContestRegistration {
@@ -176,41 +624,556 @@ model ContestRegistration {
 }
 
 model Submission {
-  id        String   @id @default(cuid())
-  userId    String?
-  problemId String
-  contestId String?
-  code      String
-  language  String   @default("c")
-  verdict   Verdict
-  timeMs    Int?
-  stdout    String?
-  stderr    String?
+  id            String   @id @default(cuid())
+  userId        String?
+  problemId     String
+  contestId     String?
+  code          String
+  language      String   @default("c")
+  verdict       Verdict
+  timeMs        Int?
+  stdout        String?
+  stderr        String?
   /// Full per-test judge report (all verdicts, times, stdout/stderr per test).
   /// Nullable and additive — Phase 3 normalises the shape into JudgeReport.
-  report    Json?
-  createdAt DateTime @default(now())
+  report        Json?
+  /// Group-weighted score out of maxScore (Phase 3 subtask/IOI scoring).
+  score         Int      @default(0)
+  maxScore      Int      @default(0)
+  maxCpuMs      Int?
+  maxWallMs     Int?
+  maxMemoryKb   Int?
+  compileMs     Int?
+  /// Provenance: which sandbox image judged this — see runner/images.lock.json.
+  judgeImage    String?
+  judgeProtocol Int      @default(1)
+  createdAt     DateTime @default(now())
 
-  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  contest Contest? @relation(fields: [contestId], references: [id], onDelete: SetNull)
+  /// FK to the real row. The string problemId stays as a denormalised slug.
+  problemRefId     String?
+  problemVersionId String?
+
+  /// Phase 4 queue state machine — see docs/phases/DONE__PHASE-04-judge-queue.md D2.
+  state       SubmissionState @default(DONE)
+  /// Lower runs first — see D3's priority table.
+  priority    Int             @default(10)
+  attempts    Int             @default(0)
+  claimedAt   DateTime?
+  /// Stable worker id (JudgeWorker.id) that currently holds the claim.
+  claimedBy   String?
+  heartbeatAt DateTime?
+  queuedAt    DateTime?
+  judgedAt    DateTime?
+
+  /// Set when this submission is part of a rejudge batch.
+  rejudgeBatchId String?
+  /// Dry-run rejudge result, not applied to `verdict`/`score` until approved.
+  shadowReport   Json?
+
+  /// Which participation this submission belongs to (Phase 5). Null = a
+  /// practice submission outside any contest, or one predating contestV2.
+  participationId String?
+
+  user          User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
+  contest       Contest?              @relation(fields: [contestId], references: [id], onDelete: SetNull)
+  problemRef    Problem?              @relation(fields: [problemRefId], references: [id], onDelete: SetNull)
+  rejudgeBatch  RejudgeBatch?         @relation(fields: [rejudgeBatchId], references: [id], onDelete: SetNull)
+  participation ContestParticipation? @relation(fields: [participationId], references: [id], onDelete: SetNull)
+
+  /// Phase 10 — academic integrity.
+  fingerprint          SubmissionFingerprint?
+  fingerprintIndexRows FingerprintIndex[]
+  similarityPairsAsA   SimilarityPair[]       @relation("SimilarityPairSubmissionA")
+  similarityPairsAsB   SimilarityPair[]       @relation("SimilarityPairSubmissionB")
 
   @@index([userId, problemId])
   @@index([contestId, userId])
   @@index([problemId, verdict])
+  @@index([problemRefId, verdict])
+  @@index([state, priority, queuedAt])
+  @@index([state, heartbeatAt])
+  @@index([rejudgeBatchId])
+  @@index([participationId, createdAt])
+}
+
+/// A teacher-triggered rejudge run over a scope of submissions. `dryRun`
+/// batches judge into `Submission.shadowReport` and never touch `verdict`
+/// until POST /api/teacher/rejudge/[id]/apply commits the diff.
+model RejudgeBatch {
+  id          String    @id @default(cuid())
+  /// "submission" | "problem" | "contest" | "version"
+  scope       String
+  scopeId     String
+  reason      String
+  dryRun      Boolean   @default(true)
+  createdById String
+  total       Int       @default(0)
+  completed   Int       @default(0)
+  changed     Int       @default(0)
+  /// Verdict transition counts, e.g. { "WA->AC": 12, "AC->WA": 1 }.
+  diffSummary Json      @default("{}")
+  appliedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  submissions Submission[]
+  createdBy   User         @relation("RejudgeBatchCreator", fields: [createdById], references: [id])
+
+  @@index([scope, scopeId])
+}
+
+/// Heartbeat/registry row for a running worker process, refreshed by
+/// worker/src/index.ts. Purely observational — never authoritative for
+/// claim/report, which stay conditional SQL on Submission itself.
+model JudgeWorker {
+  id          String   @id
+  hostname    String
+  languages   String[]
+  concurrency Int
+  version     String
+  startedAt   DateTime
+  lastSeenAt  DateTime
+  judgedCount Int      @default(0)
+  failedCount Int      @default(0)
+
+  @@index([lastSeenAt])
 }
 
 model SolvedProblem {
-  id           String   @id @default(cuid())
-  userId       String
-  problemId    String
+  id            String   @id @default(cuid())
+  userId        String
+  problemId     String
   firstSolvedAt DateTime @default(now())
-  solveCount   Int      @default(1)
+  solveCount    Int      @default(1)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problemRefId String?
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problemRef Problem? @relation(fields: [problemRefId], references: [id], onDelete: Cascade)
 
   @@unique([userId, problemId])
   @@index([userId])
   @@index([problemId])
+  @@index([problemRefId])
+}
+
+model Problem {
+  id               String            @id @default(cuid())
+  /// Stable public identifier. Legacy bank problems keep "set1-q1".
+  slug             String            @unique
+  title            String
+  status           ProblemStatus     @default(DRAFT)
+  visibility       ProblemVisibility @default(PRIVATE)
+  authorId         String
+  institutionId    String?
+  /// Points at the version served to solvers. Null while unpublished.
+  currentVersionId String?           @unique
+  /// Author's difficulty label; Phase 15 adds a computed one alongside.
+  difficulty       Difficulty        @default(EASY)
+  /// Denormalised from the legacy bank for archive browsing continuity.
+  legacySet        Int?
+  legacyQuestion   Int?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  author             User                @relation("ProblemAuthor", fields: [authorId], references: [id])
+  institution        Institution?        @relation(fields: [institutionId], references: [id], onDelete: SetNull)
+  currentVersion     ProblemVersion?     @relation("CurrentVersion", fields: [currentVersionId], references: [id])
+  versions           ProblemVersion[]    @relation("AllVersions")
+  tags               ProblemTag[]
+  stats              ProblemStats?
+  contestUses        ContestProblem[]
+  submissions        Submission[]
+  solves             SolvedProblem[]
+  assignmentProblems AssignmentProblem[]
+  rating             ProblemRating?
+
+  /// Phase 10 — academic integrity.
+  variantTemplate ProblemVariantTemplate?
+
+  @@index([status, visibility, difficulty])
+  @@index([authorId, status])
+  @@index([institutionId])
+}
+
+model ProblemVersion {
+  id        String  @id @default(cuid())
+  problemId String
+  version   Int
+  /// Immutable once published or referenced by a contest.
+  frozen    Boolean @default(false)
+
+  statementMd String // Markdown + KaTeX
+  statementBn String? // Bangla statement (Phase 14)
+  inputSpec   String  @default("")
+  outputSpec  String  @default("")
+  constraints String  @default("")
+  notes       String  @default("")
+  starterCode Json    @default("{}") // { "c": "...", "cpp20": "..." }
+
+  timeLimitMs   Int @default(2000)
+  memoryLimitMb Int @default(256)
+  outputLimitKb Int @default(512)
+
+  checkerType CheckerType @default(TOKEN)
+  checkerEps  Float? // FLOAT only
+  checkerCode String? // SPECIAL/INTERACTIVE source
+  checkerLang String?
+
+  /// Sum of all non-sample group points; cached for the scorer.
+  maxScore Int @default(100)
+
+  createdById String
+  createdAt   DateTime  @default(now())
+  publishedAt DateTime?
+
+  problem            Problem             @relation("AllVersions", fields: [problemId], references: [id], onDelete: Cascade)
+  currentOf          Problem?            @relation("CurrentVersion")
+  groups             TestGroup[]
+  references         ReferenceSolution[]
+  contestUses        ContestProblem[]
+  assignmentProblems AssignmentProblem[]
+  /// Phase 10 — generated for a ProblemVariant, if this version is one.
+  generatedVariant   ProblemVariant?
+
+  @@unique([problemId, version])
+  @@index([problemId, frozen])
+}
+
+model TestGroup {
+  id               String  @id @default(cuid())
+  problemVersionId String
+  order            Int     @default(0)
+  name             String  @default("main")
+  points           Int     @default(100)
+  isSample         Boolean @default(false)
+  /// IOI subtask dependencies: this group scores 0 unless all listed groups pass.
+  dependsOn        Int[]   @default([])
+  /// Stop running this group's tests after the first failure.
+  stopOnFail       Boolean @default(true)
+
+  version ProblemVersion @relation(fields: [problemVersionId], references: [id], onDelete: Cascade)
+  cases   TestCase[]
+
+  @@unique([problemVersionId, order])
+}
+
+model TestCase {
+  id          String @id @default(cuid())
+  testGroupId String
+  order       Int    @default(0)
+  label       String @default("")
+
+  /// Blobs > 4 KB live in object storage; smaller ones are inlined.
+  inputKey       String?
+  expectedKey    String?
+  inputInline    String?
+  expectedInline String?
+  inputHash      String
+  expectedHash   String
+  inputBytes     Int     @default(0)
+  expectedBytes  Int     @default(0)
+  /// Expected output was hand-written rather than produced by a reference solution.
+  manualExpected Boolean @default(false)
+
+  group TestGroup @relation(fields: [testGroupId], references: [id], onDelete: Cascade)
+
+  @@unique([testGroupId, order])
+  @@index([inputHash])
+}
+
+model ReferenceSolution {
+  id               String    @id @default(cuid())
+  problemVersionId String
+  language         String
+  source           String
+  /// What this solution is supposed to do — the publish gate asserts it.
+  expectedVerdict  Verdict   @default(AC)
+  note             String    @default("")
+  lastVerdict      Verdict?
+  lastCheckedAt    DateTime?
+  lastMaxCpuMs     Int?
+
+  version ProblemVersion @relation(fields: [problemVersionId], references: [id], onDelete: Cascade)
+
+  @@index([problemVersionId])
+}
+
+model Tag {
+  id       String  @id @default(cuid())
+  slug     String  @unique // "dynamic-programming"
+  name     String // "Dynamic Programming"
+  nameBn   String?
+  category String  @default("topic") // topic | technique | datastructure | meta
+  /// Tags that reveal the solution are hidden until a user solves the problem.
+  spoiler  Boolean @default(true)
+
+  problems  ProblemTag[]
+  userStats UserTagStat[]
+
+  @@index([category])
+}
+
+model ProblemTag {
+  problemId String
+  tagId     String
+  /// Author confidence 1–3; Phase 15 adds crowd-sourced tags at lower weight.
+  weight    Int    @default(3)
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([problemId, tagId])
+  @@index([tagId])
+}
+
+model ProblemStats {
+  problemId       String   @id
+  attempts        Int      @default(0)
+  accepted        Int      @default(0)
+  distinctUsers   Int      @default(0)
+  distinctSolvers Int      @default(0)
+  /// Computed difficulty (Phase 15). Author label stays on Problem.
+  eloDifficulty   Int?
+  avgAttemptsToAc Float?
+  updatedAt       DateTime @updatedAt
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@index([accepted])
+}
+
+// ---------------------------------------------------------------------------
+// Phase 6 — Classroom, Courses & Gradebook (docs/phases/PHASE-06-classroom.md)
+// ---------------------------------------------------------------------------
+
+model Semester {
+  id            String   @id @default(cuid())
+  institutionId String
+  name          String // "Fall 2026"
+  code          String // "2026F"
+  startsAt      DateTime
+  endsAt        DateTime
+  isCurrent     Boolean  @default(false)
+
+  institution Institution     @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  sections    CourseSection[]
+
+  @@unique([institutionId, code])
+}
+
+model Department {
+  id            String @id @default(cuid())
+  institutionId String
+  name          String // "Computer Science & Engineering"
+  shortName     String // "CSE"
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  courses     Course[]
+
+  @@unique([institutionId, shortName])
+}
+
+model Course {
+  id           String  @id @default(cuid())
+  departmentId String
+  code         String // "CSE 213"
+  title        String // "Data Structures"
+  description  String  @default("")
+  credits      Float   @default(3)
+  archived     Boolean @default(false)
+
+  department Department      @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  sections   CourseSection[]
+
+  @@unique([departmentId, code])
+}
+
+model CourseSection {
+  id           String   @id @default(cuid())
+  courseId     String
+  semesterId   String
+  name         String // "Section B"
+  teacherId    String
+  inviteCode   String   @unique
+  /// Students may self-enrol with the code without teacher approval.
+  openEnroll   Boolean  @default(false)
+  archived     Boolean  @default(false)
+  /// Cloned-from pointer for semester rollover analytics.
+  clonedFromId String?
+  createdAt    DateTime @default(now())
+
+  course      Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  semester    Semester            @relation(fields: [semesterId], references: [id])
+  teacher     User                @relation("SectionTeacher", fields: [teacherId], references: [id])
+  enrollments Enrollment[]
+  assignments Assignment[]
+  columns     GradebookColumn[]
+  contests    Contest[]
+  snapshots   GradebookSnapshot[]
+  stat        SectionStat?
+
+  @@unique([courseId, semesterId, name])
+  @@index([teacherId, archived])
+}
+
+enum EnrollmentRole {
+  STUDENT
+  TA
+}
+
+enum EnrollmentStatus {
+  INVITED
+  ACTIVE
+  DROPPED
+}
+
+model Enrollment {
+  id        String           @id @default(cuid())
+  sectionId String
+  userId    String? // null while INVITED
+  /// Identity from the roster, used to link a later registration.
+  email     String?
+  studentId String?
+  name      String?
+  role      EnrollmentRole   @default(STUDENT)
+  status    EnrollmentStatus @default(ACTIVE)
+  joinedAt  DateTime?
+  droppedAt DateTime?
+  createdAt DateTime         @default(now())
+
+  section CourseSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  user    User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([sectionId, userId])
+  @@unique([sectionId, email])
+  @@index([userId, status])
+  @@index([email])
+  @@index([studentId])
+}
+
+enum LatePolicy {
+  NONE
+  LINEAR
+  GRACE_THEN_LINEAR
+  REJECT
+}
+
+model Assignment {
+  id            String     @id @default(cuid())
+  sectionId     String
+  title         String
+  descriptionMd String     @default("")
+  opensAt       DateTime?
+  dueAt         DateTime?
+  /// Submissions after this are rejected regardless of late policy.
+  closesAt      DateTime?
+  latePolicy    LatePolicy @default(NONE)
+  /// LINEAR: percent lost per day. GRACE_THEN_LINEAR: hours of grace before linear starts.
+  lateParam     Float      @default(0)
+  /// Contribution to the final grade, relative to other columns.
+  weight        Float      @default(1)
+  published     Boolean    @default(false)
+  /// Show classmates' progress (a light leaderboard) — off by default.
+  showPeers     Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+
+  section    CourseSection         @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  problems   AssignmentProblem[]
+  extensions AssignmentExtension[]
+  column     GradebookColumn?
+
+  @@index([sectionId, published, dueAt])
+}
+
+model AssignmentProblem {
+  id               String  @id @default(cuid())
+  assignmentId     String
+  problemId        String
+  problemVersionId String
+  order            Int     @default(0)
+  points           Int     @default(100)
+  /// Optional: this problem must be solved before later ones unlock.
+  required         Boolean @default(true)
+
+  assignment     Assignment     @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  problem        Problem        @relation(fields: [problemId], references: [id])
+  problemVersion ProblemVersion @relation(fields: [problemVersionId], references: [id])
+
+  @@unique([assignmentId, problemId])
+  @@index([assignmentId, order])
+}
+
+model AssignmentExtension {
+  id           String   @id @default(cuid())
+  assignmentId String
+  userId       String
+  newDueAt     DateTime
+  reason       String   @default("")
+  grantedById  String
+  createdAt    DateTime @default(now())
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  user       User       @relation("ExtensionUser", fields: [userId], references: [id], onDelete: Cascade)
+  grantedBy  User       @relation("ExtensionGrantedBy", fields: [grantedById], references: [id], onDelete: Restrict)
+
+  @@unique([assignmentId, userId])
+}
+
+enum GradebookSource {
+  ASSIGNMENT
+  CONTEST
+  MANUAL
+}
+
+model GradebookColumn {
+  id           String          @id @default(cuid())
+  sectionId    String
+  source       GradebookSource
+  assignmentId String?         @unique
+  contestId    String?
+  title        String
+  maxPoints    Float           @default(100)
+  weight       Float           @default(1)
+  order        Int             @default(0)
+  /// Excluded from the total until the teacher publishes it.
+  published    Boolean         @default(false)
+
+  section    CourseSection   @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  assignment Assignment?     @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  overrides  GradeOverride[]
+
+  @@index([sectionId, order])
+}
+
+model GradeOverride {
+  id        String   @id @default(cuid())
+  columnId  String
+  userId    String
+  points    Float
+  reason    String   @default("")
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  column GradebookColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  user   User            @relation("GradeOverrideUser", fields: [userId], references: [id], onDelete: Cascade)
+  author User            @relation("GradeOverrideAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@unique([columnId, userId])
+}
+
+model GradebookSnapshot {
+  id          String   @id @default(cuid())
+  sectionId   String
+  label       String // "Midterm submission to department"
+  data        Json
+  createdById String
+  createdAt   DateTime @default(now())
+
+  section   CourseSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  createdBy User          @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([sectionId, createdAt])
 }
 
 /// Per-flag rollout config, resolved by src/lib/flags.ts. Env var
@@ -224,3 +1187,376 @@ model FeatureFlag {
   updatedAt      DateTime @updatedAt
 }
 
+// ---------------------------------------------------------------------------
+// Phase 9 — Ratings, National Leaderboards & Gamification
+// (docs/phases/PHASE-09-ratings-leaderboards.md)
+// ---------------------------------------------------------------------------
+
+/// D1 — Elo-MMR skill state per user. `displayed` is the conservative
+/// public-facing number (mu - 2*sigma); `mu`/`sigma` are the internal state
+/// a recompute needs to resume from.
+model UserRating {
+  userId        String    @id
+  mu            Float     @default(1500)
+  sigma         Float     @default(350)
+  displayed     Int       @default(800)
+  peak          Int       @default(800)
+  contests      Int       @default(0)
+  lastContestAt DateTime?
+  engineVersion Int       @default(1)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([displayed])
+}
+
+/// D1 — one row per (user, rated contest). Immutable once written; a
+/// recompute deletes and rewrites the full set rather than patching rows, so
+/// this table is always a clean replay of the snapshots that produced it.
+model RatingEvent {
+  id              String   @id @default(cuid())
+  userId          String
+  contestId       String
+  snapshotId      String
+  rank            Int
+  ratedCount      Int
+  muBefore        Float
+  sigmaBefore     Float
+  muAfter         Float
+  sigmaAfter      Float
+  displayedBefore Int
+  displayedAfter  Int
+  delta           Int
+  engineVersion   Int      @default(1)
+  createdAt       DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contest Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contestId])
+  @@index([contestId])
+  @@index([userId, createdAt])
+}
+
+/// D4 — a named ranking window (typically one semester). Ratings never
+/// reset at season boundaries; only the archived standings do.
+model Season {
+  id            String    @id @default(cuid())
+  slug          String    @unique
+  name          String
+  startsAt      DateTime
+  endsAt        DateTime
+  institutionId String?
+  closedAt      DateTime?
+  createdAt     DateTime  @default(now())
+
+  standings SeasonStanding[]
+
+  @@index([institutionId, endsAt])
+}
+
+model SeasonStanding {
+  id         String @id @default(cuid())
+  seasonId   String
+  userId     String
+  rank       Int
+  rating     Int
+  ratingGain Int
+  solved     Int
+  contests   Int
+
+  season Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([seasonId, userId])
+  @@index([seasonId, rank])
+}
+
+/// Badge engine — declarative rules evaluated on three triggers (submission
+/// judged, contest ended, nightly). See src/lib/badges.ts.
+model Badge {
+  id          String  @id @default(cuid())
+  code        String  @unique
+  name        String
+  nameBn      String?
+  description String
+  icon        String
+  tier        String  @default("bronze")
+  rule        Json
+  hidden      Boolean @default(false)
+
+  awards UserBadge[]
+}
+
+model UserBadge {
+  userId   String
+  badgeId  String
+  earnedAt DateTime @default(now())
+  context  Json     @default("{}")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, badgeId])
+  @@index([badgeId])
+}
+
+/// Streaks are computed per the user's own timezone (default Asia/Dhaka),
+/// not UTC — see PHASE-09 D/testing plan.
+model UserStreak {
+  userId       String    @id
+  current      Int       @default(0)
+  longest      Int       @default(0)
+  lastSolveDay DateTime? @db.Date
+  freezes      Int       @default(0)
+  timezone     String    @default("Asia/Dhaka")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// D5 — problem difficulty inferred from solve data; input to Phase 15.
+model ProblemRating {
+  problemId   String   @id
+  rating      Int      @default(1500)
+  confidence  Float    @default(0)
+  solvedCount Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@index([rating])
+}
+
+/// D6 — a verifiable achievement record. `signature` is an HMAC over the
+/// canonical payload with a server secret; the public verification page
+/// recomputes it and compares.
+model Certificate {
+  id        String    @id @default(cuid())
+  type      String
+  userId    String
+  contestId String?
+  sectionId String?
+  payload   Json
+  signature String
+  issuedAt  DateTime  @default(now())
+  revokedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+}
+
+// ---------------------------------------------------------------------------
+// Phase 8 — Analytics & Reporting (docs/phases/PHASE-08-analytics.md)
+// ---------------------------------------------------------------------------
+
+/// D1 — per-student, per-tag mastery rollup. Laplace-smoothed so a single
+/// lucky solve doesn't outrank a large, mostly-solved sample.
+model UserTagStat {
+  userId          String
+  tagId           String
+  attempted       Int       @default(0)
+  solved          Int       @default(0)
+  /// (solved + 1) / (attempted + 2)
+  mastery         Float     @default(0)
+  avgAttemptsToAc Float?
+  lastSolvedAt    DateTime?
+  updatedAt       DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([userId, tagId])
+  @@index([tagId, mastery])
+}
+
+/// D1 — section-level cohort rollup consumed by the teacher analytics screen.
+model SectionStat {
+  sectionId      String   @id
+  activeStudents Int      @default(0)
+  medianSolved   Float    @default(0)
+  /// Tag ids ranked by lowest cohort mastery: [{ tagId, slug, name, mastery }].
+  weakTags       Json     @default("[]")
+  /// Full explainable at-risk payload: [{ userId, signals: [{key, sentence}] }].
+  atRisk         Json     @default("[]")
+  atRiskUserIds  String[] @default([])
+  updatedAt      DateTime @updatedAt
+
+  section CourseSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+}
+
+/// D1 — per-user daily activity, also powers ActivityHeatmap without a raw
+/// Submission scan.
+model UserDailyStat {
+  userId        String
+  day           DateTime @db.Date
+  submitted     Int      @default(0)
+  solved        Int      @default(0)
+  minutesActive Int      @default(0)
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, day])
+  @@index([day])
+}
+
+/// D1/incremental rollups — one row per rollup job, storing a keyset
+/// watermark (createdAt, id) so a re-run only processes newer Submission rows.
+model AnalyticsWatermark {
+  job       String    @id
+  cursorAt  DateTime?
+  cursorId  String?
+  lastRunAt DateTime?
+  updatedAt DateTime  @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Phase 10 — Academic Integrity (docs/phases/PHASE-10-integrity.md)
+// ---------------------------------------------------------------------------
+
+/// D1 — winnowed fingerprint of one submission's normalised source. Hashes
+/// are stored as hex strings (Postgres has no native uint64, and the schema
+/// otherwise never uses BigInt — see TestCase.inputHash for the precedent).
+model SubmissionFingerprint {
+  submissionId String   @id
+  language     String
+  /// Winnowed fingerprint hashes, sorted, hex-encoded.
+  hashes       String[]
+  tokenCount   Int
+  createdAt    DateTime @default(now())
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+/// Inverted index: hash -> submissions containing it. Written alongside
+/// SubmissionFingerprint; read by the similarity sweep's candidate search.
+model FingerprintIndex {
+  hash         String
+  /// Denormalised from Submission.problemId (not FK'd — mirrors that field).
+  problemId    String
+  submissionId String
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@id([hash, submissionId])
+  @@index([problemId, hash])
+}
+
+/// D1/D2 — a candidate plagiarism pair surfaced by a sweep, ranked by
+/// z-score against the problem's own similarity distribution.
+model SimilarityPair {
+  id            String    @id @default(cuid())
+  /// "contest" | "section" | "assignment" | "global"
+  scopeType     String
+  scopeId       String
+  problemId     String
+  submissionAId String
+  submissionBId String
+  userAId       String
+  userBId       String
+  /// Jaccard similarity over winnowed fingerprints, 0..1.
+  similarity    Float
+  /// Standard deviations above this problem's population median (MAD-based).
+  zScore        Float
+  sharedTokens  Int
+  /// Aligned regions for the side-by-side view: [{aStart,aEnd,bStart,bEnd}]
+  regions       Json      @default("[]")
+  /// OPEN | DISMISSED | CONFIRMED | ESCALATED
+  status        String    @default("OPEN")
+  reviewedById  String?
+  reviewedAt    DateTime?
+  reviewNote    String    @default("")
+  createdAt     DateTime  @default(now())
+
+  submissionA Submission @relation("SimilarityPairSubmissionA", fields: [submissionAId], references: [id], onDelete: Cascade)
+  submissionB Submission @relation("SimilarityPairSubmissionB", fields: [submissionBId], references: [id], onDelete: Cascade)
+  userA       User       @relation("SimilarityPairUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB       User       @relation("SimilarityPairUserB", fields: [userBId], references: [id], onDelete: Cascade)
+  reviewedBy  User?      @relation("SimilarityPairReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@unique([scopeType, scopeId, submissionAId, submissionBId])
+  @@index([scopeType, scopeId, zScore])
+  @@index([userAId])
+  @@index([userBId])
+}
+
+/// D4 — client-reported proctoring telemetry for strict-mode contests.
+/// `meta` is deliberately bounded (durations/lengths only, never content).
+model ProctorEvent {
+  id              String   @id @default(cuid())
+  contestId       String
+  participationId String
+  userId          String
+  /// blur | focus | hidden | visible | paste | copy | fullscreen-exit | resize | devtools-open
+  type            String
+  at              DateTime @default(now())
+  meta            Json     @default("{}")
+
+  contest       Contest              @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  participation ContestParticipation @relation(fields: [participationId], references: [id], onDelete: Cascade)
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([contestId, userId, at])
+  @@index([participationId])
+}
+
+/// D3 — a per-student parameterised problem variant template. v1 is narrow:
+/// integer/array parameters, batch problems only.
+model ProblemVariantTemplate {
+  id                String   @id @default(cuid())
+  problemId         String   @unique
+  statementTemplate String
+  /// ParameterSpec[] — see src/lib/integrity/variants/spec.ts.
+  parameterSpec     Json
+  generatorSource   String
+  generatorLang     String   @default("cpp20")
+  referenceSource   String
+  referenceLang     String   @default("cpp20")
+  /// How many cases / which groups to generate.
+  testPlan          Json     @default("{}")
+  createdById       String
+  createdAt         DateTime @default(now())
+
+  problem   Problem          @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  createdBy User             @relation("VariantTemplateCreator", fields: [createdById], references: [id])
+  variants  ProblemVariant[]
+
+  @@index([createdById])
+}
+
+/// D3 — one student's generated variant. `problemVersionId` points at the
+/// frozen ProblemVersion generated for them (own statement + test data).
+model ProblemVariant {
+  id               String   @id @default(cuid())
+  templateId       String
+  userId           String
+  /// "assignment" | "contest"
+  scopeType        String
+  scopeId          String
+  seed             String
+  parameters       Json
+  problemVersionId String   @unique
+  createdAt        DateTime @default(now())
+
+  template       ProblemVariantTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problemVersion ProblemVersion         @relation(fields: [problemVersionId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, userId, scopeId])
+  @@index([scopeId])
+}
+
+/// A generated PDF summary of confirmed integrity cases for a scope.
+model IntegrityReport {
+  id          String   @id @default(cuid())
+  scopeType   String
+  scopeId     String
+  generatedAt DateTime @default(now())
+  summary     Json
+  createdById String
+
+  createdBy User @relation("IntegrityReportCreator", fields: [createdById], references: [id])
+
+  @@index([scopeType, scopeId])
+}

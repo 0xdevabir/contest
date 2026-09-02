@@ -2,9 +2,9 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import type { Metadata } from "next";
-import type { University } from "@prisma/client";
 import { Crown, Medal, Trophy } from "lucide-react";
 import { getSession } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import {
   getPracticeLeaderboard,
   type LeaderboardRange,
@@ -12,22 +12,19 @@ import {
   type LeaderboardSort,
 } from "@/lib/leaderboard";
 import { DIFFICULTY_ORDER, difficultyClass } from "@/lib/difficulty";
-import { UNIVERSITIES, universityLabel } from "@/lib/universities";
 import { PageHeader } from "@/components/PageHeader";
 import { breadcrumbJsonLd, buildPageMetadata, JsonLd } from "@/lib/seo";
+import { isEnabled } from "@/lib/flags";
 
 export const metadata: Metadata = buildPageMetadata({
-  title: "Leaderboard — Top C programmers across DIU, NSU, AIUB, BRAC",
+  title: "Leaderboard — Top C programmers across Bangladeshi universities",
   description:
-    "Live practice and contest leaderboards. See top C programmers at Daffodil International University, North South University, AIUB, and BRAC University — ranked by problems solved on DIU ContestHub.",
+    "Live practice and contest leaderboards. See top C programmers ranked by problems solved, filterable by institution, on DIU ContestHub's national board.",
   path: "/leaderboard",
   keywords: [
     "C programming leaderboard",
     "competitive programming rankings Bangladesh",
-    "DIU programmer leaderboard",
-    "NSU programmer leaderboard",
-    "AIUB programmer leaderboard",
-    "BRAC programmer leaderboard",
+    "university programmer leaderboard Bangladesh",
   ],
 });
 
@@ -38,25 +35,26 @@ const RANGES: { key: LeaderboardRange; label: string }[] = [
 ];
 
 type Props = {
-  searchParams: Promise<{ uni?: string; range?: string; sort?: string }>;
+  searchParams: Promise<{ institution?: string; range?: string; sort?: string; verified?: string }>;
 };
 
 export default async function LeaderboardPage({ searchParams }: Props) {
   const params = await searchParams;
-  const university = UNIVERSITIES.some((u) => u.code === params.uni)
-    ? (params.uni as University)
-    : undefined;
+  const institutionId = params.institution?.trim() || undefined;
   const range: LeaderboardRange =
     params.range === "week" || params.range === "month" ? params.range : "all";
   const sort: LeaderboardSort = params.sort === "points" ? "points" : "solved";
+  const verifiedOnly = params.verified === "1";
 
   const session = await getSession().catch(() => null);
+  const ratingsOn = await isEnabled("ratings", session ? { userId: session.id, role: session.role } : undefined);
 
   let data: Awaited<ReturnType<typeof getPracticeLeaderboard>> | null = null;
   let dbError = false;
   try {
     data = await getPracticeLeaderboard({
-      university,
+      institutionId,
+      verifiedOnly,
       limit: 100,
       range,
       sort,
@@ -66,21 +64,30 @@ export default async function LeaderboardPage({ searchParams }: Props) {
     dbError = true;
   }
 
+  const selectedInstitution = institutionId
+    ? await prisma.institution.findUnique({ where: { id: institutionId } }).catch(() => null)
+    : null;
+
   const rows = data?.rows ?? [];
   const stats = data?.stats;
   const podium = rows.slice(0, 3);
   const rest = rows.slice(3);
   const leaderSolved = rows[0]?.solved ?? 0;
+  // Top institutions by activity in this window drive the filter chips — a
+  // static 4-university list doesn't scale to 60+ seeded institutions.
+  const topInstitutions = (stats?.byInstitution ?? []).slice(0, 10);
 
   // Preserve the other filters when building a chip link.
-  const linkTo = (next: { uni?: string; range?: string; sort?: string }) => {
+  const linkTo = (next: { institution?: string; range?: string; sort?: string; verified?: boolean }) => {
     const q = new URLSearchParams();
-    const uni = next.uni ?? university;
+    const inst = next.institution ?? institutionId;
     const r = next.range ?? range;
     const s = next.sort ?? sort;
-    if (uni) q.set("uni", uni);
+    const v = next.verified ?? verifiedOnly;
+    if (inst) q.set("institution", inst);
     if (r !== "all") q.set("range", r);
     if (s !== "solved") q.set("sort", s);
+    if (v) q.set("verified", "1");
     const qs = q.toString();
     return qs ? `/leaderboard?${qs}` : "/leaderboard";
   };
@@ -97,9 +104,24 @@ export default async function LeaderboardPage({ searchParams }: Props) {
         eyebrow="Standings"
         title="C programming leaderboard"
         lead={
-          university
-            ? `${universityLabel(university)} — ranked by problems solved on the practice judge.`
-            : "Ranked by problems solved across DIU, NSU, AIUB, and BRAC. Points weight harder tiers more heavily."
+          selectedInstitution
+            ? `${selectedInstitution.name} — ranked by problems solved on the practice judge.`
+            : "Ranked by problems solved across every registered institution. Points weight harder tiers more heavily."
+        }
+        actions={
+          ratingsOn ? (
+            <div className="flex gap-1.5 rounded-lg border border-[var(--line)] p-1">
+              <span className="rounded-md bg-[var(--accent-surface)] px-3 py-1.5 text-xs font-medium text-[var(--accent)]">
+                Practice
+              </span>
+              <Link
+                href="/leaderboard/rating"
+                className="rounded-md px-3 py-1.5 text-xs font-medium text-[var(--muted)] hover:text-[var(--text)]"
+              >
+                Rating
+              </Link>
+            </div>
+          ) : null
         }
       />
 
@@ -114,13 +136,13 @@ export default async function LeaderboardPage({ searchParams }: Props) {
 
       <div className="mt-7 space-y-3">
         <FilterRow label="Campus">
-          <Chip href={linkTo({ uni: "" })} active={!university} label="All" />
-          {UNIVERSITIES.map((u) => (
+          <Chip href={linkTo({ institution: "" })} active={!institutionId} label="All" />
+          {topInstitutions.map((i) => (
             <Chip
-              key={u.code}
-              href={linkTo({ uni: u.code })}
-              active={university === u.code}
-              label={u.shortName}
+              key={i.id}
+              href={linkTo({ institution: i.id })}
+              active={institutionId === i.id}
+              label={i.shortName}
             />
           ))}
         </FilterRow>
@@ -137,6 +159,14 @@ export default async function LeaderboardPage({ searchParams }: Props) {
         <FilterRow label="Rank by">
           <Chip href={linkTo({ sort: "solved" })} active={sort === "solved"} label="Solved" />
           <Chip href={linkTo({ sort: "points" })} active={sort === "points"} label="Points" />
+        </FilterRow>
+        <FilterRow label="Board">
+          <Chip href={linkTo({ verified: false })} active={!verifiedOnly} label="Everyone" />
+          <Chip
+            href={linkTo({ verified: true })}
+            active={verifiedOnly}
+            label="Verified only"
+          />
         </FilterRow>
       </div>
 
@@ -228,33 +258,33 @@ export default async function LeaderboardPage({ searchParams }: Props) {
         </div>
       )}
 
-      {stats && stats.byUniversity.length > 0 && (
+      {stats && stats.byInstitution.length > 0 && (
         <section className="mt-10">
           <h2 className="font-display text-lg font-bold">Campus standings</h2>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Total problems solved by each university in this window.
+            Total problems solved by each institution in this window.
           </p>
           <div className="panel mt-4 divide-y divide-[var(--line-soft)]">
-            {stats.byUniversity.map((u) => {
-              const top = stats.byUniversity[0].solved || 1;
+            {stats.byInstitution.map((i) => {
+              const top = stats.byInstitution[0].solved || 1;
               return (
-                <div key={u.code} className="flex items-center gap-4 px-4 py-3.5">
+                <div key={i.id} className="flex items-center gap-4 px-4 py-3.5">
                   <Link
-                    href={linkTo({ uni: u.code })}
-                    className="w-14 shrink-0 font-mono text-xs font-semibold text-[var(--accent)]"
+                    href={linkTo({ institution: i.id })}
+                    className="w-16 shrink-0 truncate font-mono text-xs font-semibold text-[var(--accent)]"
                   >
-                    {u.code}
+                    {i.shortName}
                   </Link>
                   <div className="min-w-0 flex-1">
                     <div className="h-2 overflow-hidden rounded-full bg-[var(--sunken)]">
                       <div
                         className="h-full rounded-full bg-[var(--accent)]"
-                        style={{ width: `${Math.max(4, (u.solved / top) * 100)}%` }}
+                        style={{ width: `${Math.max(4, (i.solved / top) * 100)}%` }}
                       />
                     </div>
                   </div>
                   <p className="tnum shrink-0 font-mono text-xs text-[var(--muted)]">
-                    {u.solved} solved · {u.solvers} solver{u.solvers === 1 ? "" : "s"}
+                    {i.solved} solved · {i.solvers} solver{i.solvers === 1 ? "" : "s"}
                   </p>
                 </div>
               );
@@ -265,7 +295,8 @@ export default async function LeaderboardPage({ searchParams }: Props) {
 
       <p className="mt-8 text-xs text-[var(--muted-dim)]">
         Points weight each tier: Very Easy 1 · Easy 2 · Medium 4 · Medium-Hard 6 · Hard 9 · Very
-        Hard 13 · Extreme 20. Ties break by earliest solve.
+        Hard 13 · Extreme 20. Ties break by earliest solve. &quot;Verified only&quot; shows
+        members whose institution membership has been confirmed by email domain or admin.
       </p>
     </div>
   );
@@ -382,7 +413,9 @@ function PodiumCard({ row, isViewer }: { row: LeaderboardRow; isViewer: boolean 
           >
             {row.name}
           </Link>
-          <p className="truncate font-mono text-[11px] text-[var(--muted)]">{row.university}</p>
+          <p className="truncate font-mono text-[11px] text-[var(--muted)]">
+            {row.institutionShortName ?? "Unaffiliated"}
+          </p>
         </div>
       </div>
       <div className="flex items-end justify-between gap-3">
@@ -444,7 +477,7 @@ function Row({
               ) : null}
             </div>
             <p className="truncate font-mono text-[11px] text-[var(--muted)]">
-              {row.university}
+              {row.institutionShortName ?? "Unaffiliated"}
               {row.topTier ? (
                 <span className={difficultyClass(row.topTier)}> · {row.topTier}</span>
               ) : null}

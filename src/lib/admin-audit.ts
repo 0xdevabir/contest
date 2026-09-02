@@ -4,7 +4,19 @@ import { prisma } from "@/lib/db";
 export async function recordAdminAction(input: {
   actorId: string;
   action: string;
-  targetType: "USER" | "CONTEST" | "SYSTEM";
+  targetType:
+    | "USER"
+    | "CONTEST"
+    | "SYSTEM"
+    | "PROBLEM"
+    | "INSTITUTION"
+    | "TEACHER"
+    | "COURSE"
+    | "SECTION"
+    | "ENROLLMENT"
+    | "ASSIGNMENT"
+    | "GRADEBOOK"
+    | "SEASON";
   targetId?: string | null;
   details?: Prisma.InputJsonValue;
 }) {

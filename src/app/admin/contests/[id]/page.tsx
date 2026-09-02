@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Braces, ExternalLink, Trophy, Users } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { parseRules } from "@/lib/contests";
-import { getAllProblemIds, getProblem } from "@/lib/problems";
-import { ContestEditor } from "@/components/admin/ContestEditor";
+import { getProblemOptions } from "@/lib/problems";
+import { ContestEditor } from "@/components/contest/ContestEditor";
 import { AdminContestActions } from "@/components/admin/AdminContestActions";
 
 type Props = { params: Promise<{ id: string }> };
@@ -24,16 +24,7 @@ export default async function ContestControlPage({ params }: Props) {
     where: { contestId: id, verdict: "AC" },
   });
   const rules = parseRules(contest.rules);
-  const problems = getAllProblemIds().map((problemId) => {
-    const problem = getProblem(problemId)!;
-    return {
-      id: problemId,
-      title: problem.title,
-      set: problem.set,
-      question: problem.question,
-      difficulty: problem.difficulty,
-    };
-  });
+  const problems = await getProblemOptions();
 
   return (
     <div className="mx-auto max-w-[1200px] px-4 py-7 sm:px-6 lg:px-8">
@@ -100,12 +91,16 @@ export default async function ContestControlPage({ params }: Props) {
             startsAt: toLocalInput(contest.startsAt),
             endsAt: toLocalInput(contest.endsAt),
             problemIds: contest.problems.map((problem) => problem.problemId),
+            visibility: contest.visibility,
+            joinPolicy: contest.joinPolicy,
             rules: {
+              scoring: rules.scoring,
               freezeMinutes: rules.freezeMinutes,
               penaltyPerWrong: rules.penaltyPerWrong,
               maxSubmissionsPerProblem: rules.maxSubmissionsPerProblem,
               publishAfterEnd: rules.publishAfterEnd,
               allowPracticeAfter: rules.allowPracticeAfter,
+              allowVirtual: rules.allowVirtual,
               showSamples: rules.showSamples,
               notes: rules.notes ?? "",
             },

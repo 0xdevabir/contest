@@ -1,4 +1,3 @@
-import type { University } from "@prisma/client";
 import { prisma } from "./db";
 import { DIFFICULTY_ORDER } from "./difficulty";
 import { getMeta, getProblem } from "./problems";
@@ -28,7 +27,10 @@ export type LeaderboardRow = {
   rank: number;
   userId: string;
   name: string;
-  university: University;
+  institutionId: string | null;
+  institutionSlug: string | null;
+  institutionShortName: string | null;
+  institutionVerified: boolean;
   solved: number;
   lastSolveAt: Date | null;
   /** Weighted rating from the tiers actually solved. */
@@ -44,9 +46,11 @@ export type LeaderboardStats = {
   totalSolves: number;
   totalProblems: number;
   activeThisWeek: number;
-  /** Aggregate standings per campus. */
-  byUniversity: {
-    code: University;
+  /** Aggregate standings per institution. */
+  byInstitution: {
+    id: string;
+    slug: string;
+    shortName: string;
     solvers: number;
     solved: number;
   }[];
@@ -80,7 +84,10 @@ function cutoffFor(range: LeaderboardRange): Date | null {
  * problem bank rather than the database, which has no notion of tiers.
  */
 export async function getPracticeLeaderboard(opts?: {
-  university?: University;
+  institutionId?: string;
+  /** Only rank users whose institution membership is verified — the national
+   * leaderboard's anti-fraud gate (see Phase 1 design decision D2). */
+  verifiedOnly?: boolean;
   limit?: number;
   range?: LeaderboardRange;
   sort?: LeaderboardSort;
@@ -99,7 +106,7 @@ export async function getPracticeLeaderboard(opts?: {
     _max: { firstSolvedAt: true },
   });
 
-  const totalProblems = getMeta().total ?? 0;
+  const totalProblems = (await getMeta()).total ?? 0;
 
   if (!grouped.length) {
     return {
@@ -109,7 +116,7 @@ export async function getPracticeLeaderboard(opts?: {
         totalSolves: 0,
         totalProblems,
         activeThisWeek: 0,
-        byUniversity: [],
+        byInstitution: [],
       },
       viewer: null,
     };
@@ -117,13 +124,19 @@ export async function getPracticeLeaderboard(opts?: {
 
   const users = await prisma.user.findMany({
     where: { id: { in: grouped.map((g) => g.userId) }, status: "ACTIVE" },
-    select: { id: true, name: true, university: true },
+    select: {
+      id: true,
+      name: true,
+      institutionId: true,
+      institutionVerifiedAt: true,
+      institution: { select: { slug: true, shortName: true } },
+    },
   });
   const byId = new Map(users.map((u) => [u.id, u]));
 
   // Campus aggregates and global totals are computed across everyone, not just
   // the filtered/visible slice, so the header numbers stay stable.
-  const uniAgg = new Map<University, { solvers: number; solved: number }>();
+  const instAgg = new Map<string, { slug: string; shortName: string; solvers: number; solved: number }>();
   let totalSolves = 0;
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   let activeThisWeek = 0;
@@ -134,18 +147,29 @@ export async function getPracticeLeaderboard(opts?: {
     if (!u) continue;
     const solved = g._count.problemId;
     totalSolves += solved;
-    const agg = uniAgg.get(u.university) ?? { solvers: 0, solved: 0 };
-    agg.solvers += 1;
-    agg.solved += solved;
-    uniAgg.set(u.university, agg);
+    if (u.institutionId && u.institution) {
+      const agg = instAgg.get(u.institutionId) ?? {
+        slug: u.institution.slug,
+        shortName: u.institution.shortName,
+        solvers: 0,
+        solved: 0,
+      };
+      agg.solvers += 1;
+      agg.solved += solved;
+      instAgg.set(u.institutionId, agg);
+    }
     if (g._max.firstSolvedAt && g._max.firstSolvedAt >= weekAgo) activeThisWeek += 1;
 
-    if (opts?.university && u.university !== opts.university) continue;
+    if (opts?.institutionId && u.institutionId !== opts.institutionId) continue;
+    if (opts?.verifiedOnly && !u.institutionVerifiedAt) continue;
     candidates.push({
       rank: 0,
       userId: u.id,
       name: u.name,
-      university: u.university,
+      institutionId: u.institutionId,
+      institutionSlug: u.institution?.slug ?? null,
+      institutionShortName: u.institution?.shortName ?? null,
+      institutionVerified: Boolean(u.institutionVerifiedAt),
       solved,
       lastSolveAt: g._max.firstSolvedAt,
       points: 0,
@@ -163,10 +187,18 @@ export async function getPracticeLeaderboard(opts?: {
       })
     : [];
 
+  const difficultyByProblem = new Map<string, Difficulty>(
+    await Promise.all(
+      [...new Set(solves.map((s) => s.problemId))].map(
+        async (problemId) => [problemId, (await getProblem(problemId))?.difficulty] as const
+      )
+    ).then((entries) => entries.filter((e): e is [string, Difficulty] => e[1] != null))
+  );
+
   const mix = new Map<string, Record<Difficulty, number>>();
   const points = new Map<string, number>();
   for (const s of solves) {
-    const tier = getProblem(s.problemId)?.difficulty;
+    const tier = difficultyByProblem.get(s.problemId);
     if (!tier) continue;
     const tiers = mix.get(s.userId) ?? emptyTiers();
     tiers[tier] += 1;
@@ -212,8 +244,8 @@ export async function getPracticeLeaderboard(opts?: {
       totalSolves,
       totalProblems,
       activeThisWeek,
-      byUniversity: [...uniAgg.entries()]
-        .map(([code, v]) => ({ code, ...v }))
+      byInstitution: [...instAgg.entries()]
+        .map(([id, v]) => ({ id, ...v }))
         .sort((a, b) => b.solved - a.solved),
     },
     viewer: viewerVisible ? null : viewerRow,
@@ -224,7 +256,8 @@ export type ContestStanding = {
   rank: number;
   userId: string;
   name: string;
-  university: University;
+  institutionId: string | null;
+  institutionShortName: string | null;
   solved: number;
   penalty: number;
   lastAcAt: Date | null;
@@ -232,17 +265,19 @@ export type ContestStanding = {
 
 export async function getContestLeaderboard(
   contestId: string,
-  opts?: { university?: University; freezeAt?: Date | null }
+  opts?: { institutionId?: string; freezeAt?: Date | null }
 ): Promise<ContestStanding[]> {
   const regs = await prisma.contestRegistration.findMany({
     where: { contestId },
     include: {
-      user: { select: { id: true, name: true, university: true } },
+      user: {
+        select: { id: true, name: true, institutionId: true, institution: { select: { shortName: true } } },
+      },
     },
   });
 
-  const filtered = opts?.university
-    ? regs.filter((r) => r.user.university === opts.university)
+  const filtered = opts?.institutionId
+    ? regs.filter((r) => r.user.institutionId === opts.institutionId)
     : regs;
 
   const problems = await prisma.contestProblem.findMany({
@@ -309,7 +344,8 @@ export async function getContestLeaderboard(
       rank: 0,
       userId: r.user.id,
       name: r.user.name,
-      university: r.user.university,
+      institutionId: r.user.institutionId,
+      institutionShortName: r.user.institution?.shortName ?? null,
       solved: acc.solved.size,
       penalty: acc.penalty,
       lastAcAt: acc.lastAcAt,
@@ -324,4 +360,3 @@ export async function getContestLeaderboard(
 
   return standings.map((s, i) => ({ ...s, rank: i + 1 }));
 }
-

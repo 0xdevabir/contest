@@ -21,7 +21,7 @@ export default async function ProfileProgressPage() {
   if (!profile) redirect("/login");
 
   const solved = new Set(solvedRows.map((r) => r.problemId));
-  const categories = getCategories();
+  const categories = await getCategories();
 
   return (
     <div>

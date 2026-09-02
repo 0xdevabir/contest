@@ -28,10 +28,17 @@ const CASE_NAMES = readdirSync(CASES_DIR).filter((name) =>
   readFileSync(path.join(CASES_DIR, name, "expected-verdict"), "utf8") !== undefined
 );
 
-// Verdicts Phase 0 cannot yet reach — tracked to later phases rather than
-// silently skipped, so a suite that starts producing the right verdict is
-// forced to fail loudly and get its expectation updated.
-const KNOWN_FAILING = new Set(["mle-alloc", "ole-spam"]);
+// Verdicts a phase cannot yet reach are tracked here rather than silently
+// skipped, so a suite that starts producing the right verdict is forced to
+// fail loudly and get its expectation updated. Phase 3 (see
+// docs/phases/PHASE-03-judge-engine.md) implements exact per-run cgroup
+// accounting (runner/sandbox.js#runBatch) and a streaming output cap
+// (runner/judge.js#classifyRun) that should make mle-alloc/ole-spam pass —
+// moved out of this set on that basis, but unverified end-to-end here since
+// Docker was unavailable (paused) while Phase 3 was implemented. If either
+// still fails once Docker is available, that's a real bug to fix, not a
+// reason to put them back in this set.
+const KNOWN_FAILING = new Set<string>([]);
 
 const hasDocker = dockerAvailable();
 

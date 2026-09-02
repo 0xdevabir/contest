@@ -1,8 +1,10 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { CategoriesIndexClient } from "@/components/CategoriesIndexClient";
+import { ProblemArchiveClient } from "@/components/ProblemArchiveClient";
 import { PageHeader } from "@/components/PageHeader";
-import { getCategories, getMeta } from "@/lib/problems";
+import { getMeta } from "@/lib/problems";
+import { listTags } from "@/lib/tags";
+import { getSession } from "@/lib/auth";
 import { buildPageMetadata, breadcrumbJsonLd, JsonLd } from "@/lib/seo";
 
 export const metadata: Metadata = buildPageMetadata({
@@ -22,13 +24,16 @@ export const metadata: Metadata = buildPageMetadata({
   ],
 });
 
-type Props = { searchParams: Promise<{ q?: string }> };
+export default async function ProblemsPage() {
+  const meta = await getMeta();
+  const tags = await listTags();
 
-export default async function ProblemsPage({ searchParams }: Props) {
-  const { q } = await searchParams;
-  const categories = getCategories();
-  const meta = getMeta();
-  const initialQuery = (q ?? "").trim().slice(0, 80);
+  let session = null;
+  try {
+    session = await getSession();
+  } catch {
+    session = null;
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
@@ -41,12 +46,10 @@ export default async function ProblemsPage({ searchParams }: Props) {
       <PageHeader
         eyebrow="Always-open C practice"
         title={`All ${meta.total} C programming problems`}
-        lead={`Browse by difficulty — ${meta.tiers?.length ?? 7} tiers, ${
-          meta.problemsPerTier ?? 100
-        } problems each. Core authored problems are marked; generated extras fill each tier for volume practice on our free online C judge.`}
+        lead="Filter by difficulty and topic tag, search by title, and — once signed in — filter to what you've solved."
       />
       <Suspense fallback={null}>
-        <CategoriesIndexClient categories={categories} initialQuery={initialQuery} />
+        <ProblemArchiveClient tags={tags} loggedIn={Boolean(session)} />
       </Suspense>
     </div>
   );

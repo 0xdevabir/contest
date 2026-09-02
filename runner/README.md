@@ -1,9 +1,18 @@
 # Contest Hub runner
 
-Compiles and executes untrusted student C code inside a locked-down Docker
-container, and streams it to the browser over a WebSocket so programs are
-genuinely interactive — a `printf` prompt appears immediately and `scanf` waits
+Compiles and executes untrusted student code inside locked-down Docker
+containers, and streams interactive runs to the browser over a WebSocket so
+programs feel real — a `printf` prompt appears immediately and `scanf` waits
 for the student to type.
+
+Since Phase 3 (see `docs/phases/PHASE-03-judge-engine.md`) this is
+multi-language: each language in `languages.json` gets its own image under
+`images/`, and Submit goes through the `/session/*` endpoints (one warm
+container per submission, `src/lib/judge/backends/runner.ts` drives them) so
+`src/lib/judge/engine.ts` can apply checkers and group scoring uniformly
+across languages. The legacy `/judge` endpoint (C-only, one call per
+submission) still exists for the pre-Phase-3 `judgeV2`-flag-off code path —
+see that phase doc's "Rollback" section.
 
 This exists because Vercel's serverless functions have no C compiler, and
 because no HTTP judge can be interactive: they take all stdin upfront and return
@@ -27,7 +36,7 @@ characters, which is why the terminal behaves the way a local shell does.
 ```bash
 cd runner
 npm install
-npm run build:image          # builds the contest-hub-sandbox image
+npm run build:images         # builds every language's sandbox image (needs Docker + jq)
 RUNNER_TOKEN=$(openssl rand -hex 32) npm start
 ```
 
@@ -69,9 +78,10 @@ Student code is treated as hostile. Each run gets a fresh container with:
 - `--read-only` rootfs, with `exec` tmpfs only at `/work` and `/tmp`
 - `--cap-drop ALL` and `--security-opt no-new-privileges`
 - non-root user (uid 10001)
-- memory, CPU, and pid (`128`) caps, so fork bombs and allocation loops die
-- wall-clock kill, plus a hard container TTL
-- output capped at 512 KB per run
+- memory, CPU, and pid caps (64, or 128 for the JVM's thread-heavy startup) so fork bombs and allocation loops die
+- CPU-time and wall-clock kill (via `runsvc` inside the container), plus a hard container TTL
+- output capped per-problem via a streaming byte counter (default 512 KB)
+- a seccomp profile (`runner/gen-seccomp-profile.sh`) denying `ptrace`, `mount`, `keyctl`, `bpf`, and namespace-creating syscalls, layered on Docker's default profile
 
 Browsers never receive `RUNNER_TOKEN`. The web app mints a 2-minute HMAC ticket
 at `/api/run-ticket`; the runner verifies the signature and expiry. Forged and
@@ -101,7 +111,7 @@ sudo mkdir -p /opt/contest-hub-runner
 # copy this runner/ directory there, then:
 cd /opt/contest-hub-runner
 npm ci --omit=dev
-npm run build:image
+npm run build:images
 ```
 
 ### 3. Run it as a service

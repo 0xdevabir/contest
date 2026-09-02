@@ -2,15 +2,9 @@ import type { SessionUser } from "./auth";
 import { AuthError, ForbiddenError } from "./errors";
 
 /**
- * The only place a permission decision is made. Phase 0's implementation is
- * deliberately trivial (ADMIN can everything; a handful of self-service
- * actions are allowed on your own resource) — the point of introducing it now
- * is that every route gets the call site installed before there are 60 routes
- * to retrofit. Phase 1 fills in TEACHER/TA and richer ownership rules.
- *
- * "profile:edit" and "contest:register" are Phase 0 additions beyond the
- * original action list: both are self-service actions a route needs to gate,
- * and forcing them through an ill-fitting admin-only action would be wrong.
+ * The only place a permission decision is made. Every route funnels its
+ * checks through `can()` / `assertCan()` — no inline `role === "ADMIN"`
+ * checks in routes.
  */
 export type Action =
   | "contest:create"
@@ -21,57 +15,97 @@ export type Action =
   | "problem:create"
   | "problem:edit"
   | "problem:viewHiddenTests"
+  | "problem:submitReview"
+  | "problem:review"
+  | "problem:publish"
   | "submission:viewAny"
   | "submission:viewOwn"
   | "submission:rejudge"
   | "user:manage"
   | "system:admin"
-  | "profile:edit";
+  | "profile:edit"
+  | "institution:manage"
+  | "teacher:approve"
+  | "course:manage"
+  | "section:manage"
+  | "section:viewRoster"
+  | "enrollment:manage"
+  | "assignment:edit"
+  | "assignment:publish"
+  | "gradebook:override"
+  | "gradebook:manageWeights"
+  | "gradebook:export"
+  | "gradebook:snapshot";
 
 export type Actor = SessionUser | null;
 
 /** A resource this action is scoped to, when ownership matters. */
 export type Resource = { ownerId?: string } | undefined;
 
-/** Actions only an ADMIN may perform, regardless of ownership. */
-const ADMIN_ONLY: ReadonlySet<Action> = new Set([
-  "contest:create",
-  "contest:edit",
-  "contest:delete",
-  "problem:create",
-  "problem:edit",
-  "problem:viewHiddenTests",
-  "submission:viewAny",
-  "submission:rejudge",
-  "user:manage",
-  "system:admin",
-]);
+export function isApprovedTeacher(actor: Actor): boolean {
+  return !!actor && actor.role === "TEACHER" && actor.teacherApprovedAt != null;
+}
 
-/** Self-service actions: allowed for any signed-in actor on their own resource. */
-const SELF_SERVICE: ReadonlySet<Action> = new Set([
-  "profile:edit",
-  "submission:viewOwn",
-  "contest:viewPrivate",
-]);
+/** Lenient: a resource with no ownerId means "not scoped to a specific
+ * owner" (e.g. viewing your own submissions in general) — allowed. */
+function owns(actor: SessionUser, resource?: Resource): boolean {
+  return !resource?.ownerId || resource.ownerId === actor.id;
+}
 
-/** Actions open to any authenticated actor, with no ownership check. */
-const AUTHENTICATED_ONLY: ReadonlySet<Action> = new Set(["contest:register"]);
+/** Strict: requires an explicit, matching ownerId. A missing resource/ownerId
+ * is a denial, not an open door — used for actions with no "my own list"
+ * fallback (e.g. viewing hidden tests on a specific problem). */
+function ownsStrict(actor: SessionUser, resource?: Resource): boolean {
+  return resource?.ownerId != null && resource.ownerId === actor.id;
+}
+
+function isAdmin(actor: SessionUser): boolean {
+  return actor.role === "ADMIN";
+}
+
+/**
+ * One rule per action. `actor` is always a signed-in SessionUser here —
+ * `can()` handles the signed-out case before consulting this table.
+ */
+const RULES: Record<Action, (actor: SessionUser, resource?: Resource) => boolean> = {
+  "contest:create": (a) => isAdmin(a) || isApprovedTeacher(a),
+  "contest:edit": (a, r) => isAdmin(a) || (isApprovedTeacher(a) && ownsStrict(a, r)),
+  "contest:delete": (a) => isAdmin(a),
+  "contest:viewPrivate": (a, r) => owns(a, r),
+  "contest:register": () => true,
+  "problem:create": (a) => isAdmin(a) || isApprovedTeacher(a),
+  "problem:edit": (a, r) => isAdmin(a) || (isApprovedTeacher(a) && ownsStrict(a, r)),
+  "problem:viewHiddenTests": (a, r) => isAdmin(a) || ownsStrict(a, r),
+  "problem:submitReview": (a, r) => isAdmin(a) || (isApprovedTeacher(a) && ownsStrict(a, r)),
+  "problem:review": (a) => isAdmin(a),
+  "problem:publish": (a, r) => isAdmin(a) || (isApprovedTeacher(a) && ownsStrict(a, r)),
+  "submission:viewAny": (a) => isAdmin(a),
+  "submission:viewOwn": (a, r) => owns(a, r),
+  "submission:rejudge": (a) => isAdmin(a),
+  "user:manage": (a) => isAdmin(a),
+  "system:admin": (a) => isAdmin(a),
+  "profile:edit": (a, r) => owns(a, r),
+  "institution:manage": (a) => isAdmin(a),
+  "teacher:approve": (a) => isAdmin(a),
+  // Phase 6 — classroom. Section-scoped actions further check TA/teacher
+  // membership asynchronously via src/lib/section-access.ts (Enrollment
+  // lookups can't live in this synchronous rules table); these entries
+  // enforce the coarse role/ownership shape only.
+  "course:manage": (a) => isAdmin(a) || isApprovedTeacher(a),
+  "section:manage": (a, r) => isAdmin(a) || (isApprovedTeacher(a) && ownsStrict(a, r)),
+  "section:viewRoster": (a, r) => isAdmin(a) || (isApprovedTeacher(a) && owns(a, r)),
+  "enrollment:manage": (a, r) => isAdmin(a) || (isApprovedTeacher(a) && ownsStrict(a, r)),
+  "assignment:edit": (a, r) => isAdmin(a) || (isApprovedTeacher(a) && ownsStrict(a, r)),
+  "assignment:publish": (a, r) => isAdmin(a) || (isApprovedTeacher(a) && ownsStrict(a, r)),
+  "gradebook:override": (a, r) => isAdmin(a) || (isApprovedTeacher(a) && owns(a, r)),
+  "gradebook:manageWeights": (a, r) => isAdmin(a) || (isApprovedTeacher(a) && ownsStrict(a, r)),
+  "gradebook:export": (a, r) => isAdmin(a) || (isApprovedTeacher(a) && ownsStrict(a, r)),
+  "gradebook:snapshot": (a, r) => isAdmin(a) || (isApprovedTeacher(a) && ownsStrict(a, r)),
+};
 
 export function can(actor: Actor, action: Action, resource?: Resource): boolean {
   if (!actor) return false;
-  if (actor.role === "ADMIN") return true;
-
-  if (AUTHENTICATED_ONLY.has(action)) return true;
-
-  if (SELF_SERVICE.has(action)) {
-    // No ownerId on the resource means the action isn't tied to a specific
-    // owner (e.g. viewing your own submissions in general) — allowed.
-    return !resource?.ownerId || resource.ownerId === actor.id;
-  }
-
-  if (ADMIN_ONLY.has(action)) return false;
-
-  return false;
+  return RULES[action](actor, resource);
 }
 
 /**

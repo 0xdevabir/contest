@@ -11,20 +11,17 @@ import {
   Flame,
   Lock,
   RefreshCw,
-  Search,
   Snowflake,
-  Trophy,
   X,
 } from "lucide-react";
-import type {
-  ContestDashboardData,
-  ContestProblemStat,
-  ScoreboardRow,
-} from "@/lib/contest-dashboard";
+import type { ContestDashboardData, ContestProblemStat } from "@/lib/contest-dashboard";
 import { contestProblemHref } from "@/lib/contest-access";
-import { UNIVERSITIES, universityLabel } from "@/lib/universities";
 import { ContestCountdown, formatMinutes, useServerClock } from "./ContestClock";
 import { ContestRegisterButton } from "@/components/ContestRegisterButton";
+import { LiveStandings } from "./LiveStandings";
+import { ContestSidebar } from "./ContestSidebar";
+import { ClarificationQueue } from "./ClarificationQueue";
+import { TeamPanel } from "./TeamPanel";
 
 const REFRESH_MS = 30_000;
 
@@ -47,9 +44,14 @@ type Props = {
   loggedIn: boolean;
   viewerId: string | null;
   initialUni: string | null;
+  /** docs/phases/PHASE-07-live-contest.md — off falls back to the pre-Phase-7
+   * dashboard: polled standings, no sidebar, no team/clarification surfaces. */
+  liveContestEnabled?: boolean;
+  isStaff?: boolean;
+  teamSize?: number;
 };
 
-type TabId = "problems" | "standings" | "runs" | "rules";
+type TabId = "problems" | "standings" | "runs" | "rules" | "team" | "clarifications";
 
 export function ContestDashboard({
   contestId,
@@ -62,15 +64,21 @@ export function ContestDashboard({
   loggedIn,
   viewerId,
   initialUni,
+  liveContestEnabled = false,
+  isStaff = false,
+  teamSize = 1,
 }: Props) {
   const [tab, setTab] = useState<TabId>("problems");
   const running = data.phase === "RUNNING";
   const locked = data.phase === "BEFORE" || (running && !registered);
+  const problemRefs = data.problems.map((p) => ({ problemId: p.problemId, label: p.label }));
 
   const tabs: Array<{ id: TabId; label: string; count?: number }> = [
     { id: "problems", label: "Problems", count: data.problems.length },
     { id: "standings", label: "Standings", count: data.totals.participants },
     { id: "runs", label: "My runs", count: data.mySubmissions.length },
+    ...(liveContestEnabled && teamSize > 1 ? [{ id: "team" as TabId, label: "Team" }] : []),
+    ...(liveContestEnabled && isStaff ? [{ id: "clarifications" as TabId, label: "Clarifications" }] : []),
     { id: "rules", label: "Rules" },
   ];
 
@@ -85,52 +93,74 @@ export function ContestDashboard({
         running={running}
       />
 
-      <nav
-        className="mt-6 flex gap-1 overflow-x-auto border-b border-[var(--line)] pb-px"
-        aria-label="Contest sections"
-      >
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            aria-current={tab === t.id ? "page" : undefined}
-            className={`shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors sm:px-4 ${
-              tab === t.id
-                ? "border-[var(--accent)] text-[var(--text)]"
-                : "border-transparent text-[var(--muted)] hover:text-[var(--text)]"
-            }`}
+      <div className={liveContestEnabled ? "mt-6 grid gap-6 lg:grid-cols-[1fr_18rem]" : "mt-6"}>
+        <div className="min-w-0">
+          <nav
+            className="flex gap-1 overflow-x-auto border-b border-[var(--line)] pb-px"
+            aria-label="Contest sections"
           >
-            {t.label}
-            {t.count !== undefined && (
-              <span className="ml-1.5 font-mono text-[11px] text-[var(--muted)]">
-                {t.count}
-              </span>
-            )}
-          </button>
-        ))}
-      </nav>
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTab(t.id)}
+                aria-current={tab === t.id ? "page" : undefined}
+                className={`shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors sm:px-4 ${
+                  tab === t.id
+                    ? "border-[var(--accent)] text-[var(--text)]"
+                    : "border-transparent text-[var(--muted)] hover:text-[var(--text)]"
+                }`}
+              >
+                {t.label}
+                {t.count !== undefined && (
+                  <span className="ml-1.5 font-mono text-[11px] text-[var(--muted)]">
+                    {t.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </nav>
 
-      <div className="mt-6">
-        {tab === "problems" && (
-          <ProblemBoard
+          <div className="mt-6">
+            {tab === "problems" && (
+              <ProblemBoard
+                contestId={contestId}
+                data={data}
+                locked={locked}
+                registered={registered}
+                loggedIn={loggedIn}
+              />
+            )}
+            {tab === "standings" && (
+              <LiveStandings
+                contestId={contestId}
+                data={data}
+                viewerId={viewerId}
+                initialUni={initialUni}
+                liveEnabled={liveContestEnabled}
+              />
+            )}
+            {tab === "runs" && <MyRuns data={data} loggedIn={loggedIn} />}
+            {tab === "team" && <TeamPanel contestId={contestId} teamSize={teamSize} viewerId={viewerId} />}
+            {tab === "clarifications" && <ClarificationQueue contestId={contestId} problems={problemRefs} />}
+            {tab === "rules" && (
+              <RulesPanel
+                rules={rules}
+                data={data}
+                durationMinutes={durationMinutes}
+                description={description}
+              />
+            )}
+          </div>
+        </div>
+
+        {liveContestEnabled && (
+          <ContestSidebar
             contestId={contestId}
-            data={data}
-            locked={locked}
-            registered={registered}
             loggedIn={loggedIn}
-          />
-        )}
-        {tab === "standings" && (
-          <Standings data={data} viewerId={viewerId} initialUni={initialUni} />
-        )}
-        {tab === "runs" && <MyRuns data={data} loggedIn={loggedIn} />}
-        {tab === "rules" && (
-          <RulesPanel
-            rules={rules}
-            data={data}
-            durationMinutes={durationMinutes}
-            description={description}
+            canAsk={registered || isStaff}
+            liveEnabled={liveContestEnabled}
+            problems={problemRefs}
           />
         )}
       </div>
@@ -226,7 +256,11 @@ function ExamBar({
               sub={`of ${data.problems.length}`}
               accent
             />
-            <ScoreChip label="Penalty" value={`${viewer?.penalty ?? 0}`} sub="min" />
+            {data.scoring === "icpc" ? (
+              <ScoreChip label="Penalty" value={`${viewer?.penalty ?? 0}`} sub="min" />
+            ) : (
+              <ScoreChip label="Score" value={`${viewer?.points ?? 0}`} sub="pts" />
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -529,236 +563,6 @@ function ProblemCard({
   );
 }
 
-/* ---------------- standings ---------------- */
-
-function Standings({
-  data,
-  viewerId,
-  initialUni,
-}: {
-  data: ContestDashboardData;
-  viewerId: string | null;
-  initialUni: string | null;
-}) {
-  const [uni, setUni] = useState(initialUni ?? "");
-  const [query, setQuery] = useState("");
-
-  const rows = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return data.rows.filter(
-      (r) =>
-        (!uni || r.university === uni) &&
-        (!q || r.name.toLowerCase().includes(q))
-    );
-  }, [data.rows, uni, query]);
-
-  const viewerVisible = rows.some((r) => r.userId === viewerId);
-
-  return (
-    <div>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="relative">
-          <Search
-            size={13}
-            aria-hidden="true"
-            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--muted)]"
-          />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Find contestant"
-            aria-label="Find contestant"
-            className="w-48 rounded-lg border border-[var(--line)] bg-[var(--sunken)] py-1.5 pl-7 pr-2.5 text-xs outline-none focus:border-[var(--accent-border)]"
-          />
-        </div>
-        <Chip active={!uni} onClick={() => setUni("")} label="All campuses" />
-        {UNIVERSITIES.map((u) => (
-          <Chip
-            key={u.code}
-            active={uni === u.code}
-            onClick={() => setUni(u.code)}
-            label={u.shortName}
-          />
-        ))}
-      </div>
-
-      {data.frozen && (
-        <p className="mb-3 flex items-center gap-2 rounded-lg border border-[var(--warn-border)] bg-[var(--warn-surface)] px-3.5 py-2.5 text-sm text-[var(--warn)]">
-          <Snowflake size={14} aria-hidden="true" />
-          Scoreboard frozen for the final stretch. Your own runs still count — you
-          just cannot see how everyone else is doing.
-        </p>
-      )}
-
-      <div className="panel overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[42rem] border-collapse text-left text-sm">
-            <thead className="border-b border-[var(--line)] bg-[var(--sunken)] text-[10px] uppercase tracking-[0.1em] text-[var(--muted)]">
-              <tr>
-                <th className="px-3 py-2.5 text-center font-semibold">#</th>
-                <th className="px-3 py-2.5 font-semibold">Contestant</th>
-                <th className="px-3 py-2.5 text-right font-semibold">Solved</th>
-                <th className="px-3 py-2.5 text-right font-semibold">Penalty</th>
-                {data.problems.map((p) => (
-                  <th
-                    key={p.problemId}
-                    className="w-14 px-1 py-2.5 text-center font-mono text-xs font-semibold text-[var(--text)]"
-                    title={p.title}
-                  >
-                    {p.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--line)]">
-              {rows.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={4 + data.problems.length}
-                    className="px-4 py-12 text-center text-[var(--muted)]"
-                  >
-                    No contestants match this filter yet.
-                  </td>
-                </tr>
-              )}
-              {rows.map((row) => (
-                <StandingRow
-                  key={row.userId}
-                  row={row}
-                  problems={data.problems}
-                  isViewer={row.userId === viewerId}
-                />
-              ))}
-            </tbody>
-            {data.viewer && !viewerVisible && (
-              <tfoot className="border-t-2 border-[var(--accent-border)]">
-                <StandingRow row={data.viewer} problems={data.problems} isViewer />
-              </tfoot>
-            )}
-          </table>
-        </div>
-      </div>
-
-      <Legend />
-    </div>
-  );
-}
-
-function StandingRow({
-  row,
-  problems,
-  isViewer,
-}: {
-  row: ScoreboardRow;
-  problems: ContestProblemStat[];
-  isViewer: boolean;
-}) {
-  return (
-    <tr className={isViewer ? "bg-[var(--accent-surface)]" : undefined}>
-      <td className="px-3 py-2.5 text-center font-mono text-sm">
-        {row.rank <= 3 && row.solved > 0 ? (
-          <span className="inline-flex items-center gap-1 font-bold text-[var(--accent)]">
-            <Trophy size={11} aria-hidden="true" />
-            {row.rank}
-          </span>
-        ) : (
-          <span className="text-[var(--muted)]">{row.rank}</span>
-        )}
-      </td>
-      <td className="max-w-[14rem] px-3 py-2.5">
-        <span className="block truncate font-medium">
-          {row.name}
-          {isViewer && (
-            <span className="ml-1.5 font-mono text-[10px] text-[var(--accent)]">you</span>
-          )}
-        </span>
-        <span className="block truncate text-[11px] text-[var(--muted)]">
-          {row.university ? universityLabel(row.university) : "—"}
-        </span>
-      </td>
-      <td className="px-3 py-2.5 text-right font-mono font-bold">{row.solved}</td>
-      <td className="px-3 py-2.5 text-right font-mono text-[var(--muted)]">{row.penalty}</td>
-      {problems.map((p) => (
-        <Cell key={p.problemId} cell={row.cells[p.problemId]} />
-      ))}
-    </tr>
-  );
-}
-
-function Cell({ cell }: { cell: ScoreboardRow["cells"][string] | undefined }) {
-  if (!cell || (!cell.solved && cell.attempts === 0)) {
-    return <td className="px-1 py-2.5 text-center font-mono text-xs text-[var(--muted)]">·</td>;
-  }
-  if (cell.solved) {
-    return (
-      <td className="px-1 py-1.5 text-center">
-        <span
-          className={`inline-flex min-w-[2.5rem] flex-col rounded px-1 py-0.5 font-mono text-[11px] font-bold leading-tight ${
-            cell.firstBlood
-              ? "bg-[var(--accent)] text-[var(--accent-contrast)]"
-              : "bg-[var(--accent-surface)] text-[var(--accent)]"
-          }`}
-        >
-          <span>+{cell.attempts || ""}</span>
-          <span className="font-normal opacity-80">
-            {cell.solvedAtMin !== null ? formatMinutes(cell.solvedAtMin) : ""}
-          </span>
-        </span>
-      </td>
-    );
-  }
-  return (
-    <td className="px-1 py-1.5 text-center">
-      <span className="inline-block min-w-[2.5rem] rounded bg-[var(--danger-surface)] px-1 py-0.5 font-mono text-[11px] font-bold text-[var(--danger)]">
-        −{cell.attempts}
-      </span>
-    </td>
-  );
-}
-
-function Legend() {
-  return (
-    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono text-[11px] text-[var(--muted)]">
-      <span className="flex items-center gap-1.5">
-        <span className="inline-block h-3 w-6 rounded bg-[var(--accent)]" />
-        first to solve
-      </span>
-      <span className="flex items-center gap-1.5">
-        <span className="inline-block h-3 w-6 rounded bg-[var(--accent-surface)]" />
-        solved (+ retries, minute)
-      </span>
-      <span className="flex items-center gap-1.5">
-        <span className="inline-block h-3 w-6 rounded bg-[var(--danger-surface)]" />
-        attempted, unsolved
-      </span>
-    </div>
-  );
-}
-
-function Chip({
-  active,
-  onClick,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
-        active
-          ? "border-[var(--accent-border)] bg-[var(--accent-surface)] text-[var(--accent)]"
-          : "border-[var(--line)] text-[var(--muted)] hover:text-[var(--text)]"
-      }`}
-    >
-      {label}
-    </button>
-  );
-}
-
 /* ---------------- my runs ---------------- */
 
 const VERDICT_LABEL: Record<Verdict, string> = {
@@ -780,6 +584,9 @@ const VERDICT_LABEL: Record<Verdict, string> = {
 function verdictTone(verdict: Verdict) {
   if (verdict === "AC") {
     return "border-[var(--accent-border)] bg-[var(--accent-surface)] text-[var(--accent)]";
+  }
+  if (verdict === "PENDING" || verdict === "JUDGING") {
+    return "border-[var(--warn-border)] bg-[var(--warn-surface)] text-[var(--warn)] animate-pulse-soft";
   }
   if (verdict === "CE" || verdict === "SKIP" || verdict === "ERROR") {
     return "border-[var(--warn-border)] bg-[var(--warn-surface)] text-[var(--warn)]";
@@ -882,10 +689,14 @@ function RulesPanel({
       <div className="panel p-5">
         <h2 className="font-display text-lg font-semibold">Scoring</h2>
         <p className="measure mt-2 text-sm text-[var(--muted)]">
-          ICPC rules. You are ranked by problems solved first, then by the lowest
-          penalty. A solved problem adds the minute you solved it plus{" "}
-          {rules.penaltyPerWrong} minutes for every rejected run before it. Rejected
-          runs on problems you never solve cost nothing.
+          {data.scoring === "icpc" &&
+            `ICPC rules. You are ranked by problems solved first, then by the lowest penalty. A solved problem adds the minute you solved it plus ${rules.penaltyPerWrong} minutes for every rejected run before it. Rejected runs on problems you never solve cost nothing.`}
+          {data.scoring === "ioi" &&
+            "IOI rules. Your total is the sum of your best score on each problem — not your last submission. A 70 followed by a 40 keeps the 70. No penalty for wrong attempts."}
+          {data.scoring === "cf" &&
+            "Codeforces rules. Each problem's score decays from full value down to 30% as the contest runs; each wrong attempt before you solve it costs 50 points."}
+          {data.scoring === "assignment" &&
+            "Assignment rules. Your total is the sum of your best score on each problem, reduced for late submissions past the due date."}
         </p>
         <dl className="mt-5 grid gap-x-6 gap-y-3 sm:grid-cols-2">
           {items.map(([k, v]) => (

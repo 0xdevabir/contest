@@ -18,6 +18,7 @@ import {
 import { CodeEditor } from "./CodeEditor";
 import { AcceptedCelebration } from "./AcceptedCelebration";
 import { ProblemSolvers } from "./ProblemSolvers";
+import { useSubmissionStatus } from "./SubmissionStatus";
 import { difficultyClass } from "@/lib/difficulty";
 import type { TerminalHandle } from "./InteractiveTerminal";
 import type { JudgeResponse, JudgeVerdict, Problem, ProblemSolver } from "@/lib/types";
@@ -167,6 +168,10 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
 
 type Props = {
   problem: Problem;
+  /** Pre-rendered, sanitised Markdown+KaTeX HTML (src/lib/statement.ts).
+   * Falls back to the raw `problem.statement` as plain text when absent, so
+   * older/legacy callers that haven't been updated still render something. */
+  statementHtml?: string;
   prevId?: string | null;
   nextId?: string | null;
   contestId?: string | null;
@@ -180,6 +185,7 @@ type Props = {
 
 export function ProblemWorkspace({
   problem,
+  statementHtml,
   prevId,
   nextId,
   contestId,
@@ -206,6 +212,10 @@ export function ProblemWorkspace({
   // On phones the statement and editor can't share the screen — tab between them.
   const [mobilePane, setMobilePane] = useState<"question" | "code">("question");
   const [solversRefresh, setSolversRefresh] = useState(0);
+  // Set when POST /api/judge returns 202 (judgeQueue on) — tracked live via
+  // SSE/poll fallback (src/components/SubmissionStatus.tsx) until a verdict lands.
+  const [pendingSubmissionId, setPendingSubmissionId] = useState<string | null>(null);
+  const liveStatus = useSubmissionStatus(pendingSubmissionId);
   const terminalRef = useRef<TerminalHandle | null>(null);
 
   useEffect(() => {
@@ -246,6 +256,7 @@ export function ProblemWorkspace({
       }
       setBusy(true);
       setResult(null);
+      setPendingSubmissionId(null);
       try {
         const res = await fetch("/api/judge", {
           method: "POST",
@@ -259,6 +270,12 @@ export function ProblemWorkspace({
           }),
         });
         const data = (await res.json()) as JudgeResponse;
+        if (res.status === 202 && data.submissionId) {
+          // judgeQueue is on — verdict arrives asynchronously via
+          // useSubmissionStatus below; keep `busy` set until it lands.
+          setPendingSubmissionId(data.submissionId);
+          return;
+        }
         setResult(data);
         if (mode === "submit" && data.verdict === "AC") {
           markSolved(problem.id);
@@ -274,11 +291,29 @@ export function ProblemWorkspace({
           message: "Could not reach the judge.",
         });
       } finally {
-        setBusy(false);
+        if (!pendingSubmissionId) setBusy(false);
       }
     },
-    [code, contestId, loggedIn, problem.id, problem.sampleInput, stdin, tab]
+    [code, contestId, loggedIn, pendingSubmissionId, problem.id, problem.sampleInput, stdin, tab]
   );
+
+  // Finalizes a queued submission once useSubmissionStatus reports a
+  // terminal state — mirrors the synchronous branch above exactly so AC
+  // celebration/solved-tracking behave identically either way.
+  useEffect(() => {
+    if (!pendingSubmissionId) return;
+    if (liveStatus.state !== "DONE" && liveStatus.state !== "FAILED") return;
+    const data = liveStatus.result ?? { ok: true, verdict: "IE" as const, results: [] };
+    setResult(data);
+    setBusy(false);
+    setPendingSubmissionId(null);
+    if (data.verdict === "AC") {
+      markSolved(problem.id);
+      setSolved(true);
+      setCelebrate(true);
+      if (!contestId) setSolversRefresh((n) => n + 1);
+    }
+  }, [liveStatus, pendingSubmissionId, problem.id, contestId]);
 
   const handleRun = useCallback(() => {
     setMobilePane("code");
@@ -417,7 +452,16 @@ export function ProblemWorkspace({
         </div>
 
         <div className="flex-1 space-y-6 overflow-y-auto px-4 py-4 text-sm leading-relaxed sm:px-5 sm:py-5">
-          <p className="text-[15px] text-[var(--text)]/90">{problem.statement}</p>
+          {statementHtml ? (
+            <div
+              className="statement-prose text-[15px] text-[var(--text)]/90"
+              // Sanitised server-side in src/lib/statement.ts (rehype-sanitize
+              // with an explicit allowlist) before ever reaching the client.
+              dangerouslySetInnerHTML={{ __html: statementHtml }}
+            />
+          ) : (
+            <p className="text-[15px] text-[var(--text)]/90">{problem.statement}</p>
+          )}
 
           <Block title="What your program reads">
             <p className="text-[var(--muted)]">{problem.input}</p>
@@ -553,7 +597,17 @@ export function ProblemWorkspace({
                       : `Check against every test (${shortcut} + Enter)`
                 }
               >
-                {busy ? <span className="animate-pulse-soft">Submitting…</span> : "Submit"}
+                {busy ? (
+                  <span className="animate-pulse-soft">
+                    {pendingSubmissionId
+                      ? liveStatus.state === "JUDGING"
+                        ? "Judging…"
+                        : "Queued…"
+                      : "Submitting…"}
+                  </span>
+                ) : (
+                  "Submit"
+                )}
               </button>
             ) : (
               <Link
@@ -723,10 +777,16 @@ export function ProblemWorkspace({
                 >
                   <ToneIcon tone={verdict.tone} />
                   {/sign in/i.test(result.message || "") ? "Sign in required" : verdict.title}
-                  {totalTests > 0 && (
+                  {result.verdict === "PA" && result.maxScore ? (
                     <span className="tnum ml-auto text-xs font-normal text-[var(--muted)]">
-                      {passed} of {totalTests} tests passed
+                      {result.score ?? 0} / {result.maxScore} points
                     </span>
+                  ) : (
+                    totalTests > 0 && (
+                      <span className="tnum ml-auto text-xs font-normal text-[var(--muted)]">
+                        {passed} of {totalTests} tests passed
+                      </span>
+                    )
                   )}
                 </p>
                 <p className="mt-1.5 text-xs leading-relaxed text-[var(--muted)]">
@@ -786,7 +846,10 @@ export function ProblemWorkspace({
                       <span className={`tnum flex items-center gap-1.5 ${toneText(rowTone)}`}>
                         <ToneIcon tone={rowTone} />
                         {r.verdict === "AC" ? "Passed" : VERDICT[r.verdict]?.title || r.verdict}
-                        <span className="text-[var(--muted-dim)]">{r.timeMs} ms</span>
+                        <span className="text-[var(--muted-dim)]">
+                          {r.cpuMs ?? r.timeMs} ms
+                          {r.memoryKb != null && ` · ${Math.round(r.memoryKb / 1024)} MB`}
+                        </span>
                       </span>
                     </div>
                     {r.verdict === "WA" && (

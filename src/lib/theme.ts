@@ -33,6 +33,11 @@ type Palette = {
   info: string;
   /** Difficulty tier ramp: very easy → extreme. */
   diff: [string, string, string, string, string, string, string];
+  /** Rating tier ramp (docs/phases/PHASE-09-ratings-leaderboards.md D2):
+   * newbie, pupil, specialist, expert, candidate master, master,
+   * international master, grandmaster. Tuned per theme so grey-on-black and
+   * cyan-on-white both stay readable — never derived from `diff`. */
+  tier: [string, string, string, string, string, string, string, string];
 };
 
 export type Theme = {
@@ -168,6 +173,7 @@ export const THEMES: Record<ThemeId, Theme> = {
     danger: "#f07178",
     info: "#59c2ff",
     diff: ["#7ddea5", "#3ecf8e", "#59c2ff", "#f0b429", "#ff9e64", "#f07178", "#e06cfc"],
+    tier: ["#9aa7b8", "#4ade80", "#22d3ee", "#60a5fa", "#a78bfa", "#fb923c", "#f97316", "#f87171"],
   }),
 
   midnight: makeTheme(
@@ -193,6 +199,7 @@ export const THEMES: Record<ThemeId, Theme> = {
       danger: "#f7768e",
       info: "#7dcfff",
       diff: ["#9ece6a", "#7aa2f7", "#7dcfff", "#e0af68", "#ff9e64", "#f7768e", "#bb9af7"],
+      tier: ["#9aa7c9", "#9ece6a", "#7dcfff", "#7aa2f7", "#bb9af7", "#e0af68", "#ff9e64", "#f7768e"],
     }
   ),
 
@@ -219,6 +226,7 @@ export const THEMES: Record<ThemeId, Theme> = {
       danger: "#ff5555",
       info: "#8be9fd",
       diff: ["#7dfd9c", "#50fa7b", "#8be9fd", "#f1fa8c", "#ffb86c", "#ff5555", "#bd93f9"],
+      tier: ["#b6b8c9", "#50fa7b", "#8be9fd", "#7dd3fc", "#bd93f9", "#ffb86c", "#ff9580", "#ff5555"],
     }
   ),
 
@@ -245,6 +253,7 @@ export const THEMES: Record<ThemeId, Theme> = {
       danger: "#ff5c7a",
       info: "#4dd2ff",
       diff: ["#4dffc4", "#00e5a0", "#4dd2ff", "#ffcc4d", "#ffa14d", "#ff5c7a", "#d17dff"],
+      tier: ["#9c9c9c", "#00e5a0", "#4dd2ff", "#4d9fff", "#b18aff", "#ffa14d", "#ff8a4d", "#ff5c7a"],
     }
   ),
 
@@ -271,6 +280,7 @@ export const THEMES: Record<ThemeId, Theme> = {
       danger: "#c53d4a",
       info: "#2a7fc4",
       diff: ["#2cb87a", "#1f9e68", "#2a7fc4", "#a8740f", "#c2610f", "#c53d4a", "#8b34d4"],
+      tier: ["#64748b", "#16a34a", "#0891b2", "#2563eb", "#7c3aed", "#c2610f", "#b45309", "#c53d4a"],
     }
   ),
 
@@ -297,6 +307,7 @@ export const THEMES: Record<ThemeId, Theme> = {
       danger: "#dc322f",
       info: "#268bd2",
       diff: ["#6f8700", "#1f8a82", "#268bd2", "#a37400", "#cb4b16", "#dc322f", "#6c71c4"],
+      tier: ["#657b83", "#859900", "#2aa198", "#268bd2", "#6c71c4", "#cb4b16", "#b58900", "#dc322f"],
     }
   ),
 };
@@ -373,6 +384,14 @@ function varsFor(theme: Theme): string {
     `--diff-h: ${p.diff[4]}`,
     `--diff-vh: ${p.diff[5]}`,
     `--diff-x: ${p.diff[6]}`,
+    `--tier-newbie: ${p.tier[0]}`,
+    `--tier-pupil: ${p.tier[1]}`,
+    `--tier-specialist: ${p.tier[2]}`,
+    `--tier-expert: ${p.tier[3]}`,
+    `--tier-candidate-master: ${p.tier[4]}`,
+    `--tier-master: ${p.tier[5]}`,
+    `--tier-international-master: ${p.tier[6]}`,
+    `--tier-grandmaster: ${p.tier[7]}`,
     `color-scheme: ${theme.scheme}`,
   ].join(";");
 }

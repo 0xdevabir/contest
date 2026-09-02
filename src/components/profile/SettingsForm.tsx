@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ThemePicker } from "@/components/ThemePicker";
-import { UNIVERSITIES } from "@/lib/universities";
+import { InstitutionPicker, type InstitutionOption } from "@/components/InstitutionPicker";
 
 type Initial = {
   name: string;
   email: string;
   bio: string;
-  university: string;
+  institutionId: string;
+  institutionVerified: boolean;
   studentId: string;
   department: string;
   editorFontSize: number;
@@ -17,13 +18,22 @@ type Initial = {
   showEmail: boolean;
 };
 
-export function SettingsForm({ initial }: { initial: Initial }) {
+export function SettingsForm({
+  initial,
+  institutions,
+}: {
+  initial: Initial;
+  institutions: InstitutionOption[];
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [pwMsg, setPwMsg] = useState<string | null>(null);
   const [pwErr, setPwErr] = useState<string | null>(null);
+  const [instMsg, setInstMsg] = useState<string | null>(null);
+  const [instErr, setInstErr] = useState<string | null>(null);
+  const [instPending, setInstPending] = useState(false);
 
   async function saveProfile(fd: FormData) {
     setMsg(null);
@@ -33,7 +43,6 @@ export function SettingsForm({ initial }: { initial: Initial }) {
     const body = {
       name: String(fd.get("name") || ""),
       bio: String(fd.get("bio") || ""),
-      university: String(fd.get("university") || ""),
       studentId: String(fd.get("studentId") || "") || null,
       department: String(fd.get("department") || "") || null,
       editorFontSize: Number(fd.get("editorFontSize") || 14),
@@ -57,6 +66,28 @@ export function SettingsForm({ initial }: { initial: Initial }) {
     }
     setMsg("Saved.");
     startTransition(() => router.refresh());
+  }
+
+  async function saveInstitution(fd: FormData) {
+    setInstMsg(null);
+    setInstErr(null);
+    setInstPending(true);
+    try {
+      const res = await fetch("/api/profile/institution", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ institutionId: String(fd.get("institutionId") || "") }),
+      });
+      const data = (await res.json()) as { ok: boolean; verified?: boolean; message?: string };
+      if (!res.ok || !data.ok) {
+        setInstErr(data.message || "Could not save.");
+        return;
+      }
+      setInstMsg(data.verified ? "Saved — verified automatically." : "Saved. Not yet verified.");
+      startTransition(() => router.refresh());
+    } finally {
+      setInstPending(false);
+    }
   }
 
   async function changePassword(fd: FormData) {
@@ -121,16 +152,6 @@ export function SettingsForm({ initial }: { initial: Initial }) {
             />
           </label>
           <label className="block">
-            <span className="field-label">University</span>
-            <select name="university" defaultValue={initial.university} className="field mt-1.5">
-              {UNIVERSITIES.map((u) => (
-                <option key={u.code} value={u.code}>
-                  {u.shortName} — {u.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
             <span className="field-label">Department</span>
             <input
               name="department"
@@ -139,7 +160,7 @@ export function SettingsForm({ initial }: { initial: Initial }) {
               placeholder="CSE"
             />
           </label>
-          <label className="block sm:col-span-2">
+          <label className="block">
             <span className="field-label">Student ID</span>
             <input
               name="studentId"
@@ -218,6 +239,46 @@ export function SettingsForm({ initial }: { initial: Initial }) {
       </form>
 
       <form
+        className="panel space-y-4 p-5 sm:p-6"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void saveInstitution(new FormData(e.currentTarget));
+        }}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="font-display text-lg font-bold">Institution</h2>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              Drives your campus leaderboard rank and national board eligibility.
+            </p>
+          </div>
+          {initial.institutionId && (
+            <span
+              className={`rounded-md border px-2 py-0.5 font-mono text-[10px] ${
+                initial.institutionVerified
+                  ? "border-[var(--accent-dim)] text-[var(--accent)]"
+                  : "border-[var(--warn)]/40 text-[var(--warn)]"
+              }`}
+            >
+              {initial.institutionVerified ? "VERIFIED" : "NOT VERIFIED"}
+            </span>
+          )}
+        </div>
+        <InstitutionPicker
+          name="institutionId"
+          institutions={institutions}
+          defaultValue={initial.institutionId}
+        />
+        <div className="flex flex-wrap items-center gap-3">
+          <button type="submit" className="btn btn-ghost !py-2 !text-xs" disabled={instPending}>
+            {instPending ? "Saving…" : "Save institution"}
+          </button>
+          {instMsg ? <span className="text-xs text-[var(--accent)]">{instMsg}</span> : null}
+          {instErr ? <span className="text-xs text-[var(--danger)]">{instErr}</span> : null}
+        </div>
+      </form>
+
+      <form
         id="password-form"
         className="panel space-y-5 p-5 sm:p-6"
         onSubmit={(e) => {
@@ -260,7 +321,126 @@ export function SettingsForm({ initial }: { initial: Initial }) {
           {pwErr ? <span className="text-xs text-[var(--danger)]">{pwErr}</span> : null}
         </div>
       </form>
+
+      <SessionsPanel />
     </div>
   );
 }
 
+type SessionView = {
+  id: string;
+  userAgent: string;
+  ip: string;
+  createdAt: string;
+  lastSeenAt: string;
+  expiresAt: string;
+  isCurrent: boolean;
+};
+
+function SessionsPanel() {
+  const [sessions, setSessions] = useState<SessionView[] | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load() {
+    try {
+      const res = await fetch("/api/profile/sessions");
+      const data = (await res.json()) as { ok: boolean; sessions?: SessionView[] };
+      if (data.ok && data.sessions) setSessions(data.sessions);
+    } catch {
+      setError("Could not load sessions.");
+    }
+  }
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  async function revoke(sessionId?: string) {
+    setBusyId(sessionId ?? "all");
+    setError(null);
+    try {
+      const res = await fetch("/api/auth/sessions/revoke", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(sessionId ? { sessionId } : {}),
+      });
+      if (!res.ok) {
+        setError("Could not sign out that device.");
+        return;
+      }
+      await load();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <div className="panel space-y-4 p-5 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="font-display text-lg font-bold">Active sessions</h2>
+          <p className="mt-1 text-xs text-[var(--muted)]">Devices currently signed in.</p>
+        </div>
+        {sessions && sessions.length > 1 && (
+          <button
+            type="button"
+            onClick={() => void revoke(undefined)}
+            disabled={busyId !== null}
+            className="btn btn-ghost !py-2 !text-xs"
+          >
+            Sign out all other devices
+          </button>
+        )}
+      </div>
+
+      {error && <p className="text-xs text-[var(--danger)]">{error}</p>}
+
+      {!sessions ? (
+        <p className="text-xs text-[var(--muted)]">Loading…</p>
+      ) : sessions.length === 0 ? (
+        <p className="text-xs text-[var(--muted)]">No active sessions.</p>
+      ) : (
+        <ul className="divide-y divide-[var(--line-soft)]">
+          {sessions.map((s) => (
+            <li key={s.id} className="flex items-center justify-between gap-3 py-3 text-sm">
+              <div className="min-w-0">
+                <p className="truncate">
+                  {s.userAgent ? summarizeUserAgent(s.userAgent) : "Unknown device"}
+                  {s.isCurrent && (
+                    <span className="ml-1.5 text-[11px] font-normal text-[var(--accent)]">
+                      this device
+                    </span>
+                  )}
+                </p>
+                <p className="mt-0.5 text-[11px] text-[var(--muted)]">
+                  Last active {new Date(s.lastSeenAt).toLocaleString()}
+                  {s.ip ? ` · ${s.ip}` : ""}
+                </p>
+              </div>
+              {!s.isCurrent && (
+                <button
+                  type="button"
+                  onClick={() => void revoke(s.id)}
+                  disabled={busyId !== null}
+                  className="btn btn-ghost shrink-0 !py-1.5 !text-xs"
+                >
+                  {busyId === s.id ? "Signing out…" : "Sign out"}
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function summarizeUserAgent(ua: string): string {
+  if (/iphone|ipad/i.test(ua)) return "iOS device";
+  if (/android/i.test(ua)) return "Android device";
+  if (/mac os/i.test(ua)) return "Mac";
+  if (/windows/i.test(ua)) return "Windows PC";
+  if (/linux/i.test(ua)) return "Linux";
+  return "Browser";
+}

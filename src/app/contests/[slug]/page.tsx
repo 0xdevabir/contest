@@ -11,7 +11,9 @@ import {
   parseRules,
 } from "@/lib/contests";
 import { closeExpiredContests } from "@/lib/contest-lifecycle";
+import { contestCapabilities } from "@/lib/contest-access";
 import { getContestDashboard } from "@/lib/contest-dashboard";
+import { isEnabled } from "@/lib/flags";
 import { ContestDashboard } from "@/components/contest/ContestDashboard";
 import { breadcrumbJsonLd, buildPageMetadata, JsonLd } from "@/lib/seo";
 
@@ -104,14 +106,23 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
   }
 
   const rules = contest ? parseRules(contest.rules) : null;
-  // Participants keep access to a contest they joined even if the admin never
-  // published the archive — otherwise joining makes it disappear at the end.
-  if (
-    !contest ||
-    !rules ||
-    (!registered &&
-      !isContestPublic(contest.status, contest.startsAt, contest.endsAt, contest.rules))
-  ) {
+  if (!contest || !rules) notFound();
+
+  // The real access gate: visibility × join policy × staff role, not just
+  // "is this contest published" — a PRIVATE contest must be unreachable by
+  // slug to a stranger even while LIVE (docs/phases/PHASE-05-contest-engine.md
+  // D2 / acceptance criterion 3).
+  const caps = await contestCapabilities(
+    session,
+    contest,
+    registered ? { mode: "LIVE", official: true } : null
+  );
+  const effective = effectiveContestStatus(contest.status, contest.endsAt);
+  // A finished contest additionally needs `publishAfterEnd` for a
+  // non-participant, non-staff visitor — a separate axis from visibility
+  // (whether the archive is public), not a substitute for it.
+  const archiveOpen = effective !== "ENDED" || rules.publishAfterEnd || registered || caps.has("viewAllSubmissions");
+  if (!caps.has("view") || !archiveOpen) {
     notFound();
   }
 
@@ -122,6 +133,8 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
     rules: contest.rules,
     createdAt: contest.createdAt,
   });
+
+  const liveContestEnabled = await isEnabled("liveContest", { userId: session?.id, role: session?.role });
 
   return (
     <>
@@ -167,6 +180,9 @@ export default async function ContestDetailPage({ params, searchParams }: Props)
         loggedIn={!!session}
         viewerId={session?.id ?? null}
         initialUni={uni ?? null}
+        liveContestEnabled={liveContestEnabled}
+        isStaff={caps.has("viewAllSubmissions")}
+        teamSize={rules.teamSize}
       />
     </>
   );

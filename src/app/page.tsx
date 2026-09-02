@@ -10,7 +10,9 @@ import {
 } from "lucide-react";
 import { getMeta } from "@/lib/problems";
 import { JudgePreview } from "@/components/home/JudgePreview";
-import { UNIVERSITIES } from "@/lib/universities";
+// Matches the row count seeded by prisma/seeds/institutions.ts.
+const FEATURED_INSTITUTIONS = ["DIU", "BUET", "DU", "NSU", "CUET", "RUET", "BRACU", "AIUB"];
+const INSTITUTION_COUNT = 60;
 import { BRAND } from "@/lib/brand";
 import { buildPageMetadata, faqJsonLd, JsonLd } from "@/lib/seo";
 
@@ -91,13 +93,13 @@ const STEPS = [
   },
 ];
 
-export default function HomePage() {
-  const meta = getMeta();
+export default async function HomePage() {
+  const meta = await getMeta();
 
   const stats = [
     { value: meta.total, label: "C problems" },
     { value: 7, label: "Difficulty tiers" },
-    { value: UNIVERSITIES.length, label: "Universities" },
+    { value: INSTITUTION_COUNT, label: "Institutions" },
     { value: "24/7", label: "Practice access" },
   ];
 
@@ -136,13 +138,12 @@ export default function HomePage() {
 
             <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-[var(--line-soft)] pt-6">
               <span className="eyebrow">Competing</span>
-              {UNIVERSITIES.map((u) => (
+              {FEATURED_INSTITUTIONS.map((shortName) => (
                 <span
-                  key={u.code}
-                  title={u.name}
+                  key={shortName}
                   className="font-display text-sm font-bold tracking-wide text-[var(--muted)] transition-colors hover:text-[var(--text)]"
                 >
-                  {u.shortName}
+                  {shortName}
                 </span>
               ))}
             </div>
@@ -260,30 +261,34 @@ export default function HomePage() {
                 See contests
               </Link>
               <Link href="/leaderboard" className="btn btn-ghost">
-                University leaderboards
+                Institution leaderboards
               </Link>
             </div>
           </div>
 
-          <ul className="panel divide-y divide-[var(--line-soft)] overflow-hidden">
-            {UNIVERSITIES.map((u) => (
-              <li key={u.code}>
-                <Link
-                  href={`/leaderboard?uni=${u.code}`}
-                  className="flex items-center justify-between gap-4 px-6 py-5 transition-colors hover:bg-[var(--hover)]"
-                >
-                  <div className="min-w-0">
-                    <p className="font-display text-base font-bold">{u.shortName}</p>
-                    <p className="truncate text-xs text-[var(--muted)]">{u.name}</p>
-                  </div>
-                  <span className="flex shrink-0 items-center gap-2 font-mono text-[11px] text-[var(--muted-dim)]">
-                    Standings
-                    <ArrowRight size={14} />
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <div className="panel overflow-hidden">
+            <div className="border-b border-[var(--line-soft)] px-6 py-5">
+              <p className="font-display text-base font-bold">Institution directory</p>
+              <p className="mt-1 text-xs text-[var(--muted)]">
+                {INSTITUTION_COUNT}+ Bangladeshi institutions, each with its own standings.
+              </p>
+            </div>
+            <ul className="divide-y divide-[var(--line-soft)]">
+              {FEATURED_INSTITUTIONS.slice(0, 5).map((shortName) => (
+                <li key={shortName} className="flex items-center justify-between gap-4 px-6 py-3.5">
+                  <p className="font-display text-sm font-bold">{shortName}</p>
+                  <span className="font-mono text-[10px] text-[var(--muted-dim)]">Ranked</span>
+                </li>
+              ))}
+            </ul>
+            <Link
+              href="/institutions"
+              className="flex items-center justify-between gap-4 border-t border-[var(--line-soft)] px-6 py-4 text-sm font-medium text-[var(--accent)] transition-colors hover:bg-[var(--hover)]"
+            >
+              Browse all institutions
+              <ArrowRight size={14} />
+            </Link>
+          </div>
         </div>
       </section>
 

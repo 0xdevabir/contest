@@ -1,15 +1,15 @@
 import Link from "next/link";
-import type { Prisma, Role, University, UserStatus } from "@prisma/client";
+import type { Prisma, Role, UserStatus } from "@prisma/client";
 import { CheckCircle2, Search, ShieldCheck, UserRoundX, Users } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
-import { UNIVERSITIES, universityLabel } from "@/lib/universities";
+import { listInstitutions } from "@/lib/institutions";
 import { UserActions } from "@/components/admin/UserActions";
 
 type Props = {
   searchParams: Promise<{
     q?: string;
-    university?: string;
+    institution?: string;
     role?: string;
     status?: string;
     verification?: string;
@@ -18,17 +18,17 @@ type Props = {
 };
 
 const pageSize = 25;
+const ROLES: Role[] = ["STUDENT", "TEACHER", "TA", "ADMIN"];
 
 export default async function AdminUsersPage({ searchParams }: Props) {
   const params = await searchParams;
   const session = await getSession();
   const page = Math.max(1, Number(params.page) || 1);
-  const university = UNIVERSITIES.some((item) => item.code === params.university)
-    ? (params.university as University)
+  const institutions = await listInstitutions({ limit: 200 });
+  const institution = institutions.some((item) => item.id === params.institution)
+    ? params.institution
     : undefined;
-  const role = ["USER", "ADMIN"].includes(params.role || "")
-    ? (params.role as Role)
-    : undefined;
+  const role = ROLES.includes(params.role as Role) ? (params.role as Role) : undefined;
   const status = ["ACTIVE", "SUSPENDED"].includes(params.status || "")
     ? (params.status as UserStatus)
     : undefined;
@@ -43,7 +43,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
           ],
         }
       : {}),
-    ...(university ? { university } : {}),
+    ...(institution ? { institutionId: institution } : {}),
     ...(role ? { role } : {}),
     ...(status ? { status } : {}),
     ...(params.verification === "verified"
@@ -63,7 +63,8 @@ export default async function AdminUsersPage({ searchParams }: Props) {
         id: true,
         name: true,
         email: true,
-        university: true,
+        institution: { select: { name: true, shortName: true } },
+        institutionVerifiedAt: true,
         studentId: true,
         department: true,
         role: true,
@@ -90,7 +91,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
         </p>
         <h1 className="mt-2 font-display text-3xl font-bold">Users</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          Review accounts, verification, university data, roles, and access.
+          Review accounts, verification, institution data, roles, and access.
         </p>
       </header>
 
@@ -117,16 +118,19 @@ export default async function AdminUsersPage({ searchParams }: Props) {
               className="w-full rounded-lg border border-[var(--line)] bg-[var(--bg-elevated)] py-2 pl-9 pr-3 text-xs outline-none focus:border-[var(--accent-dim)]"
             />
           </label>
-          <Filter name="university" value={params.university} label="University">
-            {UNIVERSITIES.map((item) => (
-              <option key={item.code} value={item.code}>
+          <Filter name="institution" value={params.institution} label="Institution">
+            {institutions.map((item) => (
+              <option key={item.id} value={item.id}>
                 {item.shortName}
               </option>
             ))}
           </Filter>
           <Filter name="role" value={params.role} label="Role">
-            <option value="USER">User</option>
-            <option value="ADMIN">Admin</option>
+            {ROLES.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
           </Filter>
           <Filter name="status" value={params.status} label="Status">
             <option value="ACTIVE">Active</option>
@@ -146,7 +150,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
             <thead className="border-b border-[var(--line)] text-[10px] uppercase tracking-wide text-[var(--muted)]">
               <tr>
                 <th className="px-4 py-3 font-medium">User</th>
-                <th className="px-4 py-3 font-medium">University</th>
+                <th className="px-4 py-3 font-medium">Institution</th>
                 <th className="px-4 py-3 font-medium">Access</th>
                 <th className="px-4 py-3 font-medium">Activity</th>
                 <th className="px-4 py-3 font-medium">Last login</th>
@@ -182,7 +186,7 @@ export default async function AdminUsersPage({ searchParams }: Props) {
                     </div>
                   </td>
                   <td className="px-4 py-3.5">
-                    <p>{universityLabel(user.university)}</p>
+                    <p>{user.institution?.name ?? "Unaffiliated"}</p>
                     <p className="mt-0.5 font-mono text-[10px] text-[var(--muted)]">
                       {[user.department, user.studentId].filter(Boolean).join(" · ") || "—"}
                     </p>
@@ -198,6 +202,11 @@ export default async function AdminUsersPage({ searchParams }: Props) {
                       <Badge tone={user.emailVerified ? "success" : "warning"}>
                         {user.emailVerified ? "VERIFIED" : "PENDING"}
                       </Badge>
+                      {user.institution && (
+                        <Badge tone={user.institutionVerifiedAt ? "success" : "neutral"}>
+                          {user.institutionVerifiedAt ? "INSTITUTION VERIFIED" : "INSTITUTION UNVERIFIED"}
+                        </Badge>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-3.5 font-mono text-[10px] text-[var(--muted)]">

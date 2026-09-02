@@ -1,16 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Verdict } from "@prisma/client";
 import type { TestResult } from "@/lib/types";
-import { getProblem } from "@/lib/problems";
+import { getProblem, getProblemRef } from "@/lib/problems";
 import { compileAndJudge, runCustom, MAX_OUTPUT_BYTES } from "@/lib/judge";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { effectiveContestStatus, isContestOpen } from "@/lib/contests";
 import { contestSubmissionError } from "@/lib/contest-access";
-import { toResponse, ValidationError, NotFoundError, AuthError, ForbiddenError, RateLimitError } from "@/lib/errors";
+import {
+  toResponse,
+  ValidationError,
+  NotFoundError,
+  AuthError,
+  ForbiddenError,
+  RateLimitError,
+  ServiceUnavailableError,
+} from "@/lib/errors";
 import { consume, retryAfterSeconds, tryAcquireAnonRunSlot, releaseAnonRunSlot } from "@/lib/ratelimit";
 import { clientIp } from "@/lib/request-context";
 import { log } from "@/lib/log";
+import { applyJudgedSideEffects } from "@/lib/submission-effects";
+import { isEnabled } from "@/lib/flags";
+import { redisAvailable } from "@/lib/redis";
+import { enqueueJudgeJob } from "@/lib/queue/queue";
+import { priorityFor } from "@/lib/queue/priority";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,7 +49,12 @@ async function persistSubmission(opts: {
 }) {
   if (!opts.userId) return;
   try {
-    await prisma.submission.create({
+    // Populated when the problem is DB-backed (problemDb flag on) so a fresh
+    // submission never needs the migration's link-refs backfill script to
+    // catch up — only pre-migration history does.
+    const ref = await getProblemRef(opts.problemId).catch(() => null);
+
+    const created = await prisma.submission.create({
       data: {
         userId: opts.userId,
         problemId: opts.problemId,
@@ -48,21 +66,67 @@ async function persistSubmission(opts: {
         stdout: opts.stdout?.slice(0, 8000) ?? null,
         stderr: opts.stderr?.slice(0, 8000) ?? null,
         report: opts.report != null ? JSON.parse(JSON.stringify(opts.report)) : undefined,
+        problemRefId: ref?.problemId ?? null,
+        problemVersionId: ref?.versionId ?? null,
       },
     });
 
-    if (opts.verdict === "AC" && !opts.contestId) {
-      await prisma.solvedProblem.upsert({
-        where: {
-          userId_problemId: { userId: opts.userId, problemId: opts.problemId },
-        },
-        update: { solveCount: { increment: 1 } },
-        create: { userId: opts.userId, problemId: opts.problemId },
-      });
-    }
+    await applyJudgedSideEffects({
+      userId: opts.userId,
+      problemId: opts.problemId,
+      contestId: opts.contestId,
+      verdict: opts.verdict,
+      problemRefId: ref?.problemId,
+      submissionId: created.id,
+      code: opts.code,
+      language: "c",
+    });
   } catch (err) {
     log.error("persist submission failed", { problemId: opts.problemId }, err);
   }
+}
+
+/**
+ * Creates the QUEUED Submission row and enqueues it (D1/D2). Returns the
+ * 202 response on success, or `null` when Redis is unavailable — the caller
+ * decides whether that means "fall back to sync" (never, here — see D1's
+ * chaos case) or a clear 503.
+ */
+async function enqueueQueuedSubmission(opts: {
+  userId: string;
+  problemId: string;
+  contestId?: string;
+  code: string;
+  contestLive: boolean;
+}): Promise<NextResponse | null> {
+  const ref = await getProblemRef(opts.problemId).catch(() => null);
+  const priority = priorityFor({ contestLive: opts.contestLive, authenticated: true });
+
+  const submission = await prisma.submission.create({
+    data: {
+      userId: opts.userId,
+      problemId: opts.problemId,
+      contestId: opts.contestId || null,
+      code: opts.code,
+      language: "c",
+      verdict: "PENDING",
+      state: "QUEUED",
+      priority,
+      queuedAt: new Date(),
+      problemRefId: ref?.problemId ?? null,
+      problemVersionId: ref?.versionId ?? null,
+    },
+  });
+
+  const enqueued = await enqueueJudgeJob({ submissionId: submission.id, priority });
+  if (!enqueued) {
+    // Roll back the row rather than leaving an orphaned QUEUED submission
+    // that no worker will ever pick up.
+    await prisma.submission.delete({ where: { id: submission.id } }).catch(() => undefined);
+    return null;
+  }
+
+  return NextResponse.json({ ok: true, submissionId: submission.id, state: "QUEUED" }, { status: 202 });
 }
 
 /**
@@ -95,7 +159,7 @@ async function handlePost(req: NextRequest): Promise<NextResponse> {
     throw new ValidationError("Invalid JSON");
   }
 
-  const problem = getProblem(body.problemId);
+  const problem = await getProblem(body.problemId);
   if (!problem) {
     throw new NotFoundError("Problem not found");
   }
@@ -249,6 +313,27 @@ async function handlePost(req: NextRequest): Promise<NextResponse> {
       if (subCount >= maxSubs) {
         throw new RateLimitError(60, `Submission limit (${maxSubs}) reached for this problem`);
       }
+    }
+  }
+
+  // Reaching here with a contestId means the gate above already confirmed
+  // the contest is open — a live contest submission gets top queue priority.
+  const contestLive = Boolean(body.contestId);
+
+  if (await isEnabled("judgeQueue", { userId: session.id, role: session.role })) {
+    const enqueued = await enqueueQueuedSubmission({
+      userId: session.id,
+      problemId: body.problemId,
+      contestId: body.contestId,
+      code: body.code,
+      contestLive,
+    });
+    if (enqueued) return enqueued;
+    if (!(await redisAvailable())) {
+      // The flag is on but Redis is unreachable — fail loudly rather than
+      // silently falling back to synchronous judging, which would look like
+      // a working queue and hide the outage (D1's documented chaos case).
+      throw new ServiceUnavailableError("Judge queue is temporarily unavailable. Try again shortly.");
     }
   }
 

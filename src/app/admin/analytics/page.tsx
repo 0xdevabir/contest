@@ -1,9 +1,8 @@
 import Link from "next/link";
-import type { University, Verdict } from "@prisma/client";
+import type { Verdict } from "@prisma/client";
 import { BarChart3, Target, Trophy, Users } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { getProblem } from "@/lib/problems";
-import { universityLabel } from "@/lib/universities";
 
 type Props = { searchParams: Promise<{ range?: string }> };
 
@@ -20,7 +19,7 @@ export default async function AdminAnalyticsPage({ searchParams }: Props) {
         verdict: true,
         problemId: true,
         createdAt: true,
-        user: { select: { university: true } },
+        user: { select: { institution: { select: { shortName: true } } } },
       },
     }),
     prisma.user.count({ where }),
@@ -31,13 +30,18 @@ export default async function AdminAnalyticsPage({ searchParams }: Props) {
   const accepted = submissions.filter((item) => item.verdict === "AC").length;
   const acceptance = submissions.length ? Math.round((accepted / submissions.length) * 100) : 0;
   const verdictCounts = countBy(submissions, (item) => item.verdict);
-  const universityStats = buildUniversityStats(submissions);
+  const institutionStats = buildInstitutionStats(submissions);
   const problemCounts = countBy(submissions, (item) => item.problemId);
   const topProblems = [...problemCounts.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8);
   const activity = buildActivity(submissions, days ?? 30);
   const activityMax = Math.max(...activity.map((item) => item.count), 1);
+  const topProblemTitles = new Map(
+    await Promise.all(
+      topProblems.map(async ([problemId]) => [problemId, (await getProblem(problemId))?.title] as const)
+    )
+  );
 
   return (
     <div className="mx-auto max-w-[1500px] px-4 py-7 sm:px-6 lg:px-8">
@@ -48,7 +52,7 @@ export default async function AdminAnalyticsPage({ searchParams }: Props) {
           </p>
           <h1 className="mt-2 font-display text-3xl font-bold">Analytics</h1>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Participation, judge quality, university performance, and problem demand.
+            Participation, judge quality, institution performance, and problem demand.
           </p>
         </div>
         <div className="flex rounded-lg border border-[var(--line)] p-1 text-xs">
@@ -139,7 +143,7 @@ export default async function AdminAnalyticsPage({ searchParams }: Props) {
       <div className="mt-5 grid gap-5 xl:grid-cols-2">
         <section className="panel overflow-hidden">
           <div className="border-b border-[var(--line)] px-5 py-4">
-            <h2 className="font-display text-lg font-bold">University performance</h2>
+            <h2 className="font-display text-lg font-bold">Institution performance</h2>
             <p className="mt-0.5 text-xs text-[var(--muted)]">
               Submission volume and acceptance by institution
             </p>
@@ -148,16 +152,16 @@ export default async function AdminAnalyticsPage({ searchParams }: Props) {
             <table className="w-full text-left text-xs">
               <thead className="border-b border-[var(--line)] text-[10px] uppercase text-[var(--muted)]">
                 <tr>
-                  <th className="px-5 py-3 font-medium">University</th>
+                  <th className="px-5 py-3 font-medium">Institution</th>
                   <th className="px-5 py-3 text-right font-medium">Runs</th>
                   <th className="px-5 py-3 text-right font-medium">Accepted</th>
                   <th className="px-5 py-3 text-right font-medium">Rate</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--line)]">
-                {universityStats.map((item) => (
-                  <tr key={item.university}>
-                    <td className="px-5 py-3">{universityLabel(item.university)}</td>
+                {institutionStats.map((item) => (
+                  <tr key={item.institution}>
+                    <td className="px-5 py-3">{item.institution}</td>
                     <td className="px-5 py-3 text-right font-mono">{item.total}</td>
                     <td className="px-5 py-3 text-right font-mono text-[var(--accent)]">
                       {item.accepted}
@@ -165,7 +169,7 @@ export default async function AdminAnalyticsPage({ searchParams }: Props) {
                     <td className="px-5 py-3 text-right font-mono">{item.rate}%</td>
                   </tr>
                 ))}
-                {universityStats.length === 0 && (
+                {institutionStats.length === 0 && (
                   <tr>
                     <td colSpan={4} className="px-5 py-10 text-center text-[var(--muted)]">
                       No user submissions in this period.
@@ -192,7 +196,7 @@ export default async function AdminAnalyticsPage({ searchParams }: Props) {
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs font-medium">
-                    {getProblem(problemId)?.title ?? problemId}
+                    {topProblemTitles.get(problemId) ?? problemId}
                   </p>
                   <p className="font-mono text-[9px] text-[var(--muted)]">{problemId}</p>
                 </div>
@@ -219,20 +223,20 @@ function countBy<T, K>(items: T[], key: (item: T) => K) {
   return result;
 }
 
-function buildUniversityStats(
-  submissions: Array<{ verdict: Verdict; user: { university: University } | null }>
+function buildInstitutionStats(
+  submissions: Array<{ verdict: Verdict; user: { institution: { shortName: string } | null } | null }>
 ) {
-  const map = new Map<University, { total: number; accepted: number }>();
+  const map = new Map<string, { total: number; accepted: number }>();
   submissions.forEach((submission) => {
-    if (!submission.user) return;
-    const current = map.get(submission.user.university) ?? { total: 0, accepted: 0 };
+    const institution = submission.user?.institution?.shortName ?? "Unaffiliated";
+    const current = map.get(institution) ?? { total: 0, accepted: 0 };
     current.total += 1;
     if (submission.verdict === "AC") current.accepted += 1;
-    map.set(submission.user.university, current);
+    map.set(institution, current);
   });
   return [...map.entries()]
-    .map(([university, value]) => ({
-      university,
+    .map(([institution, value]) => ({
+      institution,
       ...value,
       rate: value.total ? Math.round((value.accepted / value.total) * 100) : 0,
     }))

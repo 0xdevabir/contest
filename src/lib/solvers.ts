@@ -26,7 +26,7 @@ export async function getProblemSolvers(
           select: {
             id: true,
             name: true,
-            university: true,
+            institution: { select: { shortName: true } },
           },
         },
       },
@@ -38,7 +38,7 @@ export async function getProblemSolvers(
     solvers: rows.map((row) => ({
       userId: row.user.id,
       name: row.user.name,
-      university: row.user.university,
+      institution: row.user.institution?.shortName ?? "Unaffiliated",
       firstSolvedAt: row.firstSolvedAt.toISOString(),
     })),
   };

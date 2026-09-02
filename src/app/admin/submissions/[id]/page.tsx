@@ -16,7 +16,7 @@ export default async function SubmissionDetailPage({ params }: Props) {
           id: true,
           name: true,
           email: true,
-          university: true,
+          institution: { select: { name: true } },
           studentId: true,
         },
       },
@@ -24,7 +24,7 @@ export default async function SubmissionDetailPage({ params }: Props) {
     },
   });
   if (!submission) notFound();
-  const problem = getProblem(submission.problemId);
+  const problem = await getProblem(submission.problemId);
 
   return (
     <div className="mx-auto max-w-[1300px] px-4 py-7 sm:px-6 lg:px-8">
@@ -65,8 +65,8 @@ export default async function SubmissionDetailPage({ params }: Props) {
         <Info label="Participant" icon={User}>
           {submission.user?.name ?? "Guest"}
         </Info>
-        <Info label="University" icon={User}>
-          {submission.user?.university ?? "—"}
+        <Info label="Institution" icon={User}>
+          {submission.user?.institution?.name ?? "—"}
         </Info>
         <Info label="Runtime" icon={Clock3}>
           {submission.timeMs != null ? `${submission.timeMs}ms` : "—"}
@@ -111,7 +111,7 @@ export default async function SubmissionDetailPage({ params }: Props) {
             <dl className="mt-3 space-y-2 text-xs">
               <Row label="Name" value={submission.user?.name ?? "Guest"} />
               <Row label="Email" value={submission.user?.email ?? "—"} />
-              <Row label="University" value={submission.user?.university ?? "—"} />
+              <Row label="Institution" value={submission.user?.institution?.name ?? "—"} />
               <Row label="Student ID" value={submission.user?.studentId ?? "—"} />
             </dl>
           </section>

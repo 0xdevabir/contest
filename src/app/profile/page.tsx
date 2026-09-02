@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { Verdict } from "@prisma/client";
 import { getSession } from "@/lib/auth";
 import { getPublicProfile } from "@/lib/profile";
-import { universityLabel } from "@/lib/universities";
 import { difficultyClass } from "@/lib/difficulty";
 import { PageHeader } from "@/components/PageHeader";
 import { ActivityHeatmap } from "@/components/profile/ActivityHeatmap";
@@ -35,7 +34,7 @@ export default async function ProfileOverviewPage() {
   return (
     <div>
       <PageHeader
-        eyebrow={universityLabel(profile.university)}
+        eyebrow={profile.institutionName ?? "Unaffiliated"}
         title={profile.name}
         lead={
           profile.bio?.trim() ||
@@ -58,7 +57,7 @@ export default async function ProfileOverviewPage() {
         <Stat
           label="Campus rank"
           value={formatRank(stats.uniRank)}
-          hint={universityLabel(profile.university)}
+          hint={profile.institutionName ?? "Unaffiliated"}
         />
         <Stat
           label="Acceptance"

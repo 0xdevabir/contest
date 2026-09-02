@@ -1,13 +1,28 @@
-import { PrismaClient, University } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { ProblemBank } from "../src/lib/types";
 import { defaultContestRules } from "../src/lib/validators";
+import { seedInstitutions } from "./seeds/institutions";
+import { seedTags } from "./seeds/tags";
+import { seedBadges } from "./seeds/badges";
 
 const prisma = new PrismaClient();
 
 async function main() {
+  const { created: institutionsCreated, total: institutionsTotal } = await seedInstitutions();
+  console.log(`${institutionsCreated} institutions created; ${institutionsTotal} total in seed list.`);
+
+  const { created: tagsCreated, total: tagsTotal } = await seedTags();
+  console.log(`${tagsCreated} tags created; ${tagsTotal} total in seed list.`);
+
+  const { created: badgesCreated, total: badgesTotal } = await seedBadges();
+  console.log(`${badgesCreated} badges created; ${badgesTotal} total in seed list.`);
+
+  const diu = await prisma.institution.findUnique({ where: { slug: "diu" } });
+  if (!diu) throw new Error("Institution seed did not create 'diu' — check prisma/seeds/institutions.ts");
+
   const email = process.env.ADMIN_EMAIL;
   const password = process.env.ADMIN_PASSWORD;
   const name = process.env.ADMIN_NAME || "Contest Admin";
@@ -34,7 +49,8 @@ async function main() {
         email,
         name,
         passwordHash,
-        university: University.DIU,
+        institutionId: diu.id,
+        institutionVerifiedAt: new Date(),
         role: "ADMIN",
         emailVerified: new Date(),
         department: "CSE",
@@ -98,5 +114,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-
-

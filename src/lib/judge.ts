@@ -5,6 +5,9 @@ import path from "path";
 import type { JudgeVerdict, TestCase, TestResult } from "./types";
 import { remoteJudgeUrl, runRemote, verdictFromStatus } from "./remote-judge";
 import { log } from "./log";
+import { isEnabled } from "./flags";
+import { judgeSubmission, type JudgeReport } from "./judge/index";
+import { randomUUID } from "crypto";
 
 const MAX_CODE_BYTES = 100_000;
 export const MAX_OUTPUT_BYTES = 1_000_000;
@@ -63,7 +66,7 @@ function judgeNotConfigured(): {
   };
 }
 
-function normalizeOutput(s: string): string {
+export function normalizeOutput(s: string): string {
   return s.replace(/\r\n/g, "\n").replace(/\s+$/g, "").replace(/[ \t]+$/gm, "");
 }
 
@@ -316,10 +319,53 @@ async function judgeRemote(opts: {
   return { verdict: overall, results };
 }
 
+/**
+ * Adapts a Phase 3 JudgeReport (grouped, multi-language, resource-aware)
+ * back into the flat single-language shape every existing caller expects.
+ * The flat `tests` this shim submits are always a single group (order 0,
+ * TOKEN checker, C), so `report.tests` is already in test order — no
+ * grouping/dependsOn/PA behaviour to reconcile here.
+ */
+function adaptEngineReport(
+  report: JudgeReport,
+  tests: TestCase[]
+): { verdict: JudgeVerdict; compileStderr?: string; results: TestResult[]; message?: string; score?: number; maxScore?: number } {
+  if (!report.compile.ok) {
+    return { verdict: "CE", compileStderr: report.compile.stderr, results: [] };
+  }
+  const results: TestResult[] = report.tests.map((t) => ({
+    index: t.index,
+    verdict: t.verdict as JudgeVerdict,
+    timeMs: t.wallMs,
+    stdout: t.stdout ?? "",
+    stderr: t.stderr ?? "",
+    expected: tests[t.index]?.output,
+    sample: tests[t.index]?.sample,
+    cpuMs: t.cpuMs,
+    memoryKb: t.memoryKb,
+  }));
+  return { verdict: report.verdict as JudgeVerdict, results, message: report.message, score: report.score, maxScore: report.maxScore };
+}
+
+/**
+ * D-rollout — `judgeV2` gates the Phase 3 engine for the legacy flat/C-only
+ * call sites (compileAndJudge/runCustom). Off (the default until the flag is
+ * enabled): every call below behaves exactly as before Phase 3 shipped, so
+ * flipping the flag off is a real rollback, not just a code-path that
+ * happens to look unused. On: the flat `tests` become a single default
+ * group and run through the new engine (real MLE/OLE, per-test resource
+ * metrics), still C-only until callers pass grouped, multi-language data
+ * through judgeSubmission() directly.
+ */
+async function judgeV2Enabled(): Promise<boolean> {
+  return isEnabled("judgeV2");
+}
+
 export async function compileAndJudge(opts: {
   code: string;
   tests: TestCase[];
   timeLimitMs: number;
+  memoryLimitMb?: number;
   /** Halved for anonymous requests — see docs/ULTIMATE_PLAN.md §3 F-2. */
   maxOutputBytes?: number;
 }): Promise<{
@@ -327,6 +373,8 @@ export async function compileAndJudge(opts: {
   compileStderr?: string;
   results: TestResult[];
   message?: string;
+  score?: number;
+  maxScore?: number;
 }> {
   if (!opts.tests.length) {
     return {
@@ -334,6 +382,27 @@ export async function compileAndJudge(opts: {
       results: [],
       message: "No automatic tests for this problem.",
     };
+  }
+
+  if (await judgeV2Enabled()) {
+    const report = await judgeSubmission({
+      submissionId: randomUUID(),
+      language: "c",
+      source: opts.code,
+      timeLimitMs: opts.timeLimitMs,
+      memoryLimitMb: opts.memoryLimitMb ?? 256,
+      outputLimitKb: opts.maxOutputBytes ? Math.ceil(opts.maxOutputBytes / 1024) : undefined,
+      checker: { type: "TOKEN" },
+      groups: [
+        {
+          group: 0,
+          points: 100,
+          stopOnFail: true,
+          cases: opts.tests.map((t, i) => ({ index: i, input: t.input, expected: t.output, sample: t.sample })),
+        },
+      ],
+    });
+    return adaptEngineReport(report, opts.tests);
   }
 
   const runner = runnerJudgeUrl();
@@ -405,6 +474,7 @@ export async function runCustom(opts: {
   code: string;
   stdin: string;
   timeLimitMs: number;
+  memoryLimitMb?: number;
   /** Halved for anonymous requests — see docs/ULTIMATE_PLAN.md §3 F-2. */
   maxOutputBytes?: number;
 }): Promise<{
@@ -417,6 +487,30 @@ export async function runCustom(opts: {
 }> {
   const input =
     opts.stdin.endsWith("\n") || opts.stdin === "" ? opts.stdin : `${opts.stdin}\n`;
+
+  if (await judgeV2Enabled()) {
+    const report = await judgeSubmission({
+      submissionId: randomUUID(),
+      language: "c",
+      source: opts.code,
+      timeLimitMs: opts.timeLimitMs,
+      memoryLimitMb: opts.memoryLimitMb ?? 256,
+      outputLimitKb: opts.maxOutputBytes ? Math.ceil(opts.maxOutputBytes / 1024) : undefined,
+      // "Run" is ungraded — there's no expected output, so WA/AC from the
+      // checker is meaningless here. Only a runtime fault (TLE/MLE/OLE/RE)
+      // is worth distinguishing; anything else collapses to AC below.
+      checker: { type: "EXACT" },
+      groups: [{ group: 0, points: 0, stopOnFail: false, cases: [{ index: 0, input, expected: "", sample: true }] }],
+    });
+
+    if (!report.compile.ok) {
+      return { verdict: "CE", compileStderr: report.compile.stderr, stdout: "", stderr: "", timeMs: 0 };
+    }
+    const t = report.tests[0];
+    const FAULT_VERDICTS: JudgeVerdict[] = ["TLE", "MLE", "OLE", "RE", "IE"];
+    const verdict = FAULT_VERDICTS.includes(t.verdict as JudgeVerdict) ? (t.verdict as JudgeVerdict) : "AC";
+    return { verdict, stdout: t.stdout ?? "", stderr: t.stderr ?? "", timeMs: t.wallMs, message: report.message };
+  }
 
   if (remoteJudgeUrl()) {
     try {

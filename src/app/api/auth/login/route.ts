@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { setSessionCookie } from "@/lib/auth";
+import { createSession, findLiveStrictBinding } from "@/lib/auth";
 import { THEME_COOKIE, normalizeThemeMode } from "@/lib/theme";
 import { verifyPassword } from "@/lib/password";
 import { loginSchema } from "@/lib/validators";
@@ -44,18 +44,24 @@ async function handlePost(req: NextRequest): Promise<NextResponse> {
     throw new ForbiddenError("This account has been suspended. Contact an administrator.");
   }
 
+  // Phase 10 D5 — a session bound to a still-LIVE strict-mode contest blocks
+  // a second login outright, closing the simplest cheat (handing your
+  // credentials to a stronger friend mid-exam).
+  const strictBinding = await findLiveStrictBinding(user.id);
+  if (strictBinding) {
+    throw new ForbiddenError(
+      "This account is signed in to an active exam session elsewhere. Sign out there first."
+    );
+  }
+
   await prisma.user.update({
     where: { id: user.id },
     data: { lastLoginAt: new Date() },
   });
 
-  await setSessionCookie({
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    university: user.university,
-    role: user.role,
-    emailVerified: !!user.emailVerified,
+  await createSession(user.id, {
+    userAgent: req.headers.get("user-agent") ?? "",
+    ip,
   });
 
   const res = NextResponse.json({
@@ -64,7 +70,6 @@ async function handlePost(req: NextRequest): Promise<NextResponse> {
       id: user.id,
       email: user.email,
       name: user.name,
-      university: user.university,
       role: user.role,
       emailVerified: !!user.emailVerified,
     },

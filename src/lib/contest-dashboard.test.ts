@@ -27,10 +27,10 @@ const sub = (userId: string, problemId: string, verdict: Verdict, min: number): 
 });
 
 const registrations: DashboardRegistration[] = [
-  { userId: "u1", user: { name: "Ada", university: "DIU" } },
-  { userId: "u2", user: { name: "Linus", university: "DIU" } },
-  { userId: "u3", user: { name: "Grace", university: "NSU" } },
-  { userId: "u4", user: { name: "Idle", university: null } },
+  { userId: "u1", user: { name: "Ada", institutionId: "diu", institution: { shortName: "DIU" } } },
+  { userId: "u2", user: { name: "Linus", institutionId: "diu", institution: { shortName: "DIU" } } },
+  { userId: "u3", user: { name: "Grace", institutionId: "nsu", institution: { shortName: "NSU" } } },
+  { userId: "u4", user: { name: "Idle", institutionId: null, institution: null } },
 ];
 
 const contestProblems = [

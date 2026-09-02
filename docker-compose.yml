@@ -1,0 +1,38 @@
+# Local development only. `redis` backs the judgeQueue flag (queue, rate
+# limiting, SSE pub/sub — see docs/phases/DONE__PHASE-04-judge-queue.md D1).
+# `worker` is opt-in (`docker compose --profile worker up`) since most days
+# `npm run worker:dev` against this same Redis is faster to iterate on. This
+# file is not the production topology — see worker/README.md for the VPS
+# deployment, which runs the worker on its own host with nothing else on it.
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  worker:
+    profiles: ["worker"]
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: ${DATABASE_URL}
+      DIRECT_URL: ${DIRECT_URL}
+      JUDGE_SHARED_SECRET: ${JUDGE_SHARED_SECRET}
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-4}
+
+volumes:
+  redis-data:

@@ -9,9 +9,9 @@ import {
 } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
-import { getProblem } from "@/lib/problems";
-import { universityLabel } from "@/lib/universities";
+import { getProblemTitles } from "@/lib/problems";
 import { UserActions } from "@/components/admin/UserActions";
+import { VerifyInstitutionButton } from "@/components/admin/VerifyInstitutionButton";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -25,7 +25,9 @@ export default async function AdminUserDetailPage({ params }: Props) {
       id: true,
       name: true,
       email: true,
-      university: true,
+      institutionId: true,
+      institutionVerifiedAt: true,
+      institution: { select: { name: true } },
       studentId: true,
       department: true,
       role: true,
@@ -88,6 +90,10 @@ export default async function AdminUserDetailPage({ params }: Props) {
   ]);
 
   const accepted = submissions.filter((s) => s.verdict === "AC").length;
+  const problemTitles = await getProblemTitles([
+    ...submissions.map((s) => s.problemId),
+    ...solves.map((s) => s.problemId),
+  ]);
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-7 sm:px-6 lg:px-8">
@@ -114,13 +120,21 @@ export default async function AdminUserDetailPage({ params }: Props) {
               )}
             </div>
             <p className="mt-1 text-sm text-[var(--muted)]">{user.email}</p>
-            <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
-              <Pill>{universityLabel(user.university)}</Pill>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
+              <Pill>{user.institution?.name ?? "Unaffiliated"}</Pill>
               <Pill tone={user.role === "ADMIN" ? "accent" : "muted"}>{user.role}</Pill>
               <Pill tone={user.status === "SUSPENDED" ? "warn" : "muted"}>{user.status}</Pill>
               <Pill tone={user.emailVerified ? "accent" : "warn"}>
                 {user.emailVerified ? "Verified" : "Unverified"}
               </Pill>
+              {user.institutionId && (
+                <Pill tone={user.institutionVerifiedAt ? "accent" : "warn"}>
+                  {user.institutionVerifiedAt ? "Institution verified" : "Institution unverified"}
+                </Pill>
+              )}
+              {user.institutionId && !user.institutionVerifiedAt && (
+                <VerifyInstitutionButton userId={user.id} />
+              )}
             </div>
           </div>
         </div>
@@ -167,7 +181,7 @@ export default async function AdminUserDetailPage({ params }: Props) {
               <Empty text="No submissions yet." />
             ) : (
               submissions.map((sub) => {
-                const problem = getProblem(sub.problemId);
+                const problemTitle = problemTitles.get(sub.problemId);
                 return (
                   <Link
                     key={sub.id}
@@ -177,7 +191,7 @@ export default async function AdminUserDetailPage({ params }: Props) {
                     <VerdictBadge verdict={sub.verdict} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm">
-                        {problem?.title ?? sub.problemId}
+                        {problemTitle ?? sub.problemId}
                         {sub.contest ? (
                           <span className="text-[var(--muted)]"> · {sub.contest.title}</span>
                         ) : null}
@@ -202,11 +216,11 @@ export default async function AdminUserDetailPage({ params }: Props) {
               <Empty text="No solved problems yet." />
             ) : (
               solves.map((solve) => {
-                const problem = getProblem(solve.problemId);
+                const problemTitle = problemTitles.get(solve.problemId);
                 return (
                   <div key={solve.problemId} className="flex items-center justify-between gap-3 px-5 py-3">
                     <div className="min-w-0">
-                      <p className="truncate text-sm">{problem?.title ?? solve.problemId}</p>
+                      <p className="truncate text-sm">{problemTitle ?? solve.problemId}</p>
                       <p className="mt-0.5 font-mono text-[10px] text-[var(--muted)]">
                         {solve.problemId} · ×{solve.solveCount}
                       </p>

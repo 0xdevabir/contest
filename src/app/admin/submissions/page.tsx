@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Prisma, Verdict } from "@prisma/client";
 import { Braces, CheckCircle2, Search, XCircle } from "lucide-react";
 import { prisma } from "@/lib/db";
-import { getProblem } from "@/lib/problems";
+import { getProblemTitles } from "@/lib/problems";
 
 type Props = {
   searchParams: Promise<{
@@ -43,7 +43,7 @@ export default async function AdminSubmissionsPage({ searchParams }: Props) {
       skip: (page - 1) * pageSize,
       orderBy: { createdAt: "desc" },
       include: {
-        user: { select: { name: true, email: true, university: true } },
+        user: { select: { name: true, email: true, institution: { select: { shortName: true } } } },
         contest: { select: { title: true } },
       },
     }),
@@ -58,6 +58,7 @@ export default async function AdminSubmissionsPage({ searchParams }: Props) {
     }),
   ]);
   const pages = Math.max(1, Math.ceil(total / pageSize));
+  const problemTitles = await getProblemTitles(submissions.map((s) => s.problemId));
 
   return (
     <div className="mx-auto max-w-[1500px] px-4 py-7 sm:px-6 lg:px-8">
@@ -143,7 +144,7 @@ export default async function AdminSubmissionsPage({ searchParams }: Props) {
             </thead>
             <tbody className="divide-y divide-[var(--line)]">
               {submissions.map((submission) => {
-                const problem = getProblem(submission.problemId);
+                const problemTitle = problemTitles.get(submission.problemId);
                 return (
                   <tr key={submission.id} className="hover:bg-[var(--hover)]">
                     <td className="px-4 py-3">
@@ -156,7 +157,7 @@ export default async function AdminSubmissionsPage({ searchParams }: Props) {
                       </p>
                     </td>
                     <td className="px-4 py-3">
-                      <p className="max-w-64 truncate">{problem?.title ?? submission.problemId}</p>
+                      <p className="max-w-64 truncate">{problemTitle ?? submission.problemId}</p>
                       <p className="mt-0.5 font-mono text-[10px] text-[var(--muted)]">
                         {submission.problemId}
                       </p>

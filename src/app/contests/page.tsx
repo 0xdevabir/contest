@@ -19,6 +19,8 @@ import {
   isContestPublic,
 } from "@/lib/contests";
 import { closeExpiredContests } from "@/lib/contest-lifecycle";
+import { contestListWhere } from "@/lib/contest-access";
+import type { SessionUser } from "@/lib/auth";
 import { ContestRegisterButton } from "@/components/ContestRegisterButton";
 import { PageHeader } from "@/components/PageHeader";
 import { breadcrumbJsonLd, buildPageMetadata, JsonLd } from "@/lib/seo";
@@ -62,7 +64,7 @@ export default async function ContestsPage() {
   }
 
   try {
-    contests = await loadContests(myRegs);
+    contests = await loadContests(myRegs, session);
   } catch {
     dbError = true;
   }
@@ -109,11 +111,16 @@ export default async function ContestsPage() {
           { name: "Contests", path: "/contests" },
         ])}
       />
-      <PageHeader
-        eyebrow="Compete"
-        title="C programming contests"
-        lead="See what is running, register for what comes next, and revisit every published contest from one timeline."
-      />
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <PageHeader
+          eyebrow="Compete"
+          title="C programming contests"
+          lead="See what is running, register for what comes next, and revisit every published contest from one timeline."
+        />
+        <Link href="/contests/join" className="btn btn-ghost !text-xs">
+          Join by code
+        </Link>
+      </div>
 
       {dbError && (
         <p className="mt-6 rounded-lg border border-[var(--warn)]/40 bg-[var(--warn-surface)] p-3 text-sm text-[var(--warn)]">
@@ -384,19 +391,26 @@ function formatContestDate(value: Date | null) {
   }).format(value);
 }
 
-async function loadContests(myRegs: Set<string>) {
+async function loadContests(myRegs: Set<string>, session: SessionUser | null) {
   await closeExpiredContests();
+  // Visibility is filtered at the database level, never in application code —
+  // a listing bug here leaks an exam (docs/phases/PHASE-05-contest-engine.md
+  // D2). UNLISTED/PRIVATE contests never appear here regardless of actor;
+  // a participant keeps seeing their own contest via the id-in clause even if
+  // its visibility would otherwise exclude it.
+  const visibilityWhere = contestListWhere(session);
   const contests = await prisma.contest.findMany({
     where: {
       status: { in: ["LIVE", "ENDED"] },
+      OR: [...(visibilityWhere.OR ?? []), ...(myRegs.size ? [{ id: { in: [...myRegs] } }] : [])],
     },
     orderBy: [{ status: "asc" }, { startsAt: "desc" }],
     include: {
       _count: { select: { problems: true, registrations: true } },
     },
   });
-  // People who joined a contest keep access to it even when the admin has not
-  // published the archive, so their results never vanish on them.
+  // publishAfterEnd still gates a finished contest's archive visibility for
+  // non-participants, independent of the visibility enum.
   return contests.filter(
     (contest) =>
       myRegs.has(contest.id) ||

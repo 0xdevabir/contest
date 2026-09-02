@@ -1,9 +1,29 @@
 import type { ContestStatus, Prisma } from "@prisma/client";
-import { defaultContestRules, contestRulesSchema, type ContestRules } from "./validators";
+import {
+  defaultContestRulesV2,
+  contestRulesSchemaV1,
+  contestRulesSchemaV2,
+  defaultContestRulesV1,
+  type ContestRules,
+} from "./validators";
 
+/**
+ * `rulesVersion` is the discriminant: missing/1 is the pre-Phase-5 shape and
+ * gets upgraded to v2 defaults on read (shared field names carry over
+ * unchanged); `2` validates directly. The stored `Contest.rules` blob is
+ * never rewritten by this — only the in-memory value callers see.
+ */
 export function parseRules(raw: Prisma.JsonValue | null | undefined): ContestRules {
-  const parsed = contestRulesSchema.safeParse(raw ?? {});
-  return parsed.success ? parsed.data : defaultContestRules;
+  const obj =
+    raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+
+  if (obj.rulesVersion === 2) {
+    const parsed = contestRulesSchemaV2.safeParse(obj);
+    return parsed.success ? parsed.data : defaultContestRulesV2;
+  }
+
+  const legacy = contestRulesSchemaV1.safeParse(obj);
+  return { ...defaultContestRulesV2, ...(legacy.success ? legacy.data : defaultContestRulesV1), rulesVersion: 2 };
 }
 
 export function slugify(title: string) {

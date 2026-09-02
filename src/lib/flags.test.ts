@@ -53,7 +53,7 @@ describe("isEnabled", () => {
       note: "",
       updatedAt: new Date(),
     });
-    expect(await isEnabled("teacherRole", { userId: "u1", role: "USER" })).toBe(true);
+    expect(await isEnabled("teacherRole", { userId: "u1", role: "STUDENT" })).toBe(true);
   });
 
   it("respects allowRoles gating", async () => {
@@ -67,7 +67,7 @@ describe("isEnabled", () => {
       note: "",
       updatedAt: new Date(),
     });
-    expect(await isEnabled("teacherRole", { userId: "u1", role: "USER" })).toBe(false);
+    expect(await isEnabled("teacherRole", { userId: "u1", role: "STUDENT" })).toBe(false);
     expect(await isEnabled("teacherRole", { userId: "u1", role: "ADMIN" })).toBe(true);
   });
 

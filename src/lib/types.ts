@@ -106,6 +106,10 @@ export type TestResult = {
   stderr: string;
   expected?: string;
   sample?: boolean;
+  /** Set only by the Phase 3 engine (judgeV2) — cgroup-measured CPU time. */
+  cpuMs?: number;
+  /** Set only by the Phase 3 engine (judgeV2) — cgroup memory.peak. */
+  memoryKb?: number;
 };
 
 export type JudgeResponse = {
@@ -117,12 +121,19 @@ export type JudgeResponse = {
   stdout?: string;
   stderr?: string;
   timeMs?: number;
+  /** Phase 3 engine (judgeV2) only — group-weighted score for PA verdicts. */
+  score?: number;
+  maxScore?: number;
+  /** Phase 4 (judgeQueue): set on a 202 response — the client should poll/stream
+   * /api/submissions/[submissionId] instead of reading `verdict` off this response. */
+  submissionId?: string;
+  state?: "QUEUED" | "JUDGING" | "DONE" | "FAILED";
 };
 
 export type ProblemSolver = {
   userId: string;
   name: string;
-  university: string;
+  institution: string;
   firstSolvedAt: string;
 };
 

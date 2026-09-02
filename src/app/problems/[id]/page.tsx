@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { isContestOpen } from "@/lib/contests";
 import { getAllProblemIds, getProblem } from "@/lib/problems";
 import { getProblemSolvers } from "@/lib/solvers";
+import { renderStatement } from "@/lib/statement";
 import { ProblemWorkspace } from "@/components/ProblemWorkspace";
 import {
   breadcrumbJsonLd,
@@ -21,13 +22,13 @@ type Props = {
 
 export const dynamic = "force-dynamic";
 
-export function generateStaticParams() {
-  return getAllProblemIds().map((id) => ({ id }));
+export async function generateStaticParams() {
+  return (await getAllProblemIds()).map((id) => ({ id }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const problem = getProblem(id);
+  const problem = await getProblem(id);
   if (!problem) {
     return {
       title: "Problem not found",
@@ -72,8 +73,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ProblemPage({ params, searchParams }: Props) {
   const { id } = await params;
   const { contest } = await searchParams;
-  const problem = getProblem(id);
+  const problem = await getProblem(id);
   if (!problem) notFound();
+  const statementHtml = await renderStatement(problem.statement, id);
 
   let session = null;
   try {
@@ -154,7 +156,7 @@ export default async function ProblemPage({ params, searchParams }: Props) {
     console.error("problem solvers load failed", err);
   }
 
-  const ids = contestContext?.problemIds ?? getAllProblemIds();
+  const ids = contestContext?.problemIds ?? (await getAllProblemIds());
   const idx = ids.indexOf(id);
   const prevId = idx > 0 ? ids[idx - 1] : null;
   const nextId = idx >= 0 && idx < ids.length - 1 ? ids[idx + 1] : null;
@@ -182,6 +184,7 @@ export default async function ProblemPage({ params, searchParams }: Props) {
       />
       <ProblemWorkspace
         problem={problem}
+        statementHtml={statementHtml}
         prevId={prevId}
         nextId={nextId}
         contestId={contestContext?.id ?? null}

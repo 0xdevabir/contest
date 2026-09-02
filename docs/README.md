@@ -19,7 +19,7 @@
 | [04](phases/PHASE-04-judge-queue.md) | Judge v2 — Queue & Realtime | 10–14 | Redis + BullMQ, worker tier, SSE verdicts, rejudge |
 | [05](phases/PHASE-05-contest-engine.md) | Contest Engine v2 | 12–16 | Participation model, pluggable scoring, visibility, snapshots |
 | [06](phases/PHASE-06-classroom.md) | Classroom & Courses | 14–18 | Courses/sections/rosters, assignments, gradebook, rollover |
-| [07](phases/PHASE-07-live-contest.md) | Live Contest Experience | 10–14 | Clarifications, live standings, teams, balloons, projector mode |
+| [07](phases/DONE__PHASE-07-live-contest.md) | Live Contest Experience | 10–14 | Clarifications, live standings, teams, balloons, projector mode |
 | [08](phases/PHASE-08-analytics.md) | Analytics & Reporting | 10–12 | Heatmap, tag mastery, at-risk detection, CSV/PDF exports |
 | [09](phases/PHASE-09-ratings-leaderboards.md) | Ratings & Leaderboards | 10–14 | Elo-MMR, national board, seasons, badges, certificates |
 | [10](phases/PHASE-10-integrity.md) | Academic Integrity | 12–16 | Fingerprint plagiarism, proctoring-lite, **exam variants** |

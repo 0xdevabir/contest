@@ -18,9 +18,9 @@ const pageSize = 40;
 
 export default async function AdminProblemsPage({ searchParams }: Props) {
   const params = await searchParams;
-  const meta = getMeta();
-  const bank = getBank();
-  const sets = getSets();
+  const meta = await getMeta();
+  const bank = await getBank();
+  const sets = await getSets();
   const q = params.q?.trim().toLowerCase() ?? "";
   const difficulty = DIFFICULTY_ORDER.includes(params.difficulty as Difficulty)
     ? (params.difficulty as Difficulty)

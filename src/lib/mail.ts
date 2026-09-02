@@ -87,5 +87,41 @@ export async function sendPasswordResetCode(to: string, name: string, code: stri
   });
 }
 
+/** Best-effort notice to the admin mailbox when a teacher account signs up. */
+export async function sendTeacherSignupNotice(name: string, email: string) {
+  const to = process.env.ADMIN_EMAIL;
+  if (!to) return;
+  const safeName = escapeHtml(name);
+  const safeEmail = escapeHtml(email);
+  const link = appUrl("/admin/teachers");
+  await sendMail({
+    to,
+    subject: `New teacher signup: ${name}`,
+    text: `${name} (${email}) registered as a teacher and is waiting for approval.\n\nReview: ${link}`,
+    html: `<p><strong>${safeName}</strong> (${safeEmail}) registered as a teacher and is waiting for approval.</p><p><a href="${escapeHtml(link)}">Review pending teachers</a></p>`,
+  });
+}
+
+export async function sendTeacherApprovedEmail(to: string, name: string) {
+  const safeName = escapeHtml(name);
+  await sendMail({
+    to,
+    subject: `Your ${BRAND.name} teacher account was approved`,
+    text: `Hi ${name},\n\nYour teacher account has been approved. You can now create contests and problems.\n\n— ${BRAND.name}`,
+    html: `<p>Hi ${safeName},</p><p>Your teacher account has been approved. You can now create contests and problems.</p>`,
+  });
+}
+
+export async function sendTeacherRejectedEmail(to: string, name: string, reason: string) {
+  const safeName = escapeHtml(name);
+  const safeReason = escapeHtml(reason);
+  await sendMail({
+    to,
+    subject: `Your ${BRAND.name} teacher request`,
+    text: `Hi ${name},\n\nYour teacher account request was not approved.\n\nReason: ${reason}\n\n— ${BRAND.name}`,
+    html: `<p>Hi ${safeName},</p><p>Your teacher account request was not approved.</p><p><strong>Reason:</strong> ${safeReason}</p>`,
+  });
+}
+
 
 

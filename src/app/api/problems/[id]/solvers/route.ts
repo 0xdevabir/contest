@@ -15,7 +15,7 @@ type Props = {
 export async function GET(_req: Request, { params }: Props) {
   try {
     const { id } = await params;
-    if (!getProblem(id)) throw new NotFoundError("Problem not found");
+    if (!(await getProblem(id))) throw new NotFoundError("Problem not found");
 
     const data = await getProblemSolvers(id);
     return NextResponse.json({ ok: true, ...data });

@@ -1,16 +1,17 @@
-import { NextResponse } from "next/server";
-import type { University } from "@prisma/client";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { setSessionCookie } from "@/lib/auth";
-import { sendVerifyEmail } from "@/lib/mail";
+import { createSession } from "@/lib/auth";
+import { matchInstitutionByEmail } from "@/lib/institutions";
+import { sendVerifyEmail, sendTeacherSignupNotice } from "@/lib/mail";
 import { createAuthToken, hashPassword } from "@/lib/password";
 import { registerSchema } from "@/lib/validators";
-import { toResponse, ValidationError, ConflictError } from "@/lib/errors";
+import { toResponse, ValidationError, ConflictError, NotFoundError } from "@/lib/errors";
+import { clientIp } from "@/lib/request-context";
 import { log } from "@/lib/log";
 
 export const runtime = "nodejs";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     return await handlePost(req);
   } catch (err) {
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
   }
 }
 
-async function handlePost(req: Request): Promise<NextResponse> {
+async function handlePost(req: NextRequest): Promise<NextResponse> {
   const body = await req.json();
   const parsed = registerSchema.safeParse(body);
   if (!parsed.success) {
@@ -26,7 +27,14 @@ async function handlePost(req: Request): Promise<NextResponse> {
     throw new ValidationError(first, parsed.error.flatten());
   }
 
-  const { name, email, password, university, studentId, department } = parsed.data;
+  const { name, email, password, institutionId, accountType, teacherNote, studentId, department } =
+    parsed.data;
+
+  const institution = await prisma.institution.findUnique({ where: { id: institutionId } });
+  if (!institution) {
+    throw new NotFoundError("Choose a valid institution");
+  }
+
   const existing = await prisma.user.findUnique({
     where: { email: email.toLowerCase() },
   });
@@ -35,12 +43,17 @@ async function handlePost(req: Request): Promise<NextResponse> {
   }
 
   const passwordHash = await hashPassword(password);
+  const domainMatch = await matchInstitutionByEmail(email);
+
   const user = await prisma.user.create({
     data: {
       name,
       email: email.toLowerCase(),
       passwordHash,
-      university: university as University,
+      // Evidence beats a claim: a matching verified domain overrides the picker.
+      institutionId: domainMatch?.institutionId ?? institutionId,
+      role: accountType === "TEACHER" ? "TEACHER" : "STUDENT",
+      teacherRequestNote: accountType === "TEACHER" ? teacherNote || "" : "",
       studentId: studentId || null,
       department: department || null,
     },
@@ -54,13 +67,17 @@ async function handlePost(req: Request): Promise<NextResponse> {
     // still allow account; user can resend
   }
 
-  await setSessionCookie({
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    university: user.university,
-    role: user.role,
-    emailVerified: false,
+  if (accountType === "TEACHER") {
+    try {
+      await sendTeacherSignupNotice(user.name, user.email);
+    } catch (err) {
+      log.error("teacher signup admin notice failed", { userId: user.id }, err);
+    }
+  }
+
+  await createSession(user.id, {
+    userAgent: req.headers.get("user-agent") ?? "",
+    ip: clientIp(req),
   });
 
   return NextResponse.json({
@@ -69,9 +86,11 @@ async function handlePost(req: Request): Promise<NextResponse> {
       id: user.id,
       email: user.email,
       name: user.name,
-      university: user.university,
       role: user.role,
     },
-    message: "Account created. Check your email to verify.",
+    message:
+      accountType === "TEACHER"
+        ? "Account created. Check your email to verify — teacher access needs admin approval."
+        : "Account created. Check your email to verify.",
   });
 }
