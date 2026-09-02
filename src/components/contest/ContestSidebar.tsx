@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Megaphone, MessageCircleQuestion, Send } from "lucide-react";
+import Link from "next/link";
+import { Megaphone, MessageCircleQuestion, Send, ShieldQuestion } from "lucide-react";
 
 type Announcement = { id: string; title: string; body: string; problemId: string | null; createdAt: string };
 type Clarification = {
@@ -26,12 +27,14 @@ export function ContestSidebar({
   canAsk,
   liveEnabled,
   problems,
+  isStaff = false,
 }: {
   contestId: string;
   loggedIn: boolean;
   canAsk: boolean;
   liveEnabled: boolean;
   problems: Array<{ problemId: string; label: string }>;
+  isStaff?: boolean;
 }) {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [threads, setThreads] = useState<Clarification[]>([]);
@@ -105,6 +108,15 @@ export function ContestSidebar({
 
   return (
     <aside className="panel flex max-h-[32rem] flex-col overflow-hidden lg:sticky lg:top-[calc(3.25rem+0.5rem)]">
+      {isStaff && (
+        <Link
+          href={`/teacher/contests/${contestId}/integrity`}
+          className="flex items-center gap-1.5 border-b border-[var(--line)] px-3 py-2 text-xs font-medium text-[var(--muted)] hover:text-[var(--text)]"
+        >
+          <ShieldQuestion size={13} aria-hidden="true" />
+          Academic integrity console
+        </Link>
+      )}
       <div className="flex border-b border-[var(--line)]">
         <button
           type="button"

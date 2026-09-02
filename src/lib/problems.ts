@@ -347,6 +347,34 @@ async function getProblemDbImpl(id: string): Promise<Problem | undefined> {
   return dbProblemToFullView({ ...row, currentVersion: row.currentVersion });
 }
 
+/**
+ * Phase 10 D3 — the same `dbProblemToFullView` shape as `getProblemDbImpl`,
+ * but for one specific frozen `ProblemVersion` (a generated variant) rather
+ * than a problem's current version. Used to judge/render a participant's own
+ * parameterised statement + test data.
+ */
+export async function getProblemVersionView(versionId: string): Promise<Problem | undefined> {
+  const version = await prisma.problemVersion.findUnique({
+    where: { id: versionId },
+    include: {
+      groups: { orderBy: { order: "asc" }, include: { cases: { orderBy: { order: "asc" } } } },
+      problem: {
+        include: { tags: { include: { tag: true }, orderBy: { weight: "desc" }, take: 1 } },
+      },
+    },
+  });
+  if (!version) return undefined;
+  return dbProblemToFullView({
+    slug: version.problem.slug,
+    title: version.problem.title,
+    legacySet: version.problem.legacySet,
+    legacyQuestion: version.problem.legacyQuestion,
+    difficulty: version.problem.difficulty,
+    tags: version.problem.tags,
+    currentVersion: version,
+  });
+}
+
 async function getAllProblemIdsDbImpl(): Promise<string[]> {
   const order = new Map(DIFFICULTY_ORDER.map((d, i) => [d, i]));
   const rows = await prisma.problem.findMany({

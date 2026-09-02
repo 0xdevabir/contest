@@ -16,6 +16,7 @@ import {
   Square,
 } from "lucide-react";
 import { CodeEditor } from "./CodeEditor";
+import { ProctorGuard } from "./contest/ProctorGuard";
 import { AcceptedCelebration } from "./AcceptedCelebration";
 import { ProblemSolvers } from "./ProblemSolvers";
 import { useSubmissionStatus } from "./SubmissionStatus";
@@ -177,6 +178,13 @@ type Props = {
   contestId?: string | null;
   contestHref?: string | null;
   contestTitle?: string | null;
+  assignmentId?: string | null;
+  strictMode?: boolean;
+  participationId?: string | null;
+  /** Phase 10 D3 — the frozen ProblemVersion behind this student's own
+   * variant, when this problem has one. Reference only; the judge route
+   * re-resolves the variant server-side rather than trusting this. */
+  variantProblemVersionId?: string | null;
   loggedIn?: boolean;
   currentUserId?: string | null;
   initialSolvers?: ProblemSolver[];
@@ -191,6 +199,11 @@ export function ProblemWorkspace({
   contestId,
   contestHref = null,
   contestTitle = null,
+  assignmentId = null,
+  strictMode = false,
+  participationId = null,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- reference-only, see Props doc.
+  variantProblemVersionId = null,
   loggedIn = false,
   currentUserId = null,
   initialSolvers = [],
@@ -267,6 +280,7 @@ export function ProblemWorkspace({
             mode,
             stdin: tab === "custom" || mode === "run" ? stdin : problem.sampleInput,
             contestId: contestId || undefined,
+            assignmentId: assignmentId || undefined,
           }),
         });
         const data = (await res.json()) as JudgeResponse;
@@ -294,7 +308,7 @@ export function ProblemWorkspace({
         if (!pendingSubmissionId) setBusy(false);
       }
     },
-    [code, contestId, loggedIn, pendingSubmissionId, problem.id, problem.sampleInput, stdin, tab]
+    [assignmentId, code, contestId, loggedIn, pendingSubmissionId, problem.id, problem.sampleInput, stdin, tab]
   );
 
   // Finalizes a queued submission once useSubmissionStatus reports a
@@ -378,6 +392,7 @@ export function ProblemWorkspace({
         timeMs={slowestMs}
         nextHref={nextId ? problemHref(nextId) : contestHref}
       />
+      {strictMode && contestId && <ProctorGuard contestId={contestId} />}
       <div
         role="tablist"
         aria-label="Problem view"

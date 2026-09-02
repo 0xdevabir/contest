@@ -2,10 +2,12 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { isContestOpen } from "@/lib/contests";
-import { getAllProblemIds, getProblem } from "@/lib/problems";
+import { isContestOpen, parseRules } from "@/lib/contests";
+import { getAllProblemIds, getProblem, getProblemRef } from "@/lib/problems";
 import { getProblemSolvers } from "@/lib/solvers";
 import { renderStatement } from "@/lib/statement";
+import { isEnrolledStudent } from "@/lib/section-access";
+import { getOrGenerateVariant } from "@/lib/integrity/variants/cache";
 import { ProblemWorkspace } from "@/components/ProblemWorkspace";
 import {
   breadcrumbJsonLd,
@@ -17,7 +19,7 @@ import {
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ contest?: string }>;
+  searchParams: Promise<{ contest?: string; assignment?: string }>;
 };
 
 export const dynamic = "force-dynamic";
@@ -72,10 +74,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProblemPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const { contest } = await searchParams;
+  const { contest, assignment } = await searchParams;
   const problem = await getProblem(id);
   if (!problem) notFound();
-  const statementHtml = await renderStatement(problem.statement, id);
+  let statementHtml = await renderStatement(problem.statement, id);
 
   let session = null;
   try {
@@ -89,6 +91,8 @@ export default async function ProblemPage({ params, searchParams }: Props) {
     title: string;
     slug: string;
     problemIds: string[];
+    strictMode: boolean;
+    participationId: string | null;
   } | null = null;
 
   if (contest) {
@@ -107,12 +111,18 @@ export default async function ProblemPage({ params, searchParams }: Props) {
         status: true,
         startsAt: true,
         endsAt: true,
+        rules: true,
         problems: {
           orderBy: { order: "asc" },
           select: { problemId: true },
         },
         registrations: {
           where: { userId: session.id },
+          take: 1,
+          select: { id: true },
+        },
+        participations: {
+          where: { userId: session.id, mode: "LIVE" },
           take: 1,
           select: { id: true },
         },
@@ -143,7 +153,69 @@ export default async function ProblemPage({ params, searchParams }: Props) {
       title: liveContest.title,
       slug: liveContest.slug,
       problemIds: liveContest.problems.map((entry) => entry.problemId),
+      strictMode: parseRules(liveContest.rules).strictMode,
+      participationId: liveContest.participations[0]?.id ?? null,
     };
+  }
+
+  let assignmentContext: { id: string; sectionId: string } | null = null;
+
+  if (assignment) {
+    if (!session) {
+      redirect(
+        `/login?next=${encodeURIComponent(`/problems/${id}?assignment=${assignment}`)}`
+      );
+    }
+
+    const liveAssignment = await prisma.assignment.findUnique({
+      where: { id: assignment },
+      select: {
+        id: true,
+        sectionId: true,
+        published: true,
+        problems: { select: { problemId: true } },
+      },
+    });
+
+    if (!liveAssignment) notFound();
+
+    const ref = await getProblemRef(id).catch(() => null);
+    const belongsToAssignment = Boolean(
+      ref && liveAssignment.problems.some((entry) => entry.problemId === ref.problemId)
+    );
+    const canWork =
+      liveAssignment.published && (await isEnrolledStudent(session.id, liveAssignment.sectionId));
+
+    // Same rule as the contest gate above: never fall back to an
+    // unauthorized/unpublished view silently.
+    if (!belongsToAssignment || !canWork) {
+      redirect(`/courses/${liveAssignment.sectionId}/assignments/${liveAssignment.id}`);
+    }
+
+    assignmentContext = { id: liveAssignment.id, sectionId: liveAssignment.sectionId };
+  }
+
+  // Phase 10 D3 — per-student parameterised variants: swap in this
+  // student's own statement/tests when this problem has a variant template
+  // and we're in a contest or assignment context. Invisible/no-op for every
+  // problem without a template (getOrGenerateVariant returns null fast).
+  let variantProblemVersionId: string | null = null;
+  if (session && (contestContext || assignmentContext)) {
+    const ref = await getProblemRef(id).catch(() => null);
+    if (ref) {
+      const scopeType = contestContext ? ("contest" as const) : ("assignment" as const);
+      const scopeId = contestContext ? contestContext.id : assignmentContext!.id;
+      const variant = await getOrGenerateVariant({
+        problemId: ref.problemId,
+        userId: session.id,
+        scopeType,
+        scopeId,
+      }).catch(() => null);
+      if (variant) {
+        statementHtml = await renderStatement(variant.statementMd, variant.problemVersionId);
+        variantProblemVersionId = variant.problemVersionId;
+      }
+    }
   }
 
   let solvers: Awaited<ReturnType<typeof getProblemSolvers>> = {
@@ -192,6 +264,10 @@ export default async function ProblemPage({ params, searchParams }: Props) {
           contestContext ? `/contests/${contestContext.slug}` : null
         }
         contestTitle={contestContext?.title ?? null}
+        strictMode={contestContext?.strictMode ?? false}
+        participationId={contestContext?.participationId ?? null}
+        assignmentId={assignmentContext?.id ?? null}
+        variantProblemVersionId={variantProblemVersionId}
         loggedIn={Boolean(session)}
         currentUserId={session?.id ?? null}
         initialSolvers={solvers.solvers}

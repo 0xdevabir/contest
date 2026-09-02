@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ShieldQuestion } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { assertSectionStaff } from "@/lib/section-access";
@@ -57,7 +57,16 @@ export default async function AssignmentDetailPage({ params }: Props) {
             {assignment.latePolicy !== "NONE" ? ` (${assignment.lateParam})` : ""} · weight {assignment.weight}
           </p>
         </div>
-        <PublishToggle assignmentId={assignment.id} published={assignment.published} />
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/teacher/sections/${id}/assignments/${aid}/integrity`}
+            className="btn btn-ghost !py-2 !text-xs"
+          >
+            <ShieldQuestion size={13} aria-hidden="true" />
+            Integrity console
+          </Link>
+          <PublishToggle assignmentId={assignment.id} published={assignment.published} />
+        </div>
       </div>
 
       <section className="mt-6 rounded-xl border border-[var(--line)] bg-[var(--bg-panel)] p-4">

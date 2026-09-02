@@ -27,6 +27,7 @@ export type ContestEditorValue = {
     allowPracticeAfter: boolean;
     allowVirtual: boolean;
     showSamples: boolean;
+    strictMode: boolean;
     notes: string;
   };
 };
@@ -94,6 +95,7 @@ export function ContestEditor({
     initial?.rules.publishAfterEnd ?? false
   );
   const [showSamples, setShowSamples] = useState(initial?.rules.showSamples ?? true);
+  const [strictMode, setStrictMode] = useState(initial?.rules.strictMode ?? false);
   const [scoring, setScoring] = useState(initial?.rules.scoring ?? "icpc");
   const [visibility, setVisibility] = useState(initial?.visibility ?? "PUBLIC");
   const [joinPolicy, setJoinPolicy] = useState(initial?.joinPolicy ?? "OPEN");
@@ -129,6 +131,7 @@ export function ContestEditor({
         allowPracticeAfter: true,
         allowVirtual: true,
         showSamples,
+        strictMode,
         languages: [],
         notes: String(data.get("notes") || ""),
       },
@@ -344,6 +347,12 @@ export function ContestEditor({
             description="Show final standings publicly. Published problems stay open for practice."
             checked={publishAfterEnd}
             onChange={setPublishAfterEnd}
+          />
+          <Toggle
+            label="Strict mode"
+            description="Single-session login, proctoring telemetry, and per-student problem variants."
+            checked={strictMode}
+            onChange={setStrictMode}
           />
         </div>
         <label className="mt-4 block text-xs font-medium">

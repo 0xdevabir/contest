@@ -10,10 +10,32 @@ import { claimSubmission, reportSubmission, reportShadow, failSubmission, maxAtt
 import { acquireUserSlot, releaseUserSlot } from "@/lib/queue/fairness";
 import { applyJudgedSideEffects } from "@/lib/submission-effects";
 import { publishSubmissionEvent } from "@/lib/pubsub";
-import { getProblem, getProblemRef } from "@/lib/problems";
+import { getProblem, getProblemRef, getProblemVersionView } from "@/lib/problems";
 import { compileAndJudge } from "@/lib/judge";
 import { startHeartbeat } from "./heartbeat";
 import { startReaper } from "./reaper";
+
+/**
+ * Phase 10 D3 — a submission's `problemVersionId` points at the *current*
+ * published version for the ordinary case (set by `getProblemRef` at
+ * enqueue time), so it can't be used as a variant signal on its own. The
+ * `ProblemVariant` table is the actual marker: a hit means this version was
+ * generated for one student, and judging must use its own frozen tests
+ * rather than the problem's live current version.
+ */
+async function resolveJudgeProblem(problemId: string, problemVersionId: string | null) {
+  if (problemVersionId) {
+    const variant = await prisma.problemVariant.findUnique({
+      where: { problemVersionId },
+      select: { problemVersionId: true },
+    });
+    if (variant) {
+      const view = await getProblemVersionView(variant.problemVersionId);
+      if (view) return view;
+    }
+  }
+  return getProblem(problemId);
+}
 
 const WORKER_ID = process.env.WORKER_ID || `${hostname()}-${randomUUID().slice(0, 8)}`;
 const CONCURRENCY = Number(process.env.WORKER_CONCURRENCY || 4);
@@ -75,7 +97,7 @@ async function processJudgeJob(job: Job<JudgeJobData>): Promise<void> {
   try {
     await publishSubmissionEvent(submissionId, { event: "state", data: { state: "JUDGING", attempt: claimed.attempts } });
 
-    const problem = await getProblem(claimed.problemId);
+    const problem = await resolveJudgeProblem(claimed.problemId, claimed.problemVersionId);
     if (!problem) {
       await failSubmission(submissionId, WORKER_ID, "Problem no longer exists.");
       return;

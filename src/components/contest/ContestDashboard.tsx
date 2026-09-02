@@ -161,6 +161,7 @@ export function ContestDashboard({
             canAsk={registered || isStaff}
             liveEnabled={liveContestEnabled}
             problems={problemRefs}
+            isStaff={isStaff}
           />
         )}
       </div>

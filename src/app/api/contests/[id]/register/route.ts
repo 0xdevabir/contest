@@ -60,6 +60,11 @@ export async function POST(_req: Request, { params }: Params) {
       }),
     ]);
 
+    if (parseRules(contest.rules).strictMode) {
+      const sid = await getCurrentSessionId();
+      if (sid) await bindSessionToContest(sid, session.id, id);
+    }
+
     return NextResponse.json({ ok: true, message: "Registered" });
   } catch (err) {
     return toResponse(err);

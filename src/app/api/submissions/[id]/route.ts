@@ -29,6 +29,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         report: true,
         createdAt: true,
         judgedAt: true,
+        code: true,
       },
     });
     if (!submission) throw new NotFoundError("Submission not found");
@@ -47,6 +48,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       timeMs: submission.timeMs,
       attempts: submission.attempts,
       report: isStaff || isOwner ? submission.report : undefined,
+      // Raw source is only for the integrity console's diff toggle (D2) —
+      // never sent to a non-owner, non-staff caller.
+      code: isStaff || isOwner ? submission.code : undefined,
     });
   } catch (err) {
     return toResponse(err);

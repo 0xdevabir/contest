@@ -100,6 +100,7 @@ export default async function TeacherContestControlPage({ params }: Props) {
                 allowPracticeAfter: rules.allowPracticeAfter,
                 allowVirtual: rules.allowVirtual,
                 showSamples: rules.showSamples,
+                strictMode: rules.strictMode,
                 notes: rules.notes ?? "",
               },
             }}

@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Verdict } from "@prisma/client";
 import type { TestResult } from "@/lib/types";
-import { getProblem, getProblemRef } from "@/lib/problems";
+import { getProblem, getProblemRef, getProblemVersionView } from "@/lib/problems";
 import { compileAndJudge, runCustom, MAX_OUTPUT_BYTES } from "@/lib/judge";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { effectiveContestStatus, isContestOpen } from "@/lib/contests";
 import { contestSubmissionError } from "@/lib/contest-access";
+import { isEnrolledStudent } from "@/lib/section-access";
+import { getOrGenerateVariant } from "@/lib/integrity/variants/cache";
 import {
   toResponse,
   ValidationError,
@@ -34,6 +36,7 @@ type Body = {
   mode?: "submit" | "run";
   stdin?: string;
   contestId?: string;
+  assignmentId?: string;
 };
 
 async function persistSubmission(opts: {
@@ -46,6 +49,9 @@ async function persistSubmission(opts: {
   stdout?: string;
   stderr?: string;
   report?: unknown;
+  /** Phase 10 D3 — overrides the default (current-published) version id
+   * with a per-student generated variant's frozen version, when one applies. */
+  problemVersionId?: string | null;
 }) {
   if (!opts.userId) return;
   try {
@@ -67,7 +73,7 @@ async function persistSubmission(opts: {
         stderr: opts.stderr?.slice(0, 8000) ?? null,
         report: opts.report != null ? JSON.parse(JSON.stringify(opts.report)) : undefined,
         problemRefId: ref?.problemId ?? null,
-        problemVersionId: ref?.versionId ?? null,
+        problemVersionId: opts.problemVersionId ?? ref?.versionId ?? null,
       },
     });
 
@@ -98,6 +104,8 @@ async function enqueueQueuedSubmission(opts: {
   contestId?: string;
   code: string;
   contestLive: boolean;
+  /** Phase 10 D3 — see `persistSubmission`'s `problemVersionId`. */
+  problemVersionId?: string | null;
 }): Promise<NextResponse | null> {
   const ref = await getProblemRef(opts.problemId).catch(() => null);
   const priority = priorityFor({ contestLive: opts.contestLive, authenticated: true });
@@ -114,7 +122,7 @@ async function enqueueQueuedSubmission(opts: {
       priority,
       queuedAt: new Date(),
       problemRefId: ref?.problemId ?? null,
-      problemVersionId: ref?.versionId ?? null,
+      problemVersionId: opts.problemVersionId ?? ref?.versionId ?? null,
     },
   });
 
@@ -316,9 +324,64 @@ async function handlePost(req: NextRequest): Promise<NextResponse> {
     }
   }
 
+  // Assignment gate — mirrors the contest gate above. `assignmentId` exists
+  // for the same reason `contestId` does: authorizing this submission within
+  // a course context (and, together with contestId, selecting the scope for
+  // a per-student problem variant below, Phase 10 D3).
+  if (body.assignmentId) {
+    const assignment = await prisma.assignment.findUnique({
+      where: { id: body.assignmentId },
+      include: { problems: { select: { problemId: true } } },
+    });
+    if (!assignment || !assignment.published) {
+      throw new ValidationError("This assignment is not open.");
+    }
+    const assignmentRef = await getProblemRef(body.problemId).catch(() => null);
+    const inAssignment = Boolean(
+      assignmentRef && assignment.problems.some((p) => p.problemId === assignmentRef.problemId)
+    );
+    if (!inAssignment) {
+      throw new ForbiddenError("This problem is not part of the assignment");
+    }
+    if (!(await isEnrolledStudent(session.id, assignment.sectionId))) {
+      throw new ForbiddenError("You are not enrolled in this assignment's section");
+    }
+  }
+
   // Reaching here with a contestId means the gate above already confirmed
   // the contest is open — a live contest submission gets top queue priority.
   const contestLive = Boolean(body.contestId);
+
+  // Phase 10 D3 — per-student parameterised variants. Strictly additive: a
+  // problem with no ProblemVariantTemplate (the overwhelming majority) never
+  // triggers a lookup here beyond the one no-op `getProblemRef` query below,
+  // and `judgeProblem`/`variantVersionId` fall through unchanged to the
+  // existing behavior.
+  let judgeProblem = problem;
+  let variantVersionId: string | null = null;
+  if (body.contestId || body.assignmentId) {
+    const variantRef = await getProblemRef(body.problemId).catch(() => null);
+    if (variantRef) {
+      const scopeType = body.contestId ? ("contest" as const) : ("assignment" as const);
+      const scopeId = (body.contestId ?? body.assignmentId)!;
+      const variant = await getOrGenerateVariant({
+        problemId: variantRef.problemId,
+        userId: session.id,
+        scopeType,
+        scopeId,
+      }).catch((err) => {
+        log.error("variant generation failed", { problemId: body.problemId, scopeType, scopeId }, err);
+        return null;
+      });
+      if (variant) {
+        const versionView = await getProblemVersionView(variant.problemVersionId);
+        if (versionView) {
+          judgeProblem = versionView;
+          variantVersionId = variant.problemVersionId;
+        }
+      }
+    }
+  }
 
   if (await isEnabled("judgeQueue", { userId: session.id, role: session.role })) {
     const enqueued = await enqueueQueuedSubmission({
@@ -327,6 +390,7 @@ async function handlePost(req: NextRequest): Promise<NextResponse> {
       contestId: body.contestId,
       code: body.code,
       contestLive,
+      problemVersionId: variantVersionId,
     });
     if (enqueued) return enqueued;
     if (!(await redisAvailable())) {
@@ -339,8 +403,8 @@ async function handlePost(req: NextRequest): Promise<NextResponse> {
 
   const result = await compileAndJudge({
     code: body.code,
-    tests: problem.tests,
-    timeLimitMs: problem.timeLimitMs,
+    tests: judgeProblem.tests,
+    timeLimitMs: judgeProblem.timeLimitMs,
   });
 
   // F-4: persist the slowest test's time (not just the first — an AC over 20
@@ -361,6 +425,7 @@ async function handlePost(req: NextRequest): Promise<NextResponse> {
     stdout: shown?.sample ? shown.stdout : undefined,
     stderr: result.compileStderr || shown?.stderr,
     report: result,
+    problemVersionId: variantVersionId,
   });
 
   return NextResponse.json({

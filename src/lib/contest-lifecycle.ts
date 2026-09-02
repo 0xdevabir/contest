@@ -7,6 +7,7 @@ import { isEnabled } from "./flags";
 import { applyContestRating } from "./rating/compute";
 import { evaluateContestEndedBadges } from "./badges";
 import { issueContestCertificates } from "./certificate-issuance";
+import { runIntegritySweep } from "./integrity/sweep";
 
 /**
  * Move contests out of LIVE once their window has passed.
@@ -236,6 +237,15 @@ export async function drainAndFinalizeContests(): Promise<number> {
       } catch (err) {
         log.error("post-finalize certificate issuance failed", { contestId: contest.id }, err);
       }
+    }
+
+    // Phase 10 — a similarity sweep on every contest end, not just strict-mode
+    // ones (cheap, and useful evidence outside strict mode too). Best-effort,
+    // same as the rating/badge/certificate calls above.
+    try {
+      await runIntegritySweep("contest", contest.id);
+    } catch (err) {
+      log.error("post-finalize integrity sweep failed", { contestId: contest.id }, err);
     }
 
     finalized++;

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { getSession } from "@/lib/auth";
+import { getSession, getCurrentSessionId, bindSessionToContest } from "@/lib/auth";
 import { assertCan } from "@/lib/authz";
-import { effectiveContestStatus } from "@/lib/contests";
+import { effectiveContestStatus, parseRules } from "@/lib/contests";
 import { verifyPassword } from "@/lib/password";
 import { consume, retryAfterSeconds } from "@/lib/ratelimit";
 import { toResponse, ForbiddenError, NotFoundError, RateLimitError, ValidationError } from "@/lib/errors";
@@ -82,6 +82,11 @@ export async function POST(req: Request, { params }: Params) {
         create: { contestId: id, userId: session.id, mode: "LIVE", official: true },
       }),
     ]);
+
+    if (parseRules(contest.rules).strictMode) {
+      const sid = await getCurrentSessionId();
+      if (sid) await bindSessionToContest(sid, session.id, id);
+    }
 
     return NextResponse.json({ ok: true, message: "Joined", contestId: id });
   } catch (err) {

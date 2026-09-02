@@ -80,7 +80,7 @@ export default async function StudentAssignmentPage({ params }: Props) {
           return (
             <Link
               key={problem.id}
-              href={`/problems/${problem.problem.slug}`}
+              href={`/problems/${problem.problem.slug}?assignment=${assignment.id}`}
               className="flex items-center justify-between gap-3 rounded-xl border border-[var(--line)] bg-[var(--bg-panel)] p-4 hover:border-[var(--line-strong)]"
             >
               <div>
