@@ -432,10 +432,120 @@ judging on the new engine, it does not rewrite history.
 - [ ] Per-language images built in CI, digest-pinned
 - [ ] `runsvc` enforcing rlimits inside the container; rusage reported
 - [ ] CPU time, wall time, peak memory and output size reported per test
-- [ ] `MLE`, `OLE`, `PA`, `IE` reachable and correct in every language
-- [ ] All five checker types implemented; special judges cached by source hash
-- [ ] Group scoring with `dependsOn` and `stopOnFail`
-- [ ] Seccomp profile enforced; security golden cases green
-- [ ] ~60 golden cases green in CI; C regression corpus verdict-identical
-- [ ] Language selector shipped; contest language restriction working
-- [ ] Master Plan F-3 marked resolved
+- [x] `MLE`, `OLE`, `PA`, `IE` reachable and correct in every language *(logic implemented and unit-verified; not run against a live sandbox — see Implementation notes)*
+- [x] All five checker types implemented; special judges cached by source hash *(SPECIAL/INTERACTIVE have a local dev implementation only — not yet executed inside the runner's sandbox)*
+- [x] Group scoring with `dependsOn` and `stopOnFail`
+- [ ] Seccomp profile enforced; security golden cases green *(profile generator written, not yet run — no network access to fetch Docker's base profile from this environment)*
+- [ ] ~60 golden cases green in CI; C regression corpus verdict-identical *(C corpus only; other languages not yet backfilled — see Implementation notes)*
+- [ ] Language selector shipped; contest language restriction working *(registry supports it; CodeEditor/LanguageBadges/ContestRules UI not built)*
+- [ ] Master Plan F-3 marked resolved *(pending a real run against Docker to confirm mle-alloc/ole-spam actually pass)*
+
+---
+
+## Implementation notes (this pass)
+
+Docker Desktop was paused for this whole implementation session (confirmed:
+`docker info` returned "Docker Desktop is manually paused"), and this sandbox
+has no outbound network access. Everything below the sandbox boundary is
+**written but unverified against a live container** — it typechecks, lints,
+and is internally consistent, but nobody has watched a real `mle-alloc`
+submission get OOM-killed under this code. Treat the runner-side changes as a
+reviewed draft, not a shipped judge, until someone runs `npm run build:images`
+and `npm run test:golden` for real.
+
+**Fully built and verified** (unit-tested, no Docker required):
+- `src/lib/judge/` — the whole engine: `protocol.ts` (zod schemas per
+  Appendix C), `languages/registry.ts` (+ `runner/languages.json`, the single
+  source of truth for both the web and runner processes — D1), `scoring.ts`
+  (dependsOn/binary-group/PA logic), `checkers/{exact,token,float}.ts`
+  (pure, fully tested), `engine.ts` (compile → per-group run → check → score,
+  tested against a scripted fake backend — `engine.test.ts` covers CE
+  short-circuiting, stopOnFail, job-level stopOnFirstFail, dependsOn
+  skipping, PA scoring, and backend-fault → `IE`), and three backends
+  (`local.ts`, `runner.ts`, `judge0.ts`) behind `backends/index.ts`'s
+  health-checked selection (runner, if reachable, else Judge0, else local).
+- `src/lib/judge.ts` — the `judgeV2`-flag-gated compatibility shim
+  (`compileAndJudge`/`runCustom`). **Verified end to end against a real local
+  gcc/clang compile+run**, flag on and off, including the F-1
+  (env-leak) regression test — see the "with judgeV2" test run in this
+  session. Flag off reproduces the exact pre-Phase-3 behavior; on, it
+  degrades gracefully to the `LocalBackend` when no runner/Judge0 is
+  configured, and to Judge0/runner otherwise.
+- Prisma: `Submission.score/maxScore/maxCpuMs/maxWallMs/maxMemoryKb/compileMs/judgeImage/judgeProtocol`
+  added (`migrations/0004_judge_engine`), not yet applied to a real database
+  (none was reachable here — `DATABASE_URL`/`DIRECT_URL` are set but nothing
+  answered). `Verdict` already had every value this phase needs from Phase 0.
+
+**Written but unverified** (runner/Docker side):
+- `runner/languages.json` + `runner/languages.js` — the 6-language registry
+  (C, C++17, C++20, Python 3.11, Java 17, Node 22) plus Go behind
+  `enabled: false` (AC8).
+- `runner/runsvc/runsvc.c` — rlimit + `wait4()` rusage wrapper. Compiles
+  clean and its fork/exec/wait4/rlimit logic was smoke-tested locally against
+  a trivial command (confirmed exit code and a plausible rusage JSON); the
+  RLIMIT_CPU-kill → `cpuLimited` detection path was not exercised (needs a
+  Linux cgroup host, not this Mac).
+- `runner/images/{c,cpp,python,java,js}.Dockerfile`, `build-images.sh`,
+  `images.lock.json` (empty digests — never built).
+- `runner/gen-seccomp-profile.sh` — generates the seccomp profile by
+  patching Docker's own default profile rather than hand-rolling one from
+  scratch (safer: a hand-authored allowlist is exactly how you ship either a
+  broken sandbox or a silent no-op). **Not run** — no network access here to
+  fetch the base profile. `runner/sandbox.js` only adds `--security-opt
+  seccomp=...` when `runner/seccomp-profile.json` actually exists, so its
+  absence fails safe (Docker's own default profile applies) rather than
+  crashing container creation.
+- `runner/sandbox.js` / `runner/judge.js` rewritten for D2/D3/D4: per-run
+  cgroup `memory.peak` (reset before each run where the kernel supports it)
+  and `memory.events`' `oom_kill` counter replace the old
+  whole-container-lifetime `docker inspect .State.OOMKilled` heuristic; a
+  streaming output cap distinguishes `OLE` from truncation; CPU-vs-wall
+  `TLE` is distinguished via `runsvc`'s rusage report. The verdict
+  classification logic (`judge.js#classifyRun`) **was unit-exercised
+  directly in Node** (no Docker) against synthetic MLE/OLE/TLE-wall/
+  TLE-cpu/Java-OOM inputs and produced the right verdict for all five —
+  see this session's transcript. What's unverified is everything upstream of
+  that function: whether the real cgroup reads and `runsvc` invocation
+  actually produce those inputs on a live container.
+- Based on the above, `tests/golden/cases/mle-alloc` and `.../ole-spam` were
+  moved out of `KNOWN_FAILING` in `tests/golden/golden.test.ts` on the
+  strength of the classification logic, not a real run. If either still
+  fails once Docker is available, that is a real bug — fix it, don't put it
+  back in `KNOWN_FAILING`.
+- `runner/server.js` gained `/session/start`, `/session/run`, `/session/end`
+  (one warm container per submission — D6) alongside the untouched legacy
+  `/judge` and the WebSocket interactive path. `/session/run` rejects
+  `SPECIAL`/`INTERACTIVE` checkers outright rather than running
+  teacher-authored code somewhere untrusted — that in-sandbox execution path
+  is real follow-up work, not a corner that was quietly cut.
+
+**D6 (warm pool vs. cold per-run creation)**: not measured. The phase doc
+asks to benchmark both and pick the simpler one if cold creation is under
+100ms; that requires an actual Docker daemon; none was available. The
+implementation defaults to one warm container per *submission* (compile
+once, run every test case in it, destroy at the end) — a reasonable middle
+ground already close to what the pre-Phase-3 code did per-submission, and
+strictly simpler than a cross-submission pool. If a real measurement later
+shows a cross-submission pool per language per worker slot is worth it,
+that's Phase 4 territory (queues/workers) more than a Phase 3 change.
+
+**Explicitly deferred, not attempted**:
+- Wiring `judgeSubmission()` (the grouped/multi-language entry point) into
+  the actual submission flow — `src/app/api/judge/route.ts` and
+  `getProblem()` still deal in flat, ungrouped, C-only `TestCase[]`. The DB
+  already has `TestGroup`/`TestCase`/`CheckerType` (Phase 2), but connecting
+  a `ProblemVersion`'s real groups/checker/language choice to the API route
+  is a distinct, substantial slice of work this pass didn't attempt.
+- Frontend: `CodeEditor.tsx`'s language dropdown, `LanguageBadges.tsx`,
+  `ContestRules.languages` multi-select editor, and the admin submission
+  detail page's full per-group report viewer. `ProblemWorkspace.tsx`'s
+  verdict panel does show PA's score and per-test CPU/memory when the engine
+  provides them (additive, optional fields — a no-op when `judgeV2` is off).
+- In-sandbox SPECIAL/INTERACTIVE checker execution on the runner (D5 — these
+  currently only run via the local dev fallback, gated the same way
+  `ALLOW_INSECURE_LOCAL_JUDGE` gates local compilation).
+- gVisor evaluation (`SANDBOX_RUNTIME` flag) — not started.
+- CI: `judge-conformance` now also triggers on a push/PR touching
+  `runner/**` or `src/lib/judge/**` (previously schedule-only or an explicit
+  `[judge]` tag), per this phase's testing-plan requirement. The path-diff
+  logic is untested against a real GitHub Actions run.
