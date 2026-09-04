@@ -5,6 +5,7 @@ import { getSession } from "@/lib/auth";
 import { contestCapabilities } from "@/lib/contest-access";
 import { getRedis } from "@/lib/redis";
 import { contestEventsChannel } from "@/lib/standings/channel";
+import { notify } from "@/lib/notify";
 import { toResponse, AuthError, ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 
 export const runtime = "nodejs";
@@ -96,6 +97,12 @@ export async function POST(req: Request, { params }: Params) {
         );
       }
     }
+
+    notify(updated.userId, "clarification:answered", {
+      contestTitle: contest.title,
+      contestSlug: contest.slug,
+      answer: answerText,
+    }).catch(() => undefined);
 
     return NextResponse.json({ ok: true, clarification: updated });
   } catch (err) {

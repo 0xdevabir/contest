@@ -42,6 +42,9 @@ type Props = {
   total: number;
   timeMs?: number | null;
   nextHref?: string | null;
+  /** Phase 11 — an optional slot rendered below the action buttons, used
+   * for the opt-in "share this solution" prompt. */
+  children?: React.ReactNode;
 };
 
 export function AcceptedCelebration({
@@ -52,6 +55,7 @@ export function AcceptedCelebration({
   total,
   timeMs,
   nextHref,
+  children,
 }: Props) {
   const { theme } = useTheme();
   const cardRef = useRef<HTMLDivElement | null>(null);
@@ -174,6 +178,8 @@ export function AcceptedCelebration({
             </Link>
           ) : null}
         </div>
+
+        {children}
       </div>
     </div>
   );

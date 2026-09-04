@@ -8,7 +8,9 @@ import { getProblemSolvers } from "@/lib/solvers";
 import { renderStatement } from "@/lib/statement";
 import { isEnrolledStudent } from "@/lib/section-access";
 import { getOrGenerateVariant } from "@/lib/integrity/variants/cache";
+import { isEnabled } from "@/lib/flags";
 import { ProblemWorkspace } from "@/components/ProblemWorkspace";
+import { ProblemCommunityTabs } from "@/components/community/ProblemCommunityTabs";
 import {
   breadcrumbJsonLd,
   buildPageMetadata,
@@ -233,6 +235,8 @@ export default async function ProblemPage({ params, searchParams }: Props) {
   const prevId = idx > 0 ? ids[idx - 1] : null;
   const nextId = idx >= 0 && idx < ids.length - 1 ? ids[idx + 1] : null;
 
+  const communityOn = await isEnabled("community", session ? { userId: session.id, role: session.role } : undefined);
+
   const summary = problem.statement.replace(/\s+/g, " ").trim().slice(0, 200);
   const crumbs = [
     { name: "Home", path: "/" },
@@ -273,6 +277,9 @@ export default async function ProblemPage({ params, searchParams }: Props) {
         initialSolvers={solvers.solvers}
         initialSolverCount={solvers.total}
       />
+      {communityOn ? (
+        <ProblemCommunityTabs problemId={id} currentUserId={session?.id ?? null} currentUserRole={session?.role} />
+      ) : null}
     </>
   );
 }

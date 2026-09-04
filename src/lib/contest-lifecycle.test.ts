@@ -11,9 +11,11 @@ vi.mock("./db", () => ({
   },
 }));
 vi.mock("./problems", () => ({ getProblem: vi.fn(() => Promise.resolve(null)) }));
+vi.mock("./autoscale", () => ({ ensureWorkerCapacity: vi.fn(() => Promise.resolve()) }));
 
 import { prisma } from "./db";
-import { drainAndFinalizeContests, freezeDueContests, snapshotContest } from "./contest-lifecycle";
+import { ensureWorkerCapacity } from "./autoscale";
+import { drainAndFinalizeContests, freezeDueContests, prewarmUpcomingContests, snapshotContest } from "./contest-lifecycle";
 
 describe("computeFreezeAt", () => {
   it("subtracts freezeMinutes from endsAt", () => {
@@ -150,5 +152,48 @@ describe("drainAndFinalizeContests", () => {
       data: { standings: { partial: boolean } };
     };
     expect(created.data.standings.partial).toBe(true);
+  });
+});
+
+describe("prewarmUpcomingContests", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("calls ensureWorkerCapacity for a large upcoming contest", async () => {
+    vi.mocked(prisma.contest.findMany).mockResolvedValue([
+      {
+        id: "c1",
+        slug: "midterm",
+        title: "Midterm",
+        startsAt: new Date(Date.now() + 5 * 60_000),
+        participantCount: 120,
+      },
+    ] as never);
+
+    const count = await prewarmUpcomingContests();
+
+    expect(count).toBe(1);
+    expect(ensureWorkerCapacity).toHaveBeenCalledWith(2, "contest pre-warm: midterm");
+  });
+
+  it("passes the >50-participant / 15-minute window filter to the query", async () => {
+    vi.mocked(prisma.contest.findMany).mockResolvedValue([]);
+
+    const count = await prewarmUpcomingContests();
+
+    expect(count).toBe(0);
+    expect(ensureWorkerCapacity).not.toHaveBeenCalled();
+    expect(prisma.contest.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: "SCHEDULED",
+          participantCount: { gt: 50 },
+        }),
+      })
+    );
+  });
+
+  it("never throws when the lookup fails", async () => {
+    vi.mocked(prisma.contest.findMany).mockRejectedValue(new Error("db down"));
+    await expect(prewarmUpcomingContests()).resolves.toBe(0);
   });
 });

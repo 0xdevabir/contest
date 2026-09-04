@@ -5,6 +5,7 @@ import {
   Cpu,
   Database,
   Gauge,
+  HelpCircle,
   KeyRound,
   Mail,
   ServerCog,
@@ -16,6 +17,7 @@ import {
 import { prisma } from "@/lib/db";
 import { isEnabled } from "@/lib/flags";
 import { getQueueStats } from "@/lib/queue-stats";
+import { computeSloRows, type SloStatus } from "@/lib/slo";
 
 export default async function AdminSystemPage() {
   const started = performance.now();
@@ -29,6 +31,7 @@ export default async function AdminSystemPage() {
 
   const judgeQueueOn = await isEnabled("judgeQueue");
   const queueStats = judgeQueueOn ? await getQueueStats() : null;
+  const sloRows = await computeSloRows();
 
   const checks = [
     {
@@ -204,6 +207,43 @@ export default async function AdminSystemPage() {
       )}
 
       <section className="mt-5 overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--bg-panel)]">
+        <div className="border-b border-[var(--line)] px-5 py-4">
+          <h2 className="font-display text-lg font-bold">SLOs</h2>
+          <p className="mt-0.5 text-xs text-[var(--muted)]">
+            docs/phases/PHASE-13-scale-ops.md Part 5 — docs/RUNBOOK.md has one entry per breach
+          </p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[700px] text-left text-xs">
+            <thead className="border-b border-[var(--line)] text-[10px] uppercase text-[var(--muted)]">
+              <tr>
+                <th className="px-5 py-3 font-medium">SLO</th>
+                <th className="px-5 py-3 font-medium">Status</th>
+                <th className="px-5 py-3 font-medium">Value</th>
+                <th className="px-5 py-3 font-medium">Target</th>
+                <th className="px-5 py-3 font-medium">Window</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--line)]">
+              {sloRows.map((row) => (
+                <tr key={row.key}>
+                  <td className="px-5 py-3">{row.slo}</td>
+                  <td className="px-5 py-3">
+                    <SloBadge status={row.status} />
+                  </td>
+                  <td className="px-5 py-3 font-mono">
+                    {row.value != null ? `${row.value}${row.unit ?? ""}` : row.note ? row.note : "—"}
+                  </td>
+                  <td className="px-5 py-3 text-[var(--muted)]">{row.target}</td>
+                  <td className="px-5 py-3 text-[var(--muted)]">{row.window}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="mt-5 overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--bg-panel)]">
         <div className="flex items-center justify-between border-b border-[var(--line)] px-5 py-4">
           <div>
             <h2 className="font-display text-lg font-bold">Administrator audit log</h2>
@@ -287,6 +327,38 @@ function QueueStat({
       </p>
       {sub && <p className="mt-0.5 text-[10px] text-[var(--muted)]">{sub}</p>}
     </div>
+  );
+}
+
+function SloBadge({ status }: { status: SloStatus }) {
+  const config: Record<SloStatus, { label: string; icon: typeof CheckCircle2; className: string }> = {
+    ok: {
+      label: "OK",
+      icon: CheckCircle2,
+      className: "border-[var(--accent-border)] bg-[var(--accent-surface)] text-[var(--accent)]",
+    },
+    warn: {
+      label: "Warn",
+      icon: AlertTriangle,
+      className: "border-[var(--line)] bg-[var(--sunken)] text-[var(--warn)]",
+    },
+    breach: {
+      label: "Breach",
+      icon: XCircle,
+      className: "border-[var(--danger-border)] bg-[var(--danger-surface)] text-[var(--danger)]",
+    },
+    unknown: {
+      label: "No data",
+      icon: HelpCircle,
+      className: "border-[var(--line)] bg-[var(--sunken)] text-[var(--muted)]",
+    },
+  };
+  const { label, icon: Icon, className } = config[status];
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${className}`}>
+      <Icon size={13} aria-hidden />
+      {label}
+    </span>
   );
 }
 

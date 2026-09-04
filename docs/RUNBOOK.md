@@ -329,3 +329,236 @@ applied to the specific worker host identified by its roster row. A
 submission that exhausts `MAX_ATTEMPTS` (3) without a worker succeeding is
 marked `FAILED`/`IE` permanently by the reaper — rejudge it (`/admin/rejudge`)
 once the underlying fault is fixed rather than expecting it to self-heal.
+
+---
+
+## Backup, restore drills, and disaster recovery (Phase 13 Part 6)
+
+Full scenario decision trees (Neon outage, worker host loss, Redis loss, R2
+outage, a bad migration, a compromised key, a compromised worker host) live in
+`docs/DR.md` — this entry is just the pointer and the two operational
+mechanics that back it.
+
+### Nightly backup didn't run / hasn't uploaded
+
+**Symptom**: no new object under `backups/postgres/` in R2 for more than 24h
+(check via the R2 dashboard or `aws s3 ls`, once a bucket is actually
+provisioned — none is in this environment yet).
+
+**Cause**: `scripts/backup-nightly.sh` is not scheduled anywhere in this repo
+yet (no cron entry, no CI workflow) — it is a ready-to-use script, not an
+active job. If it *is* wired into a scheduler elsewhere and stopped
+producing objects, check that scheduler's own logs first; the script itself
+exits early (exit 0, not an error) with a clear message if `R2_*` env vars
+are unset, so a silent "job ran, nothing happened" almost always means
+missing/rotated credentials in the scheduler's environment, not a script bug.
+
+**Fix**: run `./scripts/backup-nightly.sh` manually with the `R2_*` vars and
+`DIRECT_URL` set to confirm it still works end to end; if it does, the
+scheduler config (cron entry, CI secret) is the thing to fix, not the script.
+
+### A restore drill is due (quarterly) or was requested ad hoc
+
+Run `npx tsx scripts/migrations/dr-restore-drill.ts` (optionally
+`--dump-file` pointing at a downloaded nightly dump). It resolves a scratch
+restore target from `TEST_DATABASE_URL` or `NEON_API_KEY`/`NEON_PROJECT_ID`
+(same resolution order as the test suite's own Neon-branch provisioning in
+`tests/global-setup.ts`), restores the dump, runs `npm run test` against it,
+and prints elapsed time per stage. Record the result in
+`docs/DR-DRILL.md` using its entry template — including a failed or partial
+drill; a drill that finds nothing wrong on the first run is the surprising
+outcome, not the expected one.
+
+---
+
+## Cost model looks wrong on `/admin/costs` (Phase 13 Part 7)
+
+**Symptom**: the estimated monthly cost or per-1000-submissions figure on
+`/admin/costs` looks implausible for the platform's actual usage.
+
+**Cause**: `/admin/costs` renders the static Appendix I cost *model*
+(`src/lib/cost.ts`), mapped onto the nearest scale tier by live
+`User`/`Submission` counts — it is not a live billing feed. There is no
+billing API integration for any provider (Vercel, Neon, Upstash, R2,
+Hetzner, Sentry, SMTP/Resend) in this codebase, so a mismatch against an
+actual invoice is expected whenever real usage doesn't match the model's
+assumptions (e.g. burst judge-worker cost during an exam week, or a paid
+tier the model doesn't know about).
+
+**Fix**: this is not a bug to "fix" in the usual sense — if the model is
+meaningfully stale, update the tier figures in `src/lib/cost.ts`'s
+`COST_MODEL` table to match current provider pricing/plan, and note the
+change in a commit message so the Appendix I source of truth
+(`docs/ULTIMATE_PLAN.md`) and this table don't silently drift apart.
+
+---
+
+## Load-testing with a realistic dataset (Phase 13 Part 8)
+
+**When you need it**: verifying a page (profile, contest standings,
+analytics, search) still meets its Appendix F budget at real volume, or
+sizing autoscaling/database changes before a semester with more students.
+
+**How**: `npx tsx scripts/seed-load.ts --count 100000` (the default) seeds a
+local/scratch database with a statistically shaped `Submission` dataset —
+weighted verdict mix, submissions clustered around contest windows, and a
+power-law per-user activity distribution — reusing whatever `User`/`Problem`
+rows `npm run db:seed` already created. For a full 10M-row load test, see the
+script's own header comment for the `--count`/`--batch-size` values to use
+and the "never against production" warning. Never point this at a production
+`DATABASE_URL` — it writes real rows, not a dry run.
+
+---
+
+## Worker autoscaling and pre-scaling for a big contest (Phase 13 Part 4)
+
+Judge load is spiky — a 300-student midterm needs ten minutes of real
+capacity per week, not a permanently larger fleet. Two mechanisms exist:
+
+1. **Contest-aware pre-warm** (always on, no configuration needed):
+   `prewarmUpcomingContests()` in `src/lib/contest-lifecycle.ts`, called every
+   minute from `worker/src/contest-tick.ts`, logs a `"contest pre-warm"`
+   structured event for every `SCHEDULED` contest starting within 15 minutes
+   with more than 50 registered participants, and calls the autoscale
+   controller's `ensureWorkerCapacity()` entry point.
+2. **Queue-depth autoscaling controller** (`src/lib/autoscale.ts`, running on
+   `worker/src/autoscale-tick.ts` every 30s): scales up when queue depth
+   exceeds 2x total worker concurrency for a sustained 60s, scales down after
+   10 minutes sustained below 0.5x, with a 5-minute cooldown between actions
+   and a hard cap from `HETZNER_MAX_WORKERS` (default 5). Gated on the
+   `scaleOps` flag. The actual Hetzner Cloud API call
+   (`applyHetznerScaling()`) is implemented but only reachable when
+   `HETZNER_API_TOKEN` is set — **no Hetzner project exists in this
+   environment**, so both mechanisms currently only produce log lines
+   (`"autoscale decision"` / `"pre-warm ensure-capacity"`), never a real
+   server create/destroy call.
+
+### Manual pre-scaling procedure (option 1 — do this today, no infra required)
+
+Until a real Hetzner project is wired up (or as a supplement even after it
+is — automation should not be the only thing standing between a midterm and
+enough judge capacity), pre-scale by hand before any contest expected to draw
+a large simultaneous burst:
+
+1. **Find out what's coming.** Query upcoming contests with a large expected
+   field: `SELECT slug, title, "startsAt", "participantCount" FROM "Contest"
+   WHERE status = 'SCHEDULED' AND "startsAt" > now() ORDER BY "startsAt" ASC;`
+   — or watch the `"contest pre-warm"` log lines emitted starting 15 minutes
+   out, which already apply the same `participantCount > 50` filter.
+2. **Bring up an extra worker host** at least 15–20 minutes before
+   `startsAt`. `worker/` scales horizontally — the queue and per-user
+   fairness cap are shared via Redis, so a second `npm run worker:start` (or
+   `docker`/`systemd` unit) on another VPS just adds capacity, no
+   coordination needed. See `worker/README.md` for the `judge_worker` DB role
+   and environment the new host needs.
+3. **Watch `/admin/system`'s Judge queue panel** as the contest starts —
+   confirm the new worker shows up in the roster with a fresh `lastSeenAt`
+   and queue depth stays flat rather than climbing.
+4. **Tear the extra host down** after the contest ends and the queue has
+   drained (depth back to near zero, no stale workers) — this is manual
+   capacity, so nothing removes it automatically.
+
+**Admin UI for this** (a `/admin/contests` view filtering to "upcoming
+contests with >50 registrants in the next 24h") is a stretch goal, not built
+this session — the query in step 1 above is the same filter it would run;
+for now, run it directly or watch the pre-warm log lines.
+
+---
+
+## SLO alerts (Phase 13 Part 5)
+
+`src/lib/slo.ts` computes the SLO table from
+`docs/phases/PHASE-13-scale-ops.md` Part 5 against whatever data is actually
+available today — `/admin/system`'s new "SLOs" section shows current status
+for all eight rows. `worker/src/slo-alert-tick.ts` checks the same table every
+5 minutes and, for anything in `breach`, emails `SLO_ALERT_EMAIL` (falling
+back to `ADMIN_EMAIL`) and posts to a Telegram chat via
+`TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID`. **Neither channel is configured in
+this environment** — an unconfigured channel logs a warning and no-ops rather
+than failing the tick, so a breach today is only visible in `/admin/system`
+and the tick's own `"SLO breach detected"` log line, not by email/Telegram,
+until those env vars are set.
+
+Several rows report `status: "unknown"` rather than a number — this is
+intentional (no fabricated data): web availability, submit-ack p95,
+scoreboard staleness p95, and error rate all lack a real telemetry source
+today. An `"unknown"` row never triggers an alert; only `"breach"` does.
+
+### Judge availability (IE rate) breach
+
+**What it means**: `getQueueStats().ieRatePercent` (submissions verdicted
+`IE` in the last 5 minutes, as a percentage of all `DONE` submissions in that
+window) is more than 1.5x the 0.5% target.
+
+**How to confirm**: open `/admin/system` — the "SLOs" section shows the
+current IE rate and status, and the Judge queue panel just above it shows the
+same number plus the worker roster's `failedCount` per host.
+
+**How to fix**: same remediation as the "`IE` rate > 1% over 5 minutes" entry
+under Judge queue (Phase 4) above — identify whether it's one bad worker host
+(check `failedCount` per row) or a systemic judge misconfiguration, fix the
+underlying fault (sandbox image, compiler, judge backend config), then
+rejudge anything permanently marked `FAILED`/`IE` via `/admin/rejudge`.
+
+**How to verify**: `/admin/system`'s SLO row returns to `ok`/`warn` within a
+few minutes of the fix (the underlying window is 5 minutes rolling, so a
+fixed worker's next batch of judged submissions clears the rate quickly).
+
+### Verdict p95 (idle or contest) breach
+
+**What it means**: `src/lib/slo.ts`'s `verdictP95Ms()` — the 95th-percentile
+`judgedAt - queuedAt` gap over `DONE` submissions in the last hour — exceeds
+1.5x the target (3s idle / 20s contest).
+
+**How to confirm**: check the Judge queue panel's "Oldest queued job" and
+"Judged / min" stats alongside the SLO row's value — a high p95 with a high
+oldest-queued-age and low throughput points at queue backpressure; a high
+p95 with a low queue depth points at something slow inside the judge itself
+(sandbox startup, compile time) rather than a backlog.
+
+**How to fix**: if it's backpressure, this is the same fix as "Queue depth >
+3x total concurrency for 2 minutes" above (add worker capacity — see the
+pre-scaling section above for a contest specifically). If depth is low but
+p95 is still high, check individual submissions' `compileMs`/`maxWallMs` in
+`/admin/submissions/[id]` for a specific slow problem/language, and check
+worker host resource pressure (CPU, disk, Docker daemon) directly.
+
+**How to verify**: the SLO row recomputes from a live 1-hour rolling window,
+so it self-clears as new, fast-judged submissions land after the fix — no
+manual reset needed.
+
+### DB query p95 breach
+
+**What it means**: `src/lib/slo.ts` sampled 5 `SELECT 1` round trips just now
+and their p95 exceeds 1.5x the 50ms target. This is a live sample, not a true
+1-hour rolling window (nothing in the repo persists per-query latency history
+yet) — treat a single breach reading with some skepticism and re-check
+`/admin/system` a minute later before escalating.
+
+**How to confirm**: reload `/admin/system` a few times — the page's own
+top-of-page latency figure (`Neon PostgreSQL` check card) uses the same
+`SELECT 1` pattern and should track the SLO row closely. Check Neon's own
+dashboard for connection pool saturation or a concurrent heavy query
+(migration, large export, `pg_dump`) running at the same time.
+
+**How to fix**: if it's transient (a backup, an admin export, a burst of
+contest-end snapshot writes), no action needed — it should clear on its own.
+If it's sustained, check for a missing index on a newly hot query pattern, or
+Neon compute/connection-pool sizing versus current concurrent load.
+
+**How to verify**: `/admin/system` shows the SLO row back at `ok` on a
+subsequent load once the transient load clears or the fix lands.
+
+---
+
+## Closing note
+
+Every entry above exists because someone was going to be staring at a broken
+page at 9pm the night before a midterm, with no time to read source code, and
+needed to know three things fast: what's actually wrong, whether it's safe to
+wait it out, and the smallest fix that gets students judging again. That's the
+bar for every future addition to this file too — if an alert or failure mode
+doesn't have a "symptom → cause → fix → verify" entry here yet, the runbook is
+incomplete, not the incident. `docs/DR.md` covers the slower, worse nights
+(losing infrastructure outright, working a restore drill); this file covers
+the fast ones.

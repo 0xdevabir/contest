@@ -17,7 +17,12 @@ export type Flag =
   | "integrity"
   | "contestV2"
   | "liveContest"
-  | "analytics";
+  | "analytics"
+  | "community"
+  | "platformApi"
+  | "scaleOps"
+  | "i18n"
+  | "pwa";
 
 export type FlagContext = { userId?: string; role?: Role };
 

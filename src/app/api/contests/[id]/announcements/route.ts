@@ -5,6 +5,7 @@ import { getSession } from "@/lib/auth";
 import { contestCapabilities } from "@/lib/contest-access";
 import { getRedis } from "@/lib/redis";
 import { contestEventsChannel } from "@/lib/standings/channel";
+import { notify } from "@/lib/notify";
 import { toResponse, ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 
 export const runtime = "nodejs";
@@ -84,6 +85,18 @@ export async function POST(req: Request, { params }: Params) {
           },
         })
       );
+    }
+
+    const registrations = await prisma.contestRegistration.findMany({
+      where: { contestId: id },
+      select: { userId: true },
+    });
+    if (registrations.length > 0) {
+      notify(
+        registrations.map((r) => r.userId),
+        "class:announcement",
+        { title: announcement.title || "Announcement", excerpt: announcement.body.slice(0, 140), href: `/contests/${contest.slug}` }
+      ).catch(() => undefined);
     }
 
     return NextResponse.json({ ok: true, announcement });

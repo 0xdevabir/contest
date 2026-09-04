@@ -4,6 +4,7 @@ import { log } from "./log";
 import { tierFor } from "./rating/tiers";
 import type { ScoreboardRow } from "./scoring/types";
 import { issueMilestoneCertificateIfDue } from "./certificate-issuance";
+import { notify } from "./notify";
 
 /**
  * Declarative badge rules (PHASE-09 "Badge engine"). Adding a badge is a
@@ -32,17 +33,21 @@ function parseRule(raw: unknown): BadgeRule | null {
  */
 async function award(
   userId: string,
-  badgeId: string,
+  badge: { id: string; name: string },
   context: Record<string, string | number | boolean | null> = {}
 ): Promise<boolean> {
   try {
-    await prisma.userBadge.create({ data: { userId, badgeId, context } });
+    await prisma.userBadge.create({ data: { userId, badgeId: badge.id, context } });
+    // Phase 11 — best-effort; notify() never throws on its own, this guard
+    // is just extra insurance so a notification bug can never mark an
+    // otherwise-successful award as failed to the caller.
+    notify(userId, "badge:earned", { badgeName: badge.name }).catch(() => undefined);
     return true;
   } catch (err) {
     // P2002 = unique constraint violation, i.e. already earned. Anything
     // else is a real failure and should be visible.
     const code = (err as { code?: string } | null)?.code;
-    if (code !== "P2002") log.error("badge award failed", { userId, badgeId }, err);
+    if (code !== "P2002") log.error("badge award failed", { userId, badgeId: badge.id }, err);
     return false;
   }
 }
@@ -71,13 +76,13 @@ export async function evaluateSubmissionJudgedBadges(opts: {
 
     try {
       if (rule.type === "solve_count" && solvedCount >= rule.threshold) {
-        await award(opts.userId, badge.id, { solvedCount });
+        await award(opts.userId, badge, { solvedCount });
         await issueMilestoneCertificateIfDue(opts.userId, solvedCount);
       } else if (rule.type === "first_ac_of_problem" && opts.problemRefId) {
         const priorAc = await prisma.submission.count({
           where: { problemRefId: opts.problemRefId, verdict: "AC", createdAt: { lt: opts.createdAt } },
         });
-        if (priorAc === 0) await award(opts.userId, badge.id, { problemId: opts.problemId });
+        if (priorAc === 0) await award(opts.userId, badge, { problemId: opts.problemId });
       } else if (rule.type === "night_owl") {
         const [startHour, endHour] = rule.hourRange;
         const nightSolves = await prisma.$queryRaw<{ count: bigint }[]>`
@@ -86,7 +91,7 @@ export async function evaluateSubmissionJudgedBadges(opts: {
             AND EXTRACT(HOUR FROM "createdAt") >= ${startHour} AND EXTRACT(HOUR FROM "createdAt") < ${endHour}
         `;
         const count = Number(nightSolves[0]?.count ?? 0);
-        if (count >= rule.count) await award(opts.userId, badge.id, { count });
+        if (count >= rule.count) await award(opts.userId, badge, { count });
       } else if (rule.type === "comeback") {
         const failedBefore = await prisma.submission.count({
           where: {
@@ -96,7 +101,7 @@ export async function evaluateSubmissionJudgedBadges(opts: {
             createdAt: { lt: opts.createdAt },
           },
         });
-        if (failedBefore >= rule.attempts) await award(opts.userId, badge.id, { attempts: failedBefore });
+        if (failedBefore >= rule.attempts) await award(opts.userId, badge, { attempts: failedBefore });
       }
     } catch (err) {
       log.error("badge rule evaluation failed", { badgeId: badge.id, rule: rule.type }, err);
@@ -124,7 +129,7 @@ export async function evaluateContestEndedBadges(contestId: string): Promise<voi
     if (fieldSize < rule.minField) continue;
     for (const row of rows) {
       if (row.rank <= rule.max) {
-        await award(row.userId, badge.id, { contestId, rank: row.rank, fieldSize });
+        await award(row.userId, badge, { contestId, rank: row.rank, fieldSize });
       }
     }
   }
@@ -142,7 +147,7 @@ export async function evaluateNightlyBadges(): Promise<{ awarded: number }> {
       const rule = parseRule(badge.rule);
       if (!rule || rule.type !== "streak") continue;
       for (const s of streaks) {
-        if (s.current >= rule.days && (await award(s.userId, badge.id, { days: s.current }))) awarded++;
+        if (s.current >= rule.days && (await award(s.userId, badge, { days: s.current }))) awarded++;
       }
     }
   }
@@ -154,7 +159,7 @@ export async function evaluateNightlyBadges(): Promise<{ awarded: number }> {
       const rule = parseRule(badge.rule);
       if (!rule || rule.type !== "rating_tier") continue;
       for (const r of ratings) {
-        if (tierFor(r.displayed).key === rule.tier && (await award(r.userId, badge.id, { rating: r.displayed }))) awarded++;
+        if (tierFor(r.displayed).key === rule.tier && (await award(r.userId, badge, { rating: r.displayed }))) awarded++;
       }
     }
   }
@@ -171,7 +176,7 @@ export async function evaluateNightlyBadges(): Promise<{ awarded: number }> {
         select: { userId: true, solved: true },
       });
       for (const stat of stats) {
-        if (await award(stat.userId, badge.id, { solved: stat.solved })) awarded++;
+        if (await award(stat.userId, badge, { solved: stat.solved })) awarded++;
       }
     }
   }

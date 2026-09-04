@@ -1,4 +1,5 @@
-import type { Verdict } from "@prisma/client";
+import { Prisma, type Verdict } from "@prisma/client";
+import { fireWebhookEvent } from "./webhooks";
 import { prisma } from "./db";
 import { log } from "./log";
 import { recordProblemAttempt } from "./problem-stats";
@@ -9,6 +10,7 @@ import { recordSolveForStreak } from "./streaks";
 import { evaluateSubmissionJudgedBadges } from "./badges";
 import { recordProblemRatingAttempt } from "./rating/problem-rating";
 import { fingerprintSubmission } from "./integrity/fingerprint";
+import { maybeOffloadSubmissionPayload } from "./submission-payload";
 
 /**
  * Post-judge side effects shared by the synchronous judge path
@@ -30,6 +32,13 @@ export async function applyJudgedSideEffects(opts: {
   submissionId?: string;
   code?: string;
   language?: string;
+  /** Phase 13 Part 1 — present only when the caller has the freshly-judged
+   * submission's full payload at hand (the create/report call sites);
+   * omitted from update-only paths (e.g. rejudge-apply) that don't touch
+   * these columns, so offload is naturally skipped there. */
+  stdout?: string | null;
+  stderr?: string | null;
+  report?: unknown;
 }): Promise<void> {
   // Phase 10 — academic integrity. Fingerprinting must never block or delay
   // the rest of judging's side effects, so it's fired without awaiting the
@@ -41,6 +50,30 @@ export async function applyJudgedSideEffects(opts: {
       code: opts.code,
       language: opts.language,
     }).catch((err) => log.warn("fingerprint dispatch failed", { submissionId: opts.submissionId, error: err instanceof Error ? err.message : String(err) }));
+  }
+
+  // Phase 13 Part 1 — large-payload offload. Must run after the Submission
+  // row already carries the final code/stdout/stderr/report (guaranteed by
+  // this function's contract), and only nulls the inline columns once the
+  // offload write itself has succeeded — never the other way around, so a
+  // failed offload never loses a submission's code.
+  if (opts.submissionId && opts.code) {
+    try {
+      const offloaded = await maybeOffloadSubmissionPayload(opts.submissionId, {
+        code: opts.code,
+        stdout: opts.stdout ?? null,
+        stderr: opts.stderr ?? null,
+        report: opts.report ?? null,
+      });
+      if (offloaded) {
+        await prisma.submission.update({
+          where: { id: opts.submissionId },
+          data: { code: "", stdout: null, stderr: null, report: Prisma.JsonNull },
+        });
+      }
+    } catch (err) {
+      log.error("submission payload offload failed; leaving inline columns intact", { submissionId: opts.submissionId }, err);
+    }
   }
 
   try {
@@ -103,5 +136,16 @@ export async function applyJudgedSideEffects(opts: {
     } catch (err) {
       log.warn("balloon award failed", { contestId: opts.contestId, error: err instanceof Error ? err.message : String(err) });
     }
+  }
+
+  // Phase 12 — webhook fan-out for third-party integrations.
+  if (opts.submissionId) {
+    void fireWebhookEvent("submission.judged", {
+      submission_id: opts.submissionId,
+      user_id: opts.userId,
+      problem_id: opts.problemId,
+      contest_id: opts.contestId ?? null,
+      verdict: opts.verdict,
+    });
   }
 }

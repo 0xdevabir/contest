@@ -6,6 +6,7 @@ import { assertClassroomEnabled } from "@/lib/classroom-flag";
 import { assertSectionStaff } from "@/lib/section-access";
 import { invalidateGradebookCache } from "@/lib/gradebook";
 import { recordAdminAction } from "@/lib/admin-audit";
+import { notify } from "@/lib/notify";
 import { toResponse, ValidationError, NotFoundError, AuthError } from "@/lib/errors";
 
 export const runtime = "nodejs";
@@ -59,6 +60,13 @@ export async function PUT(req: Request, { params }: Params) {
       targetId: data.columnId,
       details: { userId: data.userId, points: data.points },
     });
+
+    notify(data.userId, "assignment:graded", {
+      assignmentTitle: column.title,
+      points: data.points,
+      sectionId: id,
+      assignmentId: column.assignmentId,
+    }).catch(() => undefined);
 
     return NextResponse.json({ ok: true, override });
   } catch (err) {

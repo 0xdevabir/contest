@@ -159,6 +159,16 @@ export default async function RootLayout({
     }
   }
 
+  // Phase 11 — unread notification count for the nav bell. Same
+  // cheap-single-query, flag-guarded pattern as assignmentsDueSoon above.
+  let unreadNotifications = 0;
+  if (user) {
+    const communityOn = await isEnabled("community", { userId: user.id, role: user.role });
+    if (communityOn) {
+      unreadNotifications = await prisma.notification.count({ where: { userId: user.id, readAt: null } });
+    }
+  }
+
   const jar = await cookies();
   // The user's stored preference wins; the cookie is what the very first paint
   // has to go on, so it is set on both login and every theme change.
@@ -284,7 +294,7 @@ export default async function RootLayout({
             <RouteProgress />
           </Suspense>
           <SmoothScroll />
-          <SiteChrome user={user} assignmentsDueSoon={assignmentsDueSoon}>{children}</SiteChrome>
+          <SiteChrome user={user} assignmentsDueSoon={assignmentsDueSoon} unreadNotifications={unreadNotifications}>{children}</SiteChrome>
         </ThemeProvider>
       </body>
     </html>

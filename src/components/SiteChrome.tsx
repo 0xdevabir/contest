@@ -52,10 +52,12 @@ export function SiteChrome({
   user,
   children,
   assignmentsDueSoon = 0,
+  unreadNotifications = 0,
 }: {
   user: SessionUser | null;
   children: React.ReactNode;
   assignmentsDueSoon?: number;
+  unreadNotifications?: number;
 }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -113,7 +115,7 @@ export function SiteChrome({
               Leaderboard
             </Link>
             <ThemeMenu />
-            <NavAuth user={user} assignmentsDueSoon={assignmentsDueSoon} />
+            <NavAuth user={user} assignmentsDueSoon={assignmentsDueSoon} unreadNotifications={unreadNotifications} />
           </nav>
 
           <div className="flex items-center gap-2 md:hidden">

@@ -123,11 +123,13 @@ async function processJudgeJob(job: Job<JudgeJobData>): Promise<void> {
         await recordRejudgeProgress(claimed.rejudgeBatchId!, claimed.verdict, result.verdict as Verdict);
       }
     } else {
+      const reportedStdout = shown?.sample ? shown.stdout : undefined;
+      const reportedStderr = result.compileStderr || shown?.stderr;
       const reported = await reportSubmission(submissionId, WORKER_ID, {
         verdict: result.verdict as Verdict,
         timeMs: result.results.length ? maxTime : undefined,
-        stdout: shown?.sample ? shown.stdout : undefined,
-        stderr: result.compileStderr || shown?.stderr,
+        stdout: reportedStdout,
+        stderr: reportedStderr,
         report: result,
       });
       if (reported) {
@@ -141,6 +143,9 @@ async function processJudgeJob(job: Job<JudgeJobData>): Promise<void> {
           submissionId,
           code: claimed.code,
           language: "c",
+          stdout: reportedStdout ?? null,
+          stderr: reportedStderr ?? null,
+          report: result,
         });
       }
     }

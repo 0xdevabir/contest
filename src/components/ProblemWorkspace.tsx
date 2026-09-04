@@ -18,6 +18,7 @@ import {
 import { CodeEditor } from "./CodeEditor";
 import { ProctorGuard } from "./contest/ProctorGuard";
 import { AcceptedCelebration } from "./AcceptedCelebration";
+import { ShareSolution } from "./community/ShareSolution";
 import { ProblemSolvers } from "./ProblemSolvers";
 import { useSubmissionStatus } from "./SubmissionStatus";
 import { difficultyClass } from "@/lib/difficulty";
@@ -391,7 +392,10 @@ export function ProblemWorkspace({
         total={totalTests}
         timeMs={slowestMs}
         nextHref={nextId ? problemHref(nextId) : contestHref}
-      />
+      >
+        {/* Phase 11 — opt-in solution sharing, practice submissions only. */}
+        {!contestId && result?.submissionId ? <ShareSolution submissionId={result.submissionId} /> : null}
+      </AcceptedCelebration>
       {strictMode && contestId && <ProctorGuard contestId={contestId} />}
       <div
         role="tablist"

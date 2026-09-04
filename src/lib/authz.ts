@@ -35,7 +35,9 @@ export type Action =
   | "gradebook:override"
   | "gradebook:manageWeights"
   | "gradebook:export"
-  | "gradebook:snapshot";
+  | "gradebook:snapshot"
+  | "comment:moderate"
+  | "editorial:manage";
 
 export type Actor = SessionUser | null;
 
@@ -101,6 +103,9 @@ const RULES: Record<Action, (actor: SessionUser, resource?: Resource) => boolean
   "gradebook:manageWeights": (a, r) => isAdmin(a) || (isApprovedTeacher(a) && ownsStrict(a, r)),
   "gradebook:export": (a, r) => isAdmin(a) || (isApprovedTeacher(a) && ownsStrict(a, r)),
   "gradebook:snapshot": (a, r) => isAdmin(a) || (isApprovedTeacher(a) && ownsStrict(a, r)),
+  // Phase 11 — community.
+  "comment:moderate": (a) => isAdmin(a),
+  "editorial:manage": (a, r) => isAdmin(a) || (isApprovedTeacher(a) && ownsStrict(a, r)),
 };
 
 export function can(actor: Actor, action: Action, resource?: Resource): boolean {

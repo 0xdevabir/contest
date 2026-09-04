@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Clock3, ExternalLink, User } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { getProblem } from "@/lib/problems";
+import { getSubmissionPayload } from "@/lib/submission-payload";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -25,6 +26,7 @@ export default async function SubmissionDetailPage({ params }: Props) {
   });
   if (!submission) notFound();
   const problem = await getProblem(submission.problemId);
+  const payload = await getSubmissionPayload(submission);
 
   return (
     <div className="mx-auto max-w-[1300px] px-4 py-7 sm:px-6 lg:px-8">
@@ -95,15 +97,15 @@ export default async function SubmissionDetailPage({ params }: Props) {
             <span className="font-mono text-[10px] text-[var(--muted)]">main.c</span>
           </div>
           <pre className="max-h-[650px] overflow-auto p-4 font-mono text-xs leading-6 text-[var(--text)]">
-            <code>{submission.code}</code>
+            <code>{payload.code}</code>
           </pre>
         </section>
 
         <div className="space-y-5">
-          <OutputPanel title="Standard output" value={submission.stdout} />
+          <OutputPanel title="Standard output" value={payload.stdout} />
           <OutputPanel
             title="Compiler / runtime errors"
-            value={submission.stderr}
+            value={payload.stderr}
             error
           />
           <section className="rounded-xl border border-[var(--line)] bg-[var(--bg-panel)] p-4">

@@ -11,6 +11,7 @@ import {
   Braces,
   Building2,
   ClipboardCheck,
+  DollarSign,
   GraduationCap,
   LayoutDashboard,
   Menu,
@@ -60,6 +61,7 @@ const navigation: NavGroup[] = [
     items: [
       { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
       { href: "/admin/system", label: "System", icon: Activity },
+      { href: "/admin/costs", label: "Costs", icon: DollarSign },
     ],
   },
 ];

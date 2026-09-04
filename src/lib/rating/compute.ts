@@ -1,5 +1,6 @@
 import { prisma } from "../db";
 import { log } from "../log";
+import { notify } from "../notify";
 import {
   DEFAULT_MU,
   DEFAULT_SIGMA,
@@ -58,7 +59,7 @@ export async function applyContestRating(
 ): Promise<{ rated: boolean; participants: number }> {
   const contest = await prisma.contest.findUnique({
     where: { id: contestId },
-    select: { id: true, visibility: true, endsAt: true },
+    select: { id: true, title: true, visibility: true, endsAt: true },
   });
   if (!contest) return { rated: false, participants: 0 };
 
@@ -147,6 +148,21 @@ export async function applyContestRating(
       });
     }
   });
+
+  // Phase 11 — "rating changed" per participant. A per-user loop is fine
+  // here (unlike the 500-registrant contest-start/contest-ended cases,
+  // which batch): this runs once per contest off the worker tick, not on a
+  // request path, and each user's delta/newRating text differs.
+  for (const r of results) {
+    const displayedAfter = displayedRating(r.after);
+    const before = priorByUser.get(r.id);
+    const displayedBefore = before ? before.displayed : displayedRating({ mu: DEFAULT_MU, sigma: DEFAULT_SIGMA });
+    notify(r.id, "rating:changed", {
+      delta: Math.round(displayedAfter - displayedBefore),
+      newRating: Math.round(displayedAfter),
+      contestTitle: contest.title,
+    }).catch(() => undefined);
+  }
 
   log.info("contest rated", { contestId, participants: results.length });
   return { rated: true, participants: results.length };

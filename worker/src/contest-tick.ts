@@ -15,7 +15,7 @@ const TICK_INTERVAL_MS = 60_000;
 async function tick(): Promise<void> {
   try {
     const result = await runContestLifecycleTick();
-    if (result.promoted || result.frozen || result.finalized) {
+    if (result.promoted || result.frozen || result.finalized || result.prewarmed) {
       log.info("contest lifecycle tick", result);
     }
   } catch (err) {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { toResponse, NotFoundError, AuthError, ForbiddenError } from "@/lib/errors";
+import { getSubmissionPayload } from "@/lib/submission-payload";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,6 +31,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         createdAt: true,
         judgedAt: true,
         code: true,
+        stdout: true,
+        stderr: true,
+        payloadKey: true,
       },
     });
     if (!submission) throw new NotFoundError("Submission not found");
@@ -37,6 +41,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const isOwner = submission.userId === session.id;
     const isStaff = STAFF_ROLES.has(session.role);
     if (!isOwner && !isStaff) throw new ForbiddenError();
+
+    const payload = isStaff || isOwner ? await getSubmissionPayload(submission) : null;
 
     return NextResponse.json({
       ok: true,
@@ -47,10 +53,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       maxScore: submission.maxScore,
       timeMs: submission.timeMs,
       attempts: submission.attempts,
-      report: isStaff || isOwner ? submission.report : undefined,
+      report: payload ? payload.report : undefined,
       // Raw source is only for the integrity console's diff toggle (D2) —
       // never sent to a non-owner, non-staff caller.
-      code: isStaff || isOwner ? submission.code : undefined,
+      code: payload ? payload.code : undefined,
     });
   } catch (err) {
     return toResponse(err);

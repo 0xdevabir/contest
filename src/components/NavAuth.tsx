@@ -4,13 +4,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { User } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
+import { NotificationBell } from "@/components/NotificationBell";
 
 export function NavAuth({
   user,
   assignmentsDueSoon = 0,
+  unreadNotifications = 0,
 }: {
   user: SessionUser | null;
   assignmentsDueSoon?: number;
+  unreadNotifications?: number;
 }) {
   const router = useRouter();
 
@@ -56,6 +59,7 @@ export function NavAuth({
           Pending approval
         </span>
       )}
+      <NotificationBell initialUnread={unreadNotifications} />
       <Link
         href="/profile"
         aria-label="Your profile"

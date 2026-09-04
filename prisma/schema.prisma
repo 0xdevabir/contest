@@ -176,6 +176,11 @@ model User {
   theme          String     @default("dark")
   /// Monaco editor font size in px (12–20).
   editorFontSize Int        @default(14)
+  /// Phase 14 — UI language. "en" | "bn". Server-resolved: this field wins
+  /// over the Accept-Language header once set.
+  locale         String     @default("en")
+  /// Phase 14 — IANA timezone for date/time rendering.
+  timezone       String     @default("Asia/Dhaka")
   /// When false, /u/[id] returns 404 to strangers.
   profilePublic  Boolean    @default(true)
   /// Show email on the public profile.
@@ -246,6 +251,18 @@ model User {
   variantTemplatesCreated ProblemVariantTemplate[] @relation("VariantTemplateCreator")
   problemVariants         ProblemVariant[]
   integrityReportsCreated IntegrityReport[]        @relation("IntegrityReportCreator")
+
+  /// Phase 11 — community, editorials & notifications.
+  editorialsAuthored     Editorial[]               @relation("EditorialAuthor")
+  comments               Comment[]                 @relation("CommentAuthor")
+  notifications          Notification[]            @relation("NotificationUser")
+  notificationPreferences NotificationPreference[]  @relation("NotificationPreferenceUser")
+  pushSubscriptions      PushSubscription[]         @relation("PushSubscriptionUser")
+
+  /// Phase 12 — platform API, imports & federation.
+  apiKeys           ApiKey[]           @relation("ApiKeyUser")
+  importJobs        ImportJob[]        @relation("ImportJobUser")
+  remoteCredentials RemoteCredential[] @relation("RemoteCredentialUser")
 
   @@index([institutionId, institutionVerifiedAt])
   @@index([role, teacherApprovedAt])
@@ -496,10 +513,16 @@ model ContestProblem {
   problemVersionId String?
   /// Phase 7 — physical-contest balloon color, e.g. "#e11d48". Null = no balloons.
   balloonColor     String?
+  /// Phase 12 — a federated problem hosted elsewhere, referenced (never
+  /// copied) alongside authored problems. Mutually exclusive with problemRefId
+  /// in practice, but not DB-enforced since a slot always has a legacy
+  /// problemId string regardless of which backing row it resolves to.
+  remoteProblemId  String?
 
   contest        Contest         @relation(fields: [contestId], references: [id], onDelete: Cascade)
   problemRef     Problem?        @relation(fields: [problemRefId], references: [id])
   problemVersion ProblemVersion? @relation(fields: [problemVersionId], references: [id])
+  remoteProblem  RemoteProblem?  @relation(fields: [remoteProblemId], references: [id])
 
   @@unique([contestId, problemId])
   @@index([contestId, order])
@@ -674,6 +697,17 @@ model Submission {
   /// practice submission outside any contest, or one predating contestV2.
   participationId String?
 
+  /// Phase 14 — client-generated key for the offline submission queue.
+  /// Lets a retried/replayed offline submission be recognised as the same
+  /// one instead of judged twice; null for normal (online) submissions.
+  clientRequestId String?
+
+  /// Phase 13 — set once this row's code/stdout/stderr/report have been
+  /// moved to SubmissionPayload or archived to blob storage. See
+  /// src/lib/submission-payload.ts for the read fallback chain.
+  payloadKey String?
+  payload    SubmissionPayload?
+
   user          User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
   contest       Contest?              @relation(fields: [contestId], references: [id], onDelete: SetNull)
   problemRef    Problem?              @relation(fields: [problemRefId], references: [id], onDelete: SetNull)
@@ -687,6 +721,7 @@ model Submission {
   similarityPairsAsB   SimilarityPair[]       @relation("SimilarityPairSubmissionB")
 
   @@index([userId, problemId])
+  @@unique([userId, clientRequestId])
   @@index([contestId, userId])
   @@index([problemId, verdict])
   @@index([problemRefId, verdict])
@@ -694,6 +729,35 @@ model Submission {
   @@index([state, heartbeatAt])
   @@index([rejudgeBatchId])
   @@index([participationId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Phase 13 — Scale, Performance & Operations (docs/phases/PHASE-13-scale-ops.md)
+// ---------------------------------------------------------------------------
+
+/// Payload storage for a Submission once it's grown large enough to move out
+/// of the hot table (see src/lib/submission-payload.ts). Expand step only:
+/// Submission keeps its inline code/stdout/stderr/report columns until the
+/// backfill + contract migration is run by hand.
+model SubmissionPayload {
+  submissionId String  @id
+  code         String
+  stdout       String?
+  stderr       String?
+  report       Json?
+  createdAt    DateTime @default(now())
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+/// Hourly-materialised leaderboard read model (national/institution/practice),
+/// keyed by a caller-defined composite string, e.g. "national:rating:alltime".
+model LeaderboardCache {
+  key        String   @id
+  payload    Json
+  computedAt DateTime @default(now())
+
+  @@index([computedAt])
 }
 
 /// A teacher-triggered rejudge run over a scope of submissions. `dryRun`
@@ -775,6 +839,10 @@ model Problem {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
+  /// Phase 13 — GENERATED STORED column (see the hand-written FTS migration).
+  /// Unsupported so `prisma migrate dev` doesn't try to manage it directly.
+  searchVector Unsupported("tsvector")?
+
   author             User                @relation("ProblemAuthor", fields: [authorId], references: [id])
   institution        Institution?        @relation(fields: [institutionId], references: [id], onDelete: SetNull)
   currentVersion     ProblemVersion?     @relation("CurrentVersion", fields: [currentVersionId], references: [id])
@@ -790,6 +858,9 @@ model Problem {
   /// Phase 10 — academic integrity.
   variantTemplate ProblemVariantTemplate?
 
+  /// Phase 11 — community.
+  editorials Editorial[]
+
   @@index([status, visibility, difficulty])
   @@index([authorId, status])
   @@index([institutionId])
@@ -804,6 +875,13 @@ model ProblemVersion {
 
   statementMd String // Markdown + KaTeX
   statementBn String? // Bangla statement (Phase 14)
+  titleBn      String? // Bangla title (Phase 14)
+  inputSpecBn   String? // Bangla input spec (Phase 14)
+  outputSpecBn  String? // Bangla output spec (Phase 14)
+  constraintsBn String? // Bangla constraints (Phase 14)
+  /// Who approved the Bangla version — never auto-published; see D2.
+  bnApprovedById String?
+  bnApprovedAt   DateTime?
   inputSpec   String  @default("")
   outputSpec  String  @default("")
   constraints String  @default("")
@@ -825,6 +903,10 @@ model ProblemVersion {
   createdById String
   createdAt   DateTime  @default(now())
   publishedAt DateTime?
+
+  /// Phase 13 — trigger-maintained (only the current version is what search
+  /// actually queries; see the hand-written FTS migration).
+  statementSearchVector Unsupported("tsvector")?
 
   problem            Problem             @relation("AllVersions", fields: [problemId], references: [id], onDelete: Cascade)
   currentOf          Problem?            @relation("CurrentVersion")
@@ -1560,3 +1642,279 @@ model IntegrityReport {
 
   @@index([scopeType, scopeId])
 }
+
+// ---------------------------------------------------------------------------
+// Phase 11 — Community, Editorials & Notifications
+// (docs/phases/PHASE-11-community.md)
+// ---------------------------------------------------------------------------
+
+/// D1 — one editorial per (problem, version). `problemVersionId` null means
+/// "applies to the current version"; pinning it makes an editorial for an
+/// older, frozen version reproducible even after the problem is updated.
+model Editorial {
+  id               String   @id @default(cuid())
+  problemId        String
+  problemVersionId String?
+  authorId         String
+  contentMd        String
+  /// Optional reference implementations shown with the editorial.
+  solutions        Json     @default("[]") // [{language, source, note}]
+  published        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  author  User    @relation("EditorialAuthor", fields: [authorId], references: [id])
+
+  @@unique([problemId, problemVersionId])
+  @@index([problemId, published])
+}
+
+enum CommentTarget {
+  PROBLEM
+  CONTEST
+  EDITORIAL
+  ANNOUNCEMENT
+}
+
+/// D2 — one level deep: a top-level comment plus replies, no nesting beyond
+/// that (parentId always points at a top-level comment, never another reply).
+model Comment {
+  id           String        @id @default(cuid())
+  target       CommentTarget
+  targetId     String
+  parentId     String?
+  userId       String
+  body         String
+  spoiler      Boolean       @default(false)
+  score        Int           @default(0)
+  editedAt     DateTime?
+  hiddenAt     DateTime?
+  hiddenById   String?
+  hiddenReason String?
+  createdAt    DateTime      @default(now())
+
+  user    User          @relation("CommentAuthor", fields: [userId], references: [id], onDelete: Cascade)
+  parent  Comment?      @relation("Replies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies Comment[]     @relation("Replies")
+  votes   CommentVote[]
+
+  @@index([target, targetId, createdAt])
+  @@index([parentId])
+  @@index([userId])
+}
+
+model CommentVote {
+  commentId String
+  userId    String
+  value     Int // +1 | -1
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@id([commentId, userId])
+}
+
+/// D1 — opt-in, post-solve-only sharing. `problemId` is the denormalised
+/// slug (same convention as Submission/SolvedProblem) — no direct FK to
+/// Problem, since a shared solution must survive a problem re-import.
+model SharedSolution {
+  id           String   @id @default(cuid())
+  problemId    String
+  userId       String
+  submissionId String   @unique
+  language     String
+  note         String   @default("")
+  score        Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@unique([problemId, userId])
+  @@index([problemId, score])
+}
+
+enum NotificationChannel {
+  INAPP
+  EMAIL
+  PUSH
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String    @default("")
+  href      String?
+  payload   Json      @default("{}")
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation("NotificationUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+}
+
+/// One row per (user, notification type); `channels` overrides the type's
+/// default channel set from src/lib/notify/types.ts when present.
+model NotificationPreference {
+  userId   String
+  type     String
+  channels NotificationChannel[]
+
+  user User @relation("NotificationPreferenceUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, type])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String   @default("")
+  createdAt DateTime @default(now())
+
+  user User @relation("PushSubscriptionUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// A report against a piece of community content, feeding the moderation
+/// queue. `target`/`targetId` follow the same denormalised-string
+/// convention as CommentTarget rather than a typed FK union, since
+/// reportable content spans several unrelated tables (comment, solution,
+/// profile).
+model ContentReport {
+  id          String    @id @default(cuid())
+  target      String // "comment" | "solution" | "profile"
+  targetId    String
+  reporterId  String
+  reason      String
+  status      String    @default("OPEN") // OPEN | ACTIONED | DISMISSED
+  handledById String?
+  handledAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([status, createdAt])
+  @@index([target, targetId])
+}
+
+// ---------------------------------------------------------------------------
+// Phase 12 — Platform API, Imports & Federation (docs/phases/PHASE-12-platform-api.md)
+// ---------------------------------------------------------------------------
+
+/// D2 — a scoped credential for /api/v1/**. The raw token is shown once at
+/// creation and never stored; only its SHA-256 hash is kept, plus a display
+/// prefix ("chk_live_a1b2…") so a leaked key is identifiable in logs.
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String
+  name       String
+  /// SHA-256 of the token. Only the prefix is stored in clear for display.
+  keyHash    String    @unique
+  keyPrefix  String
+  scopes     String[]
+  rateLimit  Int       @default(60)
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  user     User      @relation("ApiKeyUser", fields: [userId], references: [id], onDelete: Cascade)
+  webhooks Webhook[]
+
+  @@index([userId, revokedAt])
+}
+
+/// D-Webhooks — HMAC-signed event delivery, owned by an ApiKey so a webhook
+/// always inherits its key's scopes/owner rather than being freestanding.
+model Webhook {
+  id         String    @id @default(cuid())
+  apiKeyId   String
+  url        String
+  events     String[]
+  /// HMAC-SHA256 signing key, generated once and shown to the owner.
+  secret     String
+  active     Boolean   @default(true)
+  failCount  Int       @default(0)
+  lastFailAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  apiKey     ApiKey            @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  deliveries WebhookDelivery[]
+
+  @@index([apiKeyId])
+}
+
+model WebhookDelivery {
+  id          String    @id @default(cuid())
+  webhookId   String
+  event       String
+  payload     Json
+  status      Int?
+  attempt     Int       @default(1)
+  error       String?
+  deliveredAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId, createdAt])
+}
+
+/// D3 — a queued bulk-import run (Polygon / generic / CSV). Importers never
+/// write to Problem/ProblemVersion directly; they funnel through the Phase 2
+/// authoring API and record a per-item outcome here.
+model ImportJob {
+  id         String    @id @default(cuid())
+  kind       String // "polygon" | "generic" | "csv"
+  userId     String
+  sourceKey  String // uploaded archive in blob storage
+  status     String    @default("PENDING") // PENDING | RUNNING | DONE | FAILED
+  total      Int       @default(0)
+  imported   Int       @default(0)
+  failed     Int       @default(0)
+  report     Json      @default("[]")
+  createdAt  DateTime  @default(now())
+  finishedAt DateTime?
+
+  user User @relation("ImportJobUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+/// D4 — a problem *reference* hosted elsewhere. Statements are linked, never
+/// copied; usable in a contest alongside authored Problem rows.
+model RemoteProblem {
+  id         String   @id @default(cuid())
+  provider   String // "codeforces" | "atcoder" | "spoj"
+  externalId String // "1234A"
+  title      String
+  url        String
+  difficulty Int?
+  tags       String[] @default([])
+  fetchedAt  DateTime @default(now())
+
+  contestUses ContestProblem[]
+
+  @@unique([provider, externalId])
+}
+
+/// D4 — a user's own credentials on a remote judge site, required before
+/// remote *submission* (never just metadata) can run on their behalf.
+/// Off by default; created only through the opt-in flow.
+model RemoteCredential {
+  id         String    @id @default(cuid())
+  userId     String
+  provider   String
+  handle     String
+  /// AES-GCM encrypted with a server key; user-revocable.
+  secretEnc  String
+  verifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation("RemoteCredentialUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+}
+

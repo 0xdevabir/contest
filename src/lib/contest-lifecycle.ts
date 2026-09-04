@@ -8,6 +8,10 @@ import { applyContestRating } from "./rating/compute";
 import { evaluateContestEndedBadges } from "./badges";
 import { issueContestCertificates } from "./certificate-issuance";
 import { runIntegritySweep } from "./integrity/sweep";
+import { refreshLiveContestProblemsSet } from "./live-contest-problems";
+import { notify } from "./notify";
+import { fireWebhookEvent } from "./webhooks";
+import { ensureWorkerCapacity } from "./autoscale";
 
 /**
  * Move contests out of LIVE once their window has passed.
@@ -199,7 +203,7 @@ export async function drainAndFinalizeContests(): Promise<number> {
   const now = new Date();
   const candidates = await prisma.contest.findMany({
     where: { endsAt: { lte: now }, status: { in: ["LIVE", "ENDED"] } },
-    select: { id: true },
+    select: { id: true, title: true, slug: true },
   });
 
   let finalized = 0;
@@ -248,16 +252,104 @@ export async function drainAndFinalizeContests(): Promise<number> {
       log.error("post-finalize integrity sweep failed", { contestId: contest.id }, err);
     }
 
+    // Phase 11 — "contest ended, results ready" (D3), one createMany + one
+    // batched job per channel regardless of field size.
+    try {
+      const registrations = await prisma.contestRegistration.findMany({
+        where: { contestId: contest.id },
+        select: { userId: true },
+      });
+      if (registrations.length > 0) {
+        await notify(
+          registrations.map((r) => r.userId),
+          "contest:ended",
+          { contestTitle: contest.title, contestSlug: contest.slug }
+        );
+      }
+    } catch (err) {
+      log.error("post-finalize contest-ended notification failed", { contestId: contest.id }, err);
+    }
+
+    // Phase 12 — webhook fan-out for third-party integrations.
+    void fireWebhookEvent("contest.ended", { contest_id: contest.id, title: contest.title, slug: contest.slug });
+
     finalized++;
   }
   return finalized;
 }
 
+const PREWARM_WINDOW_MS = 15 * 60_000;
+const PREWARM_MIN_PARTICIPANTS = 50;
+
+/**
+ * Phase 13 Part 4 — contest-aware worker pre-warm. Contests starting within
+ * the next 15 minutes with more than 50 registered participants get a
+ * structured "pre-warm" log line and, when an autoscale controller is
+ * configured (`src/lib/autoscale.ts`, gated on the `scaleOps` flag), a call
+ * into its "ensure N workers" entry point. This runs unconditionally — it's
+ * always active, no new infra required — the controller itself is what's
+ * flag-gated and safely inert without Hetzner credentials.
+ *
+ * Deliberately not "once per contest": called every tick for the whole
+ * 15-minute window. `ensureWorkerCapacity` is idempotent (a no-op once the
+ * fleet is already big enough), so the repeated calls are cheap and this
+ * stays simple rather than needing a "have we already pre-warmed this
+ * contest" marker on the Contest row.
+ */
+export async function prewarmUpcomingContests(): Promise<number> {
+  const now = new Date();
+  const windowEnd = new Date(now.getTime() + PREWARM_WINDOW_MS);
+
+  let contests;
+  try {
+    contests = await prisma.contest.findMany({
+      where: {
+        status: "SCHEDULED",
+        startsAt: { gte: now, lte: windowEnd },
+        participantCount: { gt: PREWARM_MIN_PARTICIPANTS },
+      },
+      select: { id: true, slug: true, title: true, startsAt: true, participantCount: true },
+    });
+  } catch (err) {
+    log.error("pre-warm contest lookup failed", {}, err);
+    return 0;
+  }
+
+  for (const contest of contests) {
+    log.info("contest pre-warm", {
+      contestId: contest.id,
+      slug: contest.slug,
+      startsAt: contest.startsAt,
+      participantCount: contest.participantCount,
+    });
+    try {
+      // Rough sizing: bigger fields get more workers, capped by the
+      // controller's own HETZNER_MAX_WORKERS ceiling.
+      const desiredInstances = Math.min(5, Math.max(2, Math.ceil(contest.participantCount / 100)));
+      await ensureWorkerCapacity(desiredInstances, `contest pre-warm: ${contest.slug}`);
+    } catch (err) {
+      log.error("pre-warm autoscale ensure failed", { contestId: contest.id }, err);
+    }
+  }
+  return contests.length;
+}
+
 /** One tick of the contest lifecycle scheduler (worker/src/contest-tick.ts),
  * run once a minute per docs/phases/PHASE-05-contest-engine.md. */
-export async function runContestLifecycleTick(): Promise<{ promoted: number; frozen: number; finalized: number }> {
+export async function runContestLifecycleTick(): Promise<{
+  promoted: number;
+  frozen: number;
+  finalized: number;
+  prewarmed: number;
+}> {
   const promoted = await promoteScheduledContests();
   const frozen = await freezeDueContests();
   const finalized = await drainAndFinalizeContests();
-  return { promoted, frozen, finalized };
+  const prewarmed = await prewarmUpcomingContests();
+  try {
+    await refreshLiveContestProblemsSet();
+  } catch (err) {
+    log.error("refreshing live-contest-problems set failed", {}, err);
+  }
+  return { promoted, frozen, finalized, prewarmed };
 }

@@ -4,9 +4,8 @@ import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { assertCan } from "@/lib/authz";
 import { recordAdminAction } from "@/lib/admin-audit";
-import { sendTeacherApprovedEmail } from "@/lib/mail";
+import { notify } from "@/lib/notify";
 import { toResponse, ValidationError, NotFoundError, ConflictError } from "@/lib/errors";
-import { log } from "@/lib/log";
 
 export const runtime = "nodejs";
 
@@ -46,11 +45,10 @@ export async function POST(req: Request, { params }: Params) {
       details: { email: target.email, note: parsed.data.note ?? "" },
     });
 
-    try {
-      await sendTeacherApprovedEmail(target.email, target.name);
-    } catch (err) {
-      log.error("teacher approved email failed", { userId: id }, err);
-    }
+    // Phase 11 — routed through notify() so it's the single source of this
+    // email (its EMAIL channel special-cases "teacher:approved" to reuse
+    // the branded sendTeacherApprovedEmail template) plus an in-app row.
+    await notify(id, "teacher:approved", {});
 
     return NextResponse.json({ ok: true });
   } catch (err) {

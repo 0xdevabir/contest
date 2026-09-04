@@ -86,6 +86,9 @@ async function persistSubmission(opts: {
       submissionId: created.id,
       code: opts.code,
       language: "c",
+      stdout: opts.stdout?.slice(0, 8000) ?? null,
+      stderr: opts.stderr?.slice(0, 8000) ?? null,
+      report: opts.report,
     });
   } catch (err) {
     log.error("persist submission failed", { problemId: opts.problemId }, err);

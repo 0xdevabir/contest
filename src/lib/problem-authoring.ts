@@ -8,6 +8,7 @@ import { labelToPrismaDifficulty } from "./difficulty";
 import type { Difficulty } from "./types";
 import type { SessionUser } from "./auth";
 import { assertCan } from "./authz";
+import { fireWebhookEvent } from "./webhooks";
 
 /**
  * Shared ownership gate for every /api/teacher/problems/[id]/** route: loads
@@ -364,6 +365,9 @@ export async function publishVersion(
       data: { status: "PUBLISHED", currentVersionId: versionId },
     }),
   ]);
+
+  // Phase 12 — webhook fan-out for third-party integrations.
+  void fireWebhookEvent("problem.published", { problem_id: problemId, version_id: versionId });
 
   return { gate };
 }
