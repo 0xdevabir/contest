@@ -55,11 +55,13 @@ export function SiteChrome({
   children,
   assignmentsDueSoon = 0,
   unreadNotifications = 0,
+  teacherNav = null,
 }: {
   user: SessionUser | null;
   children: React.ReactNode;
   assignmentsDueSoon?: number;
   unreadNotifications?: number;
+  teacherNav?: { href: string; label: string } | null;
 }) {
   const pathname = usePathname();
   const dict = useDictionary();
@@ -119,7 +121,7 @@ export function SiteChrome({
             </Link>
             <LocaleToggle />
             <ThemeMenu />
-            <NavAuth user={user} assignmentsDueSoon={assignmentsDueSoon} unreadNotifications={unreadNotifications} />
+            <NavAuth user={user} assignmentsDueSoon={assignmentsDueSoon} unreadNotifications={unreadNotifications} teacherNav={teacherNav} />
           </nav>
 
           <div className="flex items-center gap-2 md:hidden">
@@ -187,6 +189,14 @@ export function SiteChrome({
                     className="rounded-lg px-3 py-3 text-sm text-[var(--accent)] hover:bg-[var(--hover)]"
                   >
                     Admin
+                  </Link>
+                )}
+                {teacherNav && (
+                  <Link
+                    href={teacherNav.href}
+                    className="rounded-lg px-3 py-3 text-sm text-[var(--accent)] hover:bg-[var(--hover)]"
+                  >
+                    {teacherNav.label}
                   </Link>
                 )}
               </nav>

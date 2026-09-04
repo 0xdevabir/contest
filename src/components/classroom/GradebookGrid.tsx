@@ -40,10 +40,14 @@ export function GradebookGrid({
   sectionId,
   students,
   columns,
+  canManage = true,
 }: {
   sectionId: string;
   students: StudentRow[];
   columns: ColumnMeta[];
+  /** Export, snapshot, and new-column are teacher-only; a TA still edits
+   * cell overrides — that route (gradebook/override) accepts staff. */
+  canManage?: boolean;
 }) {
   const router = useRouter();
   const [selected, setSelected] = useState<{ studentId: string; columnId: string } | null>(null);
@@ -66,21 +70,25 @@ export function GradebookGrid({
 
   return (
     <div>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex gap-2">
-          <a href={`/api/teacher/sections/${sectionId}/gradebook.csv`} className="btn btn-ghost !text-xs">
-            <Download size={13} aria-hidden /> Export CSV
-          </a>
-          <button type="button" onClick={() => void snapshot()} className="btn btn-ghost !text-xs">
-            <Camera size={13} aria-hidden /> Snapshot
-          </button>
-          <button type="button" onClick={() => setNewColumnOpen((v) => !v)} className="btn btn-ghost !text-xs">
-            <Plus size={13} aria-hidden /> New column
-          </button>
+      {canManage && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex gap-2">
+            <a href={`/api/teacher/sections/${sectionId}/gradebook.csv`} className="btn btn-ghost !text-xs">
+              <Download size={13} aria-hidden /> Export CSV
+            </a>
+            <button type="button" onClick={() => void snapshot()} className="btn btn-ghost !text-xs">
+              <Camera size={13} aria-hidden /> Snapshot
+            </button>
+            <button type="button" onClick={() => setNewColumnOpen((v) => !v)} className="btn btn-ghost !text-xs">
+              <Plus size={13} aria-hidden /> New column
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
-      {newColumnOpen && <NewColumnForm sectionId={sectionId} onDone={() => { setNewColumnOpen(false); router.refresh(); }} />}
+      {canManage && newColumnOpen && (
+        <NewColumnForm sectionId={sectionId} onDone={() => { setNewColumnOpen(false); router.refresh(); }} />
+      )}
 
       {/* TODO: keyboard navigation between cells */}
       <div className="mt-3 max-h-[70vh] overflow-auto rounded-xl border border-[var(--line)]">

@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, FileText } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { isEnabled } from "@/lib/flags";
-import { assertSectionStaff } from "@/lib/section-access";
+import { assertSectionStaff, isSectionTeacher } from "@/lib/section-access";
 import { getStudentDeepDive } from "@/lib/analytics/student";
 import { AuthError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { MasteryRadar } from "@/components/analytics/MasteryRadar";
@@ -28,6 +28,8 @@ export default async function StudentDeepDivePage({ params }: Props) {
     throw err;
   }
 
+  const canManage = session.role === "ADMIN" || (await isSectionTeacher(session.id, id));
+
   const student = await getStudentDeepDive(id, uid);
   if (!student) notFound();
 
@@ -45,9 +47,11 @@ export default async function StudentDeepDivePage({ params }: Props) {
           <h1 className="font-display text-2xl font-bold">{student.name}</h1>
           <p className="mt-1 text-xs text-[var(--muted)]">{student.email}</p>
         </div>
-        <a href={`/api/teacher/sections/${id}/students/${uid}/report.pdf`} className="btn btn-ghost !text-xs">
-          <FileText size={13} aria-hidden /> Student report PDF
-        </a>
+        {canManage && (
+          <a href={`/api/teacher/sections/${id}/students/${uid}/report.pdf`} className="btn btn-ghost !text-xs">
+            <FileText size={13} aria-hidden /> Student report PDF
+          </a>
+        )}
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">

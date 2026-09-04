@@ -1,11 +1,16 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 import { getSession } from "@/lib/auth";
+import { can } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { prismaDifficultyToLabel, difficultyClass } from "@/lib/difficulty";
 
 export default async function TeacherProblemsPage() {
   const session = await getSession();
+  // TAs are let into /teacher by the parent layout for section access only —
+  // problem authoring is teacher/admin-only (authz.ts "problem:create").
+  if (!can(session, "problem:create")) redirect("/teacher/sections");
 
   const problems = await prisma.problem.findMany({
     where: session!.role === "ADMIN" ? {} : { authorId: session!.id },

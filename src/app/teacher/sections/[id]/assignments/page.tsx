@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { assertSectionStaff } from "@/lib/section-access";
+import { assertSectionStaff, isSectionTeacher } from "@/lib/section-access";
 import { AuthError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { NewAssignmentForm } from "@/components/classroom/NewAssignmentForm";
 import { PublishToggle } from "@/components/classroom/PublishToggle";
@@ -26,6 +26,10 @@ export default async function SectionAssignmentsPage({ params }: Props) {
   const section = await prisma.courseSection.findUnique({ where: { id }, select: { id: true, name: true, course: { select: { code: true } } } });
   if (!section) notFound();
 
+  // Creating and publishing assignments is teacher-only; a TA can grant
+  // extensions and view progress (assertSectionStaff on those routes).
+  const canManage = session.role === "ADMIN" || (await isSectionTeacher(session.id, id));
+
   const assignments = await prisma.assignment.findMany({
     where: { sectionId: id },
     orderBy: { createdAt: "desc" },
@@ -43,7 +47,7 @@ export default async function SectionAssignmentsPage({ params }: Props) {
         <h1 className="font-display text-2xl font-bold">Assignments</h1>
       </div>
 
-      <NewAssignmentForm sectionId={id} />
+      {canManage && <NewAssignmentForm sectionId={id} />}
 
       <div className="mt-6 overflow-hidden rounded-xl border border-[var(--line)]">
         <table className="w-full min-w-[700px] text-left text-xs">
@@ -70,7 +74,7 @@ export default async function SectionAssignmentsPage({ params }: Props) {
                 <td className="px-4 py-3 text-[var(--muted)]">{a.dueAt ? a.dueAt.toLocaleString() : "—"}</td>
                 <td className="px-4 py-3">{a._count.problems}</td>
                 <td className="px-4 py-3">
-                  <PublishToggle assignmentId={a.id} published={a.published} />
+                  <PublishToggle assignmentId={a.id} published={a.published} canManage={canManage} />
                 </td>
                 <td className="px-4 py-3 text-right">
                   <Link href={`/teacher/sections/${id}/assignments/${a.id}`} className="text-[var(--accent)] hover:underline">

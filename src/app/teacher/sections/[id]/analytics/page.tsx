@@ -4,7 +4,7 @@ import { ArrowLeft, Download, FileText } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { isEnabled } from "@/lib/flags";
-import { assertSectionStaff } from "@/lib/section-access";
+import { assertSectionStaff, isSectionTeacher } from "@/lib/section-access";
 import { getSectionSummary, getHeatmap } from "@/lib/analytics/cohort";
 import { AuthError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { SignalChips } from "@/components/analytics/SignalChips";
@@ -36,6 +36,8 @@ export default async function SectionAnalyticsPage({ params }: Props) {
   const section = await prisma.courseSection.findUnique({ where: { id }, select: { name: true, course: { select: { code: true } } } });
   if (!section) notFound();
 
+  const canManage = session.role === "ADMIN" || (await isSectionTeacher(session.id, id));
+
   const [summary, heatmap] = await Promise.all([getSectionSummary(id), getHeatmap(id)]);
 
   return (
@@ -54,14 +56,16 @@ export default async function SectionAnalyticsPage({ params }: Props) {
             </p>
           )}
         </div>
-        <div className="flex gap-2">
-          <a href={`/api/teacher/sections/${id}/submissions.csv`} className="btn btn-ghost !text-xs">
-            <Download size={13} aria-hidden /> Raw submissions CSV
-          </a>
-          <a href={`/api/teacher/sections/${id}/report.pdf`} className="btn btn-ghost !text-xs">
-            <FileText size={13} aria-hidden /> Class report PDF
-          </a>
-        </div>
+        {canManage && (
+          <div className="flex gap-2">
+            <a href={`/api/teacher/sections/${id}/submissions.csv`} className="btn btn-ghost !text-xs">
+              <Download size={13} aria-hidden /> Raw submissions CSV
+            </a>
+            <a href={`/api/teacher/sections/${id}/report.pdf`} className="btn btn-ghost !text-xs">
+              <FileText size={13} aria-hidden /> Class report PDF
+            </a>
+          </div>
+        )}
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-4">

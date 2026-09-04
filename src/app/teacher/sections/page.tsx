@@ -1,14 +1,25 @@
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
+import { can } from "@/lib/authz";
+import { listStaffSectionIds } from "@/lib/section-access";
 import { prisma } from "@/lib/db";
 import { NewSectionForm } from "@/components/classroom/NewSectionForm";
 
 export default async function TeacherSectionsPage() {
   const session = await getSession();
+  // Creating a section needs "problem:create" (admin or approved teacher);
+  // a TA only ever sees sections they staff.
+  const isTeacher = !!session && can(session, "problem:create");
+  const staffSectionIds = session && !isTeacher ? await listStaffSectionIds(session.id) : null;
 
   const [sections, courses, semesters] = await Promise.all([
     prisma.courseSection.findMany({
-      where: session?.role === "ADMIN" ? {} : { teacherId: session?.id },
+      where:
+        session?.role === "ADMIN"
+          ? {}
+          : staffSectionIds
+            ? { id: { in: staffSectionIds } }
+            : { teacherId: session?.id },
       orderBy: { createdAt: "desc" },
       include: {
         course: { include: { department: true } },
@@ -30,13 +41,15 @@ export default async function TeacherSectionsPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <div>
-        <h1 className="font-display text-2xl font-bold">Your sections</h1>
+        <h1 className="font-display text-2xl font-bold">{isTeacher ? "Your sections" : "Sections you help teach"}</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          One running instance of a course, one term, one roster.
+          {isTeacher
+            ? "One running instance of a course, one term, one roster."
+            : "You're a TA on these — open one to reach its roster, assignments, and gradebook."}
         </p>
       </div>
 
-      <NewSectionForm courses={courses} semesters={semesters} />
+      {isTeacher && <NewSectionForm courses={courses} semesters={semesters} />}
 
       <div className="mt-6 overflow-hidden rounded-xl border border-[var(--line)]">
         <table className="w-full min-w-[700px] text-left text-xs">

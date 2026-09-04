@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Download } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { assertSectionStaff } from "@/lib/section-access";
+import { assertSectionStaff, isSectionTeacher } from "@/lib/section-access";
 import { AuthError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { RosterWizard } from "@/components/classroom/RosterWizard";
 import { RosterRowActions } from "@/components/classroom/RosterRowActions";
@@ -26,6 +26,11 @@ export default async function SectionRosterPage({ params }: Props) {
   const section = await prisma.courseSection.findUnique({ where: { id }, select: { id: true, name: true, course: { select: { code: true } } } });
   if (!section) notFound();
 
+  // Roster import and role/status edits are teacher-only (assertSectionTeacher
+  // on the underlying APIs) — a TA gets the read view plus CSV export, which
+  // is staff-scoped.
+  const canManage = session.role === "ADMIN" || (await isSectionTeacher(session.id, id));
+
   const enrollments = await prisma.enrollment.findMany({
     where: { sectionId: id },
     orderBy: [{ role: "asc" }, { createdAt: "asc" }],
@@ -41,9 +46,11 @@ export default async function SectionRosterPage({ params }: Props) {
 
       <h1 className="mt-3 font-display text-2xl font-bold">Roster</h1>
 
-      <div className="mt-4">
-        <RosterWizard sectionId={id} />
-      </div>
+      {canManage && (
+        <div className="mt-4">
+          <RosterWizard sectionId={id} />
+        </div>
+      )}
 
       <div className="mt-6 flex items-center justify-between">
         <h2 className="text-sm font-semibold">Current roster ({enrollments.length})</h2>
@@ -92,7 +99,11 @@ export default async function SectionRosterPage({ params }: Props) {
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <RosterRowActions sectionId={id} enrollmentId={e.id} role={e.role} status={e.status} />
+                  {canManage ? (
+                    <RosterRowActions sectionId={id} enrollmentId={e.id} role={e.role} status={e.status} />
+                  ) : (
+                    <span className="text-[var(--muted)]">—</span>
+                  )}
                 </td>
               </tr>
             ))}

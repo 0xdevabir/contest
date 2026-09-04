@@ -3,6 +3,8 @@ import { Syne, IBM_Plex_Sans, IBM_Plex_Mono, Noto_Sans_Bengali } from "next/font
 import { cookies, headers } from "next/headers";
 import { getSession } from "@/lib/auth";
 import { isEnabled } from "@/lib/flags";
+import { can } from "@/lib/authz";
+import { isStaffAnywhere } from "@/lib/section-access";
 import { prisma } from "@/lib/db";
 import { Suspense } from "react";
 import { SiteChrome } from "@/components/SiteChrome";
@@ -174,6 +176,22 @@ export default async function RootLayout({
     }
   }
 
+  // A nav link into the /teacher panel for approved teachers, and for TAs
+  // who don't own a section but staff one (teacher/layout.tsx's own gate
+  // mirrors this — see can(session, "problem:create") there). Admins reach
+  // the classroom panel through /admin instead, so this is skipped for them.
+  let teacherNav: { href: string; label: string } | null = null;
+  if (user && user.role !== "ADMIN") {
+    if (can(user, "problem:create")) {
+      teacherNav = { href: "/teacher", label: "Teacher" };
+    } else {
+      const classroomOn = await isEnabled("classroom", { userId: user.id, role: user.role });
+      if (classroomOn && (await isStaffAnywhere(user.id))) {
+        teacherNav = { href: "/teacher/sections", label: "Teaching" };
+      }
+    }
+  }
+
   // Phase 11 — unread notification count for the nav bell. Same
   // cheap-single-query, flag-guarded pattern as assignmentsDueSoon above.
   let unreadNotifications = 0;
@@ -336,7 +354,7 @@ export default async function RootLayout({
               <RouteProgress />
             </Suspense>
             <SmoothScroll />
-            <SiteChrome user={user} assignmentsDueSoon={assignmentsDueSoon} unreadNotifications={unreadNotifications}>{children}</SiteChrome>
+            <SiteChrome user={user} assignmentsDueSoon={assignmentsDueSoon} unreadNotifications={unreadNotifications} teacherNav={teacherNav}>{children}</SiteChrome>
           </LocaleProvider>
         </ThemeProvider>
       </body>

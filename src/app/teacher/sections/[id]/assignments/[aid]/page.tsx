@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, ShieldQuestion } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { assertSectionStaff } from "@/lib/section-access";
+import { assertSectionStaff, isSectionTeacher } from "@/lib/section-access";
 import { computeGradebookCached } from "@/lib/gradebook";
 import { AuthError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { PublishToggle } from "@/components/classroom/PublishToggle";
@@ -23,6 +23,8 @@ export default async function AssignmentDetailPage({ params }: Props) {
     if (err instanceof ForbiddenError || err instanceof AuthError) redirect("/teacher/sections");
     throw err;
   }
+
+  const canManage = session.role === "ADMIN" || (await isSectionTeacher(session.id, id));
 
   const assignment = await prisma.assignment.findUnique({
     where: { id: aid },
@@ -65,7 +67,7 @@ export default async function AssignmentDetailPage({ params }: Props) {
             <ShieldQuestion size={13} aria-hidden="true" />
             Integrity console
           </Link>
-          <PublishToggle assignmentId={assignment.id} published={assignment.published} />
+          <PublishToggle assignmentId={assignment.id} published={assignment.published} canManage={canManage} />
         </div>
       </div>
 

@@ -1,10 +1,13 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 import { getSession } from "@/lib/auth";
+import { can } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 
 export default async function TeacherContestsPage() {
   const session = await getSession();
+  if (!can(session, "problem:create")) redirect("/teacher/sections");
 
   const contests = await prisma.contest.findMany({
     where: { OR: [{ createdById: session!.id }, { staff: { some: { userId: session!.id } } }] },

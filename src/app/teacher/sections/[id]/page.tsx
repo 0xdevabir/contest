@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { assertSectionStaff } from "@/lib/section-access";
+import { assertSectionStaff, isSectionTeacher } from "@/lib/section-access";
 import { AuthError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { CopyInviteCode } from "@/components/classroom/CopyInviteCode";
 
@@ -34,6 +34,7 @@ export default async function SectionOverviewPage({ params }: Props) {
   });
   if (!section) notFound();
 
+  const canManage = session.role === "ADMIN" || (await isSectionTeacher(session.id, id));
   const activeCount = await prisma.enrollment.count({ where: { sectionId: id, status: "ACTIVE", role: "STUDENT" } });
   const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/courses?code=${section.inviteCode}`;
 
@@ -50,6 +51,11 @@ export default async function SectionOverviewPage({ params }: Props) {
           <h1 className="mt-1 font-display text-3xl font-bold">{section.course.title} — {section.name}</h1>
           <p className="mt-1 text-sm text-[var(--muted)]">Taught by {section.teacher.name}</p>
         </div>
+        {!canManage && (
+          <span className="rounded-md border border-[var(--line)] bg-[var(--bg-elevated)] px-2 py-1 text-[10px] font-medium text-[var(--muted)]">
+            Viewing as TA
+          </span>
+        )}
       </header>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

@@ -42,6 +42,28 @@ export async function isEnrolledStudent(userId: string, sectionId: string): Prom
   return !!enrollment;
 }
 
+/** Is this user an active TA of any section at all (not scoped to one)? Used
+ * to gate entry into the /teacher panel for TAs who don't own a section. */
+export async function isStaffAnywhere(userId: string): Promise<boolean> {
+  const enrollment = await prisma.enrollment.findFirst({
+    where: { userId, role: "TA", status: "ACTIVE" },
+    select: { id: true },
+  });
+  return !!enrollment;
+}
+
+/** Every section this user has staff access to — taught, or TA'd. */
+export async function listStaffSectionIds(userId: string): Promise<string[]> {
+  const [taught, ta] = await Promise.all([
+    prisma.courseSection.findMany({ where: { teacherId: userId }, select: { id: true } }),
+    prisma.enrollment.findMany({
+      where: { userId, role: "TA", status: "ACTIVE" },
+      select: { sectionId: true },
+    }),
+  ]);
+  return Array.from(new Set([...taught.map((s) => s.id), ...ta.map((e) => e.sectionId)]));
+}
+
 /** Throws unless `actor` is signed in and is the section's teacher (or an admin). */
 export async function assertSectionTeacher(
   actor: SessionUser,

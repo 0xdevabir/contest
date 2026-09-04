@@ -1,10 +1,13 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
+import { can } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { NewCourseForm } from "@/components/classroom/NewCourseForm";
 
 export default async function TeacherCoursesPage() {
   const session = await getSession();
+  if (!can(session, "problem:create")) redirect("/teacher/sections");
 
   const [courses, departments] = await Promise.all([
     prisma.course.findMany({

@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { assertSectionStaff } from "@/lib/section-access";
+import { assertSectionStaff, isSectionTeacher } from "@/lib/section-access";
 import { computeGradebookCached } from "@/lib/gradebook";
 import { AuthError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { GradebookGrid } from "@/components/classroom/GradebookGrid";
@@ -26,6 +26,10 @@ export default async function SectionGradebookPage({ params }: Props) {
   const section = await prisma.courseSection.findUnique({ where: { id }, select: { id: true, name: true, course: { select: { code: true } } } });
   if (!section) notFound();
 
+  // Score overrides are staff-scoped (assertSectionStaff), but CSV export,
+  // snapshots, and adding columns/weights are teacher-only.
+  const canManage = session.role === "ADMIN" || (await isSectionTeacher(session.id, id));
+
   const gradebook = await computeGradebookCached(id);
 
   return (
@@ -46,7 +50,7 @@ export default async function SectionGradebookPage({ params }: Props) {
       </div>
 
       <div className="mt-4">
-        <GradebookGrid sectionId={id} students={gradebook.students} columns={gradebook.columns} />
+        <GradebookGrid sectionId={id} students={gradebook.students} columns={gradebook.columns} canManage={canManage} />
       </div>
     </div>
   );
