@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ThemePicker } from "@/components/ThemePicker";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { InstitutionPicker, type InstitutionOption } from "@/components/InstitutionPicker";
 
 type Initial = {
@@ -180,6 +181,16 @@ export function SettingsForm({
             <span className="field-label">Theme</span>
             <div className="mt-1.5">
               <ThemePicker />
+            </div>
+          </div>
+          <div className="mt-4">
+            <span className="field-label">Language</span>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              Switches the whole site — problem statements keep their own toggle when a
+              Bangla version exists.
+            </p>
+            <div className="mt-1.5">
+              <LocaleToggle />
             </div>
           </div>
           <label className="mt-4 block sm:max-w-xs">

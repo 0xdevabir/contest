@@ -1918,3 +1918,95 @@ model RemoteCredential {
   @@unique([userId, provider])
 }
 
+// ---------------------------------------------------------------------------
+// Phase 15 — Intelligence Layer (docs/phases/PHASE-15-intelligence.md)
+// ---------------------------------------------------------------------------
+
+enum AiJobKind {
+  TESTGEN
+  EDITORIAL
+  VARIANT
+  HINT
+  TRANSLATE
+  RECOMMEND
+}
+
+enum AiJobStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  REJECTED
+}
+
+/// D1/D2 — one row per AI call. Every feature schema-validates its input,
+/// checks the budget, checks the response cache, calls the model, then
+/// persists here regardless of outcome — this is the audit trail "AI drafts,
+/// humans approve" (the phase's governing rule) points back to.
+model AiJob {
+  id            String      @id @default(cuid())
+  kind          AiJobKind
+  status        AiJobStatus @default(PENDING)
+  requestedById String
+  institutionId String?
+  /// Hash of the input payload — the response cache key.
+  inputHash     String
+  input         Json
+  output        Json?
+  error         String?
+  model         String
+  inputTokens   Int         @default(0)
+  outputTokens  Int         @default(0)
+  cachedTokens  Int         @default(0)
+  costCents     Float       @default(0)
+  /// Non-null once a human accepted or rejected the draft.
+  reviewedById  String?
+  reviewedAt    DateTime?
+  accepted      Boolean?
+  createdAt     DateTime    @default(now())
+  finishedAt    DateTime?
+
+  @@index([kind, status, createdAt])
+  @@index([inputHash])
+  @@index([institutionId, createdAt])
+}
+
+/// D2 — per-institution monthly token budget, enforced before every call
+/// (src/lib/ai/budget.ts). "A runaway loop must hit a wall, not a bill."
+model AiBudget {
+  institutionId String   @id
+  monthlyCents  Float    @default(2000)
+  usedCents     Float    @default(0)
+  periodStart   DateTime
+  hardStop      Boolean  @default(true)
+}
+
+/// D4 — deterministic recommender output (src/lib/ai/recommend/score.ts),
+/// precomputed nightly. `reason` is the only AI-generated part.
+model ProblemRecommendation {
+  userId     String
+  problemId  String
+  score      Float
+  reason     String   @default("")
+  computedAt DateTime @default(now())
+
+  @@id([userId, problemId])
+  @@index([userId, score])
+}
+
+/// D5 — one row per hint served. `hint` is stored so teachers can audit
+/// leakage after the fact even though the analytics view only ever shows
+/// count/level (never content) to a teacher.
+model HintRequest {
+  id           String   @id @default(cuid())
+  userId       String
+  problemId    String
+  submissionId String?
+  level        Int
+  hint         String
+  helpful      Boolean?
+  createdAt    DateTime @default(now())
+
+  @@index([userId, problemId])
+}
+

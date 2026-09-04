@@ -37,7 +37,11 @@ export type Action =
   | "gradebook:export"
   | "gradebook:snapshot"
   | "comment:moderate"
-  | "editorial:manage";
+  | "editorial:manage"
+  // Phase 15 — AI intelligence layer.
+  | "ai:author"
+  | "ai:hint"
+  | "ai:viewUsage";
 
 export type Actor = SessionUser | null;
 
@@ -106,6 +110,13 @@ const RULES: Record<Action, (actor: SessionUser, resource?: Resource) => boolean
   // Phase 11 — community.
   "comment:moderate": (a) => isAdmin(a),
   "editorial:manage": (a, r) => isAdmin(a) || (isApprovedTeacher(a) && ownsStrict(a, r)),
+  // Phase 15 — AI intelligence layer. "author" covers testgen/editorial/
+  // variant/translate — every draft-producing feature scoped to the
+  // problem's owner; hints are any signed-in student acting on their own
+  // submission (ownsStrict on the submission's userId); usage is admin-only.
+  "ai:author": (a, r) => isAdmin(a) || (isApprovedTeacher(a) && ownsStrict(a, r)),
+  "ai:hint": (a, r) => ownsStrict(a, r),
+  "ai:viewUsage": (a) => isAdmin(a),
 };
 
 export function can(actor: Actor, action: Action, resource?: Resource): boolean {

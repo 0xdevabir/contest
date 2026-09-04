@@ -39,6 +39,8 @@
     "autoscale-tick:start": "tsx worker/src/autoscale-tick.ts",
     "slo-alert-tick:dev": "tsx watch worker/src/slo-alert-tick.ts",
     "slo-alert-tick:start": "tsx worker/src/slo-alert-tick.ts",
+    "recommend-tick:dev": "tsx watch worker/src/recommend-tick.ts",
+    "recommend-tick:start": "tsx worker/src/recommend-tick.ts",
     "loadtest": "tsx scripts/loadtest/contest.ts",
     "loadtest:live": "tsx scripts/loadtest/live-contest.ts",
     "seed-load": "tsx scripts/seed-load.ts",
@@ -46,12 +48,15 @@
     "test:watch": "vitest",
     "test:golden": "vitest run tests/golden",
     "typecheck": "tsc --noEmit",
-    "verify": "npm run typecheck && npm run lint && npm run test"
+    "check:i18n": "tsx scripts/check-i18n.ts",
+    "check:contrast": "tsx scripts/check-contrast.ts",
+    "verify": "npm run typecheck && npm run lint && npm run test && npm run check:i18n && npm run check:contrast"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.123.0",
     "@asteasolutions/zod-to-openapi": "^9.1.0",
     "@aws-sdk/client-s3": "^3.1121.0",
     "@aws-sdk/s3-request-presigner": "^3.1121.0",

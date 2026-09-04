@@ -8,6 +8,8 @@ import type { SessionUser } from "@/lib/auth";
 import { NavAuth } from "@/components/NavAuth";
 import { BrandMark, Wordmark } from "@/components/BrandMark";
 import { ThemeMenu } from "@/components/ThemePicker";
+import { LocaleToggle } from "@/components/LocaleToggle";
+import { useDictionary } from "@/i18n/LocaleProvider";
 import { BRAND } from "@/lib/brand";
 
 const FOOTER_LINKS: { heading: string; links: { href: string; label: string }[] }[] = [
@@ -60,6 +62,7 @@ export function SiteChrome({
   unreadNotifications?: number;
 }) {
   const pathname = usePathname();
+  const dict = useDictionary();
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -106,14 +109,15 @@ export function SiteChrome({
             className="hidden items-center justify-end gap-x-5 text-sm md:flex"
           >
             <Link href="/problems" className="link-quiet">
-              Problems
+              {dict.nav.problems}
             </Link>
             <Link href="/contests" className="link-quiet">
-              Contests
+              {dict.nav.contests}
             </Link>
             <Link href="/leaderboard" className="link-quiet">
-              Leaderboard
+              {dict.nav.leaderboard}
             </Link>
+            <LocaleToggle />
             <ThemeMenu />
             <NavAuth user={user} assignmentsDueSoon={assignmentsDueSoon} unreadNotifications={unreadNotifications} />
           </nav>

@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import type { Role } from "@prisma/client";
 import { prisma } from "./db";
 import { normalizeThemeMode, type ThemeMode } from "./theme";
+import { normalizeLocale, type Locale } from "@/i18n";
 import { hashToken, rawToken } from "./password";
 
 const COOKIE = "diu_contesthub_session";
@@ -21,6 +22,10 @@ export type SessionUser = {
   emailVerified: boolean;
   /** Read fresh from the DB so the theme follows the account across devices. */
   theme: ThemeMode;
+  /** Phase 14 — same cross-device semantics as `theme`. Optional so existing
+   * test fixtures that predate this field keep compiling; `toSessionUser`
+   * always populates it for real sessions via `normalizeLocale`. */
+  locale?: Locale;
 };
 
 const SESSION_SELECT = {
@@ -34,6 +39,7 @@ const SESSION_SELECT = {
   teacherApprovedAt: true,
   emailVerified: true,
   theme: true,
+  locale: true,
 } as const;
 
 function secretKey() {
@@ -52,6 +58,7 @@ function toSessionUser(user: {
   teacherApprovedAt: Date | null;
   emailVerified: Date | null;
   theme: string;
+  locale: string;
 }): SessionUser {
   return {
     id: user.id,
@@ -63,6 +70,7 @@ function toSessionUser(user: {
     teacherApprovedAt: user.teacherApprovedAt,
     emailVerified: Boolean(user.emailVerified),
     theme: normalizeThemeMode(user.theme),
+    locale: normalizeLocale(user.locale),
   };
 }
 

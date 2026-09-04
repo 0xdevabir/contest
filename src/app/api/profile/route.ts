@@ -4,6 +4,7 @@ import { getSession, refreshSessionFromDb } from "@/lib/auth";
 import { assertCan } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { THEME_COOKIE, THEME_IDS } from "@/lib/theme";
+import { LOCALE_COOKIE, LOCALES } from "@/i18n";
 import { toResponse, ValidationError } from "@/lib/errors";
 
 export const runtime = "nodejs";
@@ -14,6 +15,7 @@ const patchSchema = z.object({
   studentId: z.string().trim().max(40).nullable().optional(),
   department: z.string().trim().max(80).nullable().optional(),
   theme: z.enum(["system", ...THEME_IDS] as [string, ...string[]]).optional(),
+  locale: z.enum(LOCALES).optional(),
   editorFontSize: z.number().int().min(12).max(20).optional(),
   profilePublic: z.boolean().optional(),
   showEmail: z.boolean().optional(),
@@ -52,6 +54,7 @@ async function handlePatch(req: Request): Promise<NextResponse> {
       ...(data.studentId !== undefined ? { studentId: data.studentId || null } : {}),
       ...(data.department !== undefined ? { department: data.department || null } : {}),
       ...(data.theme !== undefined ? { theme: data.theme } : {}),
+      ...(data.locale !== undefined ? { locale: data.locale } : {}),
       ...(data.editorFontSize !== undefined ? { editorFontSize: data.editorFontSize } : {}),
       ...(data.profilePublic !== undefined ? { profilePublic: data.profilePublic } : {}),
       ...(data.showEmail !== undefined ? { showEmail: data.showEmail } : {}),
@@ -62,9 +65,20 @@ async function handlePatch(req: Request): Promise<NextResponse> {
   // name immediately (role/institution are always re-read from the DB anyway).
   const updated = await refreshSessionFromDb(session.id);
 
-  const res = NextResponse.json({ ok: true, theme: updated?.theme ?? data.theme });
+  const res = NextResponse.json({
+    ok: true,
+    theme: updated?.theme ?? data.theme,
+    locale: updated?.locale ?? data.locale,
+  });
   if (data.theme) {
     res.cookies.set(THEME_COOKIE, data.theme, {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: "lax",
+    });
+  }
+  if (data.locale) {
+    res.cookies.set(LOCALE_COOKIE, data.locale, {
       path: "/",
       maxAge: 60 * 60 * 24 * 365,
       sameSite: "lax",

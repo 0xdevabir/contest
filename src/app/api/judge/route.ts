@@ -37,6 +37,9 @@ type Body = {
   stdin?: string;
   contestId?: string;
   assignmentId?: string;
+  /** Phase 14 D4 — set by the offline submission queue so a retried/replayed
+   * flush is recognised as the same submission instead of judged twice. */
+  clientRequestId?: string;
 };
 
 async function persistSubmission(opts: {
@@ -52,6 +55,7 @@ async function persistSubmission(opts: {
   /** Phase 10 D3 — overrides the default (current-published) version id
    * with a per-student generated variant's frozen version, when one applies. */
   problemVersionId?: string | null;
+  clientRequestId?: string;
 }) {
   if (!opts.userId) return;
   try {
@@ -74,6 +78,7 @@ async function persistSubmission(opts: {
         report: opts.report != null ? JSON.parse(JSON.stringify(opts.report)) : undefined,
         problemRefId: ref?.problemId ?? null,
         problemVersionId: opts.problemVersionId ?? ref?.versionId ?? null,
+        clientRequestId: opts.clientRequestId ?? null,
       },
     });
 
@@ -109,6 +114,7 @@ async function enqueueQueuedSubmission(opts: {
   contestLive: boolean;
   /** Phase 10 D3 — see `persistSubmission`'s `problemVersionId`. */
   problemVersionId?: string | null;
+  clientRequestId?: string;
 }): Promise<NextResponse | null> {
   const ref = await getProblemRef(opts.problemId).catch(() => null);
   const priority = priorityFor({ contestLive: opts.contestLive, authenticated: true });
@@ -126,6 +132,7 @@ async function enqueueQueuedSubmission(opts: {
       queuedAt: new Date(),
       problemRefId: ref?.problemId ?? null,
       problemVersionId: opts.problemVersionId ?? ref?.versionId ?? null,
+      clientRequestId: opts.clientRequestId ?? null,
     },
   });
 
@@ -227,6 +234,30 @@ async function handlePost(req: NextRequest): Promise<NextResponse> {
 
   if (!session) {
     throw new AuthError("Sign in to submit an answer.");
+  }
+
+  // Idempotent replay (Phase 14 D4): the offline queue retries a flush that
+  // may have already reached the server (e.g. the response was lost when
+  // the connection dropped). Recognise it by (userId, clientRequestId) and
+  // hand back the existing outcome instead of judging it a second time —
+  // never re-consumes rate limit budget either.
+  if (mode === "submit" && body.clientRequestId) {
+    const existing = await prisma.submission.findUnique({
+      where: { userId_clientRequestId: { userId: session.id, clientRequestId: body.clientRequestId } },
+    });
+    if (existing) {
+      if (existing.state === "QUEUED" || existing.state === "JUDGING") {
+        return NextResponse.json({ ok: true, submissionId: existing.id, state: existing.state }, { status: 202 });
+      }
+      return NextResponse.json({
+        ok: true,
+        verdict: existing.verdict,
+        results: [],
+        score: existing.score,
+        maxScore: existing.maxScore,
+        saved: true,
+      });
+    }
   }
 
   // Rate limit submissions: per-user, and per-(user, problem) to blunt
@@ -394,6 +425,7 @@ async function handlePost(req: NextRequest): Promise<NextResponse> {
       code: body.code,
       contestLive,
       problemVersionId: variantVersionId,
+      clientRequestId: body.clientRequestId,
     });
     if (enqueued) return enqueued;
     if (!(await redisAvailable())) {
@@ -429,6 +461,7 @@ async function handlePost(req: NextRequest): Promise<NextResponse> {
     stderr: result.compileStderr || shown?.stderr,
     report: result,
     problemVersionId: variantVersionId,
+    clientRequestId: body.clientRequestId,
   });
 
   return NextResponse.json({

@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Syne, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
-import { cookies } from "next/headers";
+import { Syne, IBM_Plex_Sans, IBM_Plex_Mono, Noto_Sans_Bengali } from "next/font/google";
+import { cookies, headers } from "next/headers";
 import { getSession } from "@/lib/auth";
 import { isEnabled } from "@/lib/flags";
 import { prisma } from "@/lib/db";
@@ -9,8 +9,12 @@ import { SiteChrome } from "@/components/SiteChrome";
 import { SmoothScroll } from "@/components/SmoothScroll";
 import { RouteProgress } from "@/components/RouteProgress";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { ServiceWorkerRegister, PwaKillSwitch } from "@/components/ServiceWorkerRegister";
+import { OfflineIndicator } from "@/components/OfflineIndicator";
 import { BRAND } from "@/lib/brand";
 import { THEMES, THEME_COOKIE, normalizeThemeMode, themeCss } from "@/lib/theme";
+import { LOCALE_COOKIE, resolveLocale } from "@/i18n";
+import { LocaleProvider } from "@/i18n/LocaleProvider";
 import "./globals.css";
 
 const syne = Syne({
@@ -33,6 +37,17 @@ const plexMono = IBM_Plex_Mono({
   subsets: ["latin"],
   variable: "--font-plex-mono",
   weight: ["400", "500", "600"],
+  display: "swap",
+  preload: false,
+});
+
+// Bangla UI (Phase 14, D3). The system font on many mid-range Android
+// devices renders Bangla conjuncts poorly, so this is self-hosted rather
+// than left to fall back — only preloaded when the resolved locale is "bn".
+const notoBengali = Noto_Sans_Bengali({
+  subsets: ["bengali"],
+  variable: "--font-bengali",
+  weight: ["400", "500", "600", "700"],
   display: "swap",
   preload: false,
 });
@@ -177,6 +192,17 @@ export default async function RootLayout({
   );
   const htmlTheme = initialTheme === "system" ? undefined : initialTheme;
 
+  // Phase 14 D1 — resolved server-side so the very first RSC payload is
+  // already in the right language: user preference -> locale cookie ->
+  // Accept-Language -> English.
+  const hdrs = await headers();
+  const locale = resolveLocale({
+    userLocale: user?.locale,
+    cookieLocale: jar.get(LOCALE_COOKIE)?.value,
+    acceptLanguage: hdrs.get("accept-language"),
+  });
+  const pwaOn = await isEnabled("pwa", user ? { userId: user.id, role: user.role } : undefined);
+
   // JSON-LD: organization + website + software application. Helps Google
   // build a richer SERP card (sitelinks, software app rich result, etc.).
   const jsonLd = [
@@ -270,18 +296,31 @@ export default async function RootLayout({
   ];
 
   return (
-    <html lang="en" data-theme={htmlTheme} suppressHydrationWarning>
+    <html
+      lang={locale}
+      data-theme={htmlTheme}
+      data-locale={locale}
+      suppressHydrationWarning
+    >
       <head>
         {/* Every colour token in the app, generated from src/lib/theme.ts. */}
         <style id="theme-tokens" dangerouslySetInnerHTML={{ __html: themeCss() }} />
       </head>
       <body
-        className={`${syne.variable} ${plexSans.variable} ${plexMono.variable} antialiased`}
+        className={`${syne.variable} ${plexSans.variable} ${plexMono.variable} ${notoBengali.variable} antialiased`}
         style={
           {
             ["--font-display" as string]: "var(--font-syne), system-ui, sans-serif",
-            ["--font-body" as string]: "var(--font-plex-sans), system-ui, sans-serif",
+            // Bangla prose gets the self-hosted Bengali face ahead of the
+            // Latin body font; Latin text inside it (code, verdicts, ranks)
+            // is unaffected since those live in --font-mono / data contexts.
+            ["--font-body" as string]:
+              locale === "bn"
+                ? "var(--font-bengali), var(--font-plex-sans), system-ui, sans-serif"
+                : "var(--font-plex-sans), system-ui, sans-serif",
             ["--font-mono" as string]: "var(--font-plex-mono), ui-monospace, monospace",
+            // D3 — Bangla needs ~1.7 line height vs 1.5 for Latin.
+            lineHeight: locale === "bn" ? 1.7 : undefined,
           } as React.CSSProperties
         }
       >
@@ -290,11 +329,15 @@ export default async function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         <ThemeProvider initial={initialTheme} signedIn={!!user}>
-          <Suspense fallback={null}>
-            <RouteProgress />
-          </Suspense>
-          <SmoothScroll />
-          <SiteChrome user={user} assignmentsDueSoon={assignmentsDueSoon} unreadNotifications={unreadNotifications}>{children}</SiteChrome>
+          <LocaleProvider initial={locale} signedIn={!!user}>
+            {pwaOn ? <ServiceWorkerRegister /> : <PwaKillSwitch />}
+            {pwaOn ? <OfflineIndicator /> : null}
+            <Suspense fallback={null}>
+              <RouteProgress />
+            </Suspense>
+            <SmoothScroll />
+            <SiteChrome user={user} assignmentsDueSoon={assignmentsDueSoon} unreadNotifications={unreadNotifications}>{children}</SiteChrome>
+          </LocaleProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -22,7 +22,8 @@ export type Flag =
   | "platformApi"
   | "scaleOps"
   | "i18n"
-  | "pwa";
+  | "pwa"
+  | "ai";
 
 export type FlagContext = { userId?: string; role?: Role };
 

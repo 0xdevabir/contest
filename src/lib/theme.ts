@@ -272,7 +272,9 @@ export const THEMES: Record<ThemeId, Theme> = {
       text: "#121820",
       muted: "#5a6a7d",
       mutedDim: "#7a8a9c",
-      accent: "#1f9e68",
+      // Phase 14 D5 — darkened from #1f9e68 so white button text (accentContrast)
+      // clears WCAG AA's 4.5:1 (was 3.42:1); see scripts/check-contrast.ts.
+      accent: "#1a8658",
       accentSoft: "#2cb87a",
       accentDim: "#167a50",
       accentContrast: "#ffffff",
@@ -299,15 +301,19 @@ export const THEMES: Record<ThemeId, Theme> = {
       text: "#073642",
       muted: "#57706f",
       mutedDim: "#8a9797",
-      accent: "#1f8a82",
+      // Phase 14 D5 — darkened from #1f8a82 (button-text contrast was 4.19:1).
+      accent: "#1e847d",
       accentSoft: "#2aa198",
       accentDim: "#166862",
       accentContrast: "#ffffff",
       warn: "#a37400",
       danger: "#dc322f",
       info: "#268bd2",
-      diff: ["#6f8700", "#1f8a82", "#268bd2", "#a37400", "#cb4b16", "#dc322f", "#6c71c4"],
-      tier: ["#657b83", "#859900", "#2aa198", "#268bd2", "#6c71c4", "#cb4b16", "#b58900", "#dc322f"],
+      diff: ["#6f8700", "#1e847d", "#268bd2", "#a37400", "#cb4b16", "#dc322f", "#6c71c4"],
+      // tier[1]/[2]/[6] darkened by a hair each — the rating badge ramp
+      // was the phase doc's flagged "known problem area" and all three
+      // were just under 3:1 against `bg`; see scripts/check-contrast.ts.
+      tier: ["#657b83", "#849700", "#299e95", "#268bd2", "#6c71c4", "#cb4b16", "#b38800", "#dc322f"],
     }
   ),
 };

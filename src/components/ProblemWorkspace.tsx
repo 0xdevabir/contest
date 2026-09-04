@@ -25,6 +25,9 @@ import { difficultyClass } from "@/lib/difficulty";
 import type { TerminalHandle } from "./InteractiveTerminal";
 import type { JudgeResponse, JudgeVerdict, Problem, ProblemSolver } from "@/lib/types";
 import { clearDraft, loadDraft, loadSolved, markSolved, saveDraft } from "@/lib/progress";
+import { clearDraftOffline, loadDraftOffline, saveDraftOffline } from "@/lib/offline/drafts";
+import { enqueueSubmission, onSubmissionSent } from "@/lib/offline/queue";
+import { useT } from "@/i18n/LocaleProvider";
 
 const InteractiveTerminal = dynamic(
   () => import("./InteractiveTerminal").then((m) => m.InteractiveTerminal),
@@ -32,6 +35,11 @@ const InteractiveTerminal = dynamic(
 );
 
 const RUNNER_ENABLED = Boolean(process.env.NEXT_PUBLIC_RUNNER_URL);
+
+// The judge is C-only today; keyed explicitly (rather than left implicit) so
+// the IndexedDB draft store's (problemId, language) shape (D4) doesn't need
+// a migration the day a second language ships.
+const DRAFT_LANGUAGE = "c";
 
 // Interactive runs are wall-clock bound and include human typing time, so the
 // per-problem judging limit would be far too tight here.
@@ -210,6 +218,7 @@ export function ProblemWorkspace({
   initialSolvers = [],
   initialSolverCount = 0,
 }: Props) {
+  const { dict } = useT();
   const [code, setCode] = useState(problem.starterCode);
   const [stdin, setStdin] = useState(problem.sampleInput);
   const [pending, startTransition] = useTransition();
@@ -229,6 +238,9 @@ export function ProblemWorkspace({
   // Set when POST /api/judge returns 202 (judgeQueue on) — tracked live via
   // SSE/poll fallback (src/components/SubmissionStatus.tsx) until a verdict lands.
   const [pendingSubmissionId, setPendingSubmissionId] = useState<string | null>(null);
+  // Set while a submission made offline sits in the IndexedDB queue (D4),
+  // waiting to be sent by ServiceWorkerRegister's reconnect flush.
+  const [offlineQueuedId, setOfflineQueuedId] = useState<string | null>(null);
   const liveStatus = useSubmissionStatus(pendingSubmissionId);
   const terminalRef = useRef<TerminalHandle | null>(null);
 
@@ -239,6 +251,10 @@ export function ProblemWorkspace({
   }, []);
 
   useEffect(() => {
+    // Fast path: localStorage is synchronous, so it paints instantly with no
+    // flash of the starter code. IndexedDB (below) is the durable copy — a
+    // crashed tab loses localStorage's most recent writes far more easily
+    // than an IndexedDB transaction, so it wins if it has something newer.
     const saved = loadDraft(problem.id);
     setCode(saved ?? problem.starterCode);
     setStdin(problem.sampleInput);
@@ -247,11 +263,20 @@ export function ProblemWorkspace({
     setCelebrate(false);
     setSolversRefresh(0);
     setMobilePane("question");
+
+    let cancelled = false;
+    void loadDraftOffline(problem.id, DRAFT_LANGUAGE).then((offlineDraft) => {
+      if (!cancelled && offlineDraft != null) setCode(offlineDraft);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [problem.id, problem.starterCode, problem.sampleInput]);
 
   useEffect(() => {
     const t = setTimeout(() => {
       saveDraft(problem.id, code);
+      void saveDraftOffline(problem.id, DRAFT_LANGUAGE, code);
     }, 400);
     return () => clearTimeout(t);
   }, [code, problem.id]);
@@ -268,6 +293,29 @@ export function ProblemWorkspace({
         });
         return;
       }
+
+      // Offline submissions queue instead of failing outright (D4). `run`
+      // has no offline story — there's nothing to execute against locally.
+      if (mode === "submit" && typeof navigator !== "undefined" && !navigator.onLine) {
+        setBusy(false);
+        setPendingSubmissionId(null);
+        const queued = await enqueueSubmission({
+          problemId: problem.id,
+          code,
+          stdin: problem.sampleInput,
+          contestId: contestId || undefined,
+          assignmentId: assignmentId || undefined,
+        });
+        setOfflineQueuedId(queued.id);
+        setResult({
+          ok: true,
+          verdict: "PENDING",
+          results: [],
+          message: "You're offline — this submission is queued and will send automatically once you reconnect.",
+        });
+        return;
+      }
+
       setBusy(true);
       setResult(null);
       setPendingSubmissionId(null);
@@ -299,18 +347,62 @@ export function ProblemWorkspace({
           if (!contestId) setSolversRefresh((n) => n + 1);
         }
       } catch {
-        setResult({
-          ok: false,
-          verdict: "ERROR",
-          results: [],
-          message: "Could not reach the judge.",
-        });
+        // The connection dropped mid-request — queue it rather than losing
+        // the attempt outright, same as the pre-flight offline check above.
+        if (mode === "submit") {
+          const queued = await enqueueSubmission({
+            problemId: problem.id,
+            code,
+            stdin: problem.sampleInput,
+            contestId: contestId || undefined,
+            assignmentId: assignmentId || undefined,
+          });
+          setOfflineQueuedId(queued.id);
+          setResult({
+            ok: true,
+            verdict: "PENDING",
+            results: [],
+            message: "Could not reach the judge — this submission is queued and will send automatically once you reconnect.",
+          });
+        } else {
+          setResult({
+            ok: false,
+            verdict: "ERROR",
+            results: [],
+            message: "Could not reach the judge.",
+          });
+        }
       } finally {
         if (!pendingSubmissionId) setBusy(false);
       }
     },
     [assignmentId, code, contestId, loggedIn, pendingSubmissionId, problem.id, problem.sampleInput, stdin, tab]
   );
+
+  // Hands a queued-offline submission off to the normal live-status flow
+  // once it actually reaches the server (D4) — only meaningful if this
+  // workspace is still mounted when reconnection happens, which covers the
+  // common "wifi blipped for 30 seconds" lab case this phase targets.
+  useEffect(() => {
+    return onSubmissionSent(({ id, submissionId, verdict }) => {
+      if (id !== offlineQueuedId) return;
+      setOfflineQueuedId(null);
+      if (submissionId) {
+        setPendingSubmissionId(submissionId);
+        setBusy(true);
+        return;
+      }
+      if (verdict) {
+        setResult({ ok: true, verdict: verdict as JudgeVerdict, results: [] });
+        if (verdict === "AC") {
+          markSolved(problem.id);
+          setSolved(true);
+          setCelebrate(true);
+          if (!contestId) setSolversRefresh((n) => n + 1);
+        }
+      }
+    });
+  }, [offlineQueuedId, problem.id, contestId]);
 
   // Finalizes a queued submission once useSubmissionStatus reports a
   // terminal state — mirrors the synchronous branch above exactly so AC
@@ -362,11 +454,17 @@ export function ProblemWorkspace({
     startTransition(() => {
       setCode(problem.starterCode);
       clearDraft(problem.id);
+      void clearDraftOffline(problem.id, DRAFT_LANGUAGE);
       setResult(null);
     });
   }
 
-  const verdict = result ? VERDICT[result.verdict] ?? VERDICT.ERROR : null;
+  const verdict = result
+    ? {
+        ...(VERDICT[result.verdict] ?? VERDICT.ERROR),
+        title: dict.judge.verdict[result.verdict] ?? dict.judge.verdict.ERROR,
+      }
+    : null;
   const passed = useMemo(
     () => (result?.results ?? []).filter((r) => r.verdict === "AC").length,
     [result]
@@ -384,6 +482,11 @@ export function ProblemWorkspace({
 
   return (
     <div className="mx-auto max-w-[1500px] px-3 py-3 sm:px-6 sm:py-5">
+      {/* D5 — a verdict is announced to a screen reader without hunting for
+       * it; visually hidden, so sighted users still rely on the panel below. */}
+      <div role="status" aria-live="polite" className="sr-only">
+        {verdict ? `${verdict.title}${totalTests ? ` — ${passed}/${totalTests} tests passed` : ""}` : ""}
+      </div>
       <AcceptedCelebration
         open={celebrate}
         onClose={() => setCelebrate(false)}
@@ -413,7 +516,7 @@ export function ProblemWorkspace({
           }`}
           onClick={() => setMobilePane("question")}
         >
-          Question
+          {dict.problem.tabQuestion}
         </button>
         <button
           type="button"
@@ -426,7 +529,7 @@ export function ProblemWorkspace({
           }`}
           onClick={() => setMobilePane("code")}
         >
-          Code
+          {dict.problem.tabCode}
         </button>
       </div>
 
@@ -599,7 +702,7 @@ export function ProblemWorkspace({
                 title="Run your code on the input below without grading it"
               >
                 <Play size={13} aria-hidden />
-                Run
+                {dict.judge.runButton}
               </button>
             )}
             {loggedIn ? (
@@ -620,12 +723,12 @@ export function ProblemWorkspace({
                   <span className="animate-pulse-soft">
                     {pendingSubmissionId
                       ? liveStatus.state === "JUDGING"
-                        ? "Judging…"
-                        : "Queued…"
-                      : "Submitting…"}
+                        ? dict.judge.judging
+                        : dict.judge.queued
+                      : `${dict.judge.submitButton}…`}
                   </span>
                 ) : (
-                  "Submit"
+                  dict.judge.submitButton
                 )}
               </button>
             ) : (

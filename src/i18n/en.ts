@@ -145,4 +145,7 @@ export const en = {
   },
 } as const;
 
-export type Dict = typeof en;
+/** Widens every string literal to `string` so `bn.ts` can hold different
+ * text at the same keys — only the *shape* (which keys exist) is enforced. */
+type Widen<T> = T extends string ? string : { [K in keyof T]: Widen<T[K]> };
+export type Dict = Widen<typeof en>;
