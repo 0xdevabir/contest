@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Activity,
   Braces,
+  GraduationCap,
   LayoutDashboard,
   Settings,
   Sparkles,
@@ -19,8 +20,18 @@ const NAV = [
   { href: "/profile/settings", label: "Settings", icon: Settings },
 ];
 
-export function ProfileNav({ name }: { name: string }) {
+export function ProfileNav({
+  name,
+  teaching,
+}: {
+  name: string;
+  teaching?: { visible: boolean; pending: boolean };
+}) {
   const pathname = usePathname();
+
+  const nav = teaching?.visible
+    ? [...NAV.slice(0, 1), { href: "/profile/teaching", label: "Teaching", icon: GraduationCap }, ...NAV.slice(1)]
+    : NAV;
 
   return (
     <aside className="lg:sticky lg:top-24 lg:self-start">
@@ -32,7 +43,7 @@ export function ProfileNav({ name }: { name: string }) {
         aria-label="Profile"
         className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {NAV.map(({ href, label, icon: Icon, exact }) => {
+        {nav.map(({ href, label, icon: Icon, exact }) => {
           const active = exact ? pathname === href : pathname.startsWith(href);
           return (
             <Link
@@ -46,6 +57,12 @@ export function ProfileNav({ name }: { name: string }) {
             >
               <Icon size={15} aria-hidden />
               {label}
+              {href === "/profile/teaching" && teaching?.pending && (
+                <span
+                  className="ml-auto size-1.5 shrink-0 rounded-full bg-[var(--warn)]"
+                  title="Teacher application pending approval"
+                />
+              )}
             </Link>
           );
         })}

@@ -10,12 +10,10 @@ export function NavAuth({
   user,
   assignmentsDueSoon = 0,
   unreadNotifications = 0,
-  teacherNav = null,
 }: {
   user: SessionUser | null;
   assignmentsDueSoon?: number;
   unreadNotifications?: number;
-  teacherNav?: { href: string; label: string } | null;
 }) {
   const router = useRouter();
 
@@ -42,11 +40,6 @@ export function NavAuth({
       {user.role === "ADMIN" && (
         <Link href="/admin" className="text-[var(--accent)] transition-opacity hover:opacity-80">
           Admin
-        </Link>
-      )}
-      {teacherNav && (
-        <Link href={teacherNav.href} className="text-[var(--accent)] transition-opacity hover:opacity-80">
-          {teacherNav.label}
         </Link>
       )}
       {user.role === "STUDENT" && assignmentsDueSoon > 0 && (
