@@ -149,9 +149,9 @@ export async function deliverWebhookAttempt(deliveryId: string, attempt: number)
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-ContestHub-Signature": `sha256=${signature}`,
-        "X-ContestHub-Timestamp": timestamp,
-        "X-ContestHub-Event": delivery.event,
+        "X-CodeHub-Signature": `sha256=${signature}`,
+        "X-CodeHub-Timestamp": timestamp,
+        "X-CodeHub-Event": delivery.event,
       },
       body: rawBody,
       signal: AbortSignal.timeout(10_000),

@@ -1,8 +1,9 @@
-const SOLVED_KEY = "diu-contesthub:solved";
-const CODE_PREFIX = "diu-contesthub:code:";
+const SOLVED_KEY = "codehub:solved";
+const CODE_PREFIX = "codehub:code:";
 
-const LEGACY_SOLVED_KEY = "contest-hub:solved";
-const LEGACY_CODE_PREFIX = "contest-hub:code:";
+/** Pre-rebrand namespaces — migrate once onto `codehub:*`. */
+const LEGACY_SOLVED_KEYS = ["diu-contesthub:solved", "contest-hub:solved"] as const;
+const LEGACY_CODE_PREFIXES = ["diu-contesthub:code:", "contest-hub:code:"] as const;
 
 function available() {
   return typeof window !== "undefined" && !!window.localStorage;
@@ -12,20 +13,24 @@ function available() {
 function migrate() {
   if (!available()) return;
   try {
-    const legacySolved = localStorage.getItem(LEGACY_SOLVED_KEY);
-    if (legacySolved && !localStorage.getItem(SOLVED_KEY)) {
-      localStorage.setItem(SOLVED_KEY, legacySolved);
+    for (const legacy of LEGACY_SOLVED_KEYS) {
+      const legacySolved = localStorage.getItem(legacy);
+      if (legacySolved && !localStorage.getItem(SOLVED_KEY)) {
+        localStorage.setItem(SOLVED_KEY, legacySolved);
+      }
+      if (legacySolved) localStorage.removeItem(legacy);
     }
-    if (legacySolved) localStorage.removeItem(LEGACY_SOLVED_KEY);
 
     for (const key of Object.keys(localStorage)) {
-      if (!key.startsWith(LEGACY_CODE_PREFIX)) continue;
-      const next = CODE_PREFIX + key.slice(LEGACY_CODE_PREFIX.length);
-      const value = localStorage.getItem(key);
-      if (value != null && !localStorage.getItem(next)) {
-        localStorage.setItem(next, value);
+      for (const legacyPrefix of LEGACY_CODE_PREFIXES) {
+        if (!key.startsWith(legacyPrefix)) continue;
+        const next = CODE_PREFIX + key.slice(legacyPrefix.length);
+        const value = localStorage.getItem(key);
+        if (value != null && !localStorage.getItem(next)) {
+          localStorage.setItem(next, value);
+        }
+        localStorage.removeItem(key);
       }
-      localStorage.removeItem(key);
     }
   } catch {
     // storage disabled or full — progress simply stays where it is

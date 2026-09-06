@@ -1,4 +1,4 @@
-# DIU ContestHub
+# CodeHub
 
 The competitive programming platform of **Daffodil International University** — exam-style
 C practice plus inter-university contests across 70+ registered Bangladeshi institutions.

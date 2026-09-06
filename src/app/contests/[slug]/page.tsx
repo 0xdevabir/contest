@@ -58,7 +58,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description =
     (contest.description?.trim() ||
       `${archived ? "Archived" : "Live"} C programming contest: ${contest.durationMinutes} minutes, ${contest._count.problems} problems, ${contest._count.registrations} registered.`) +
-    ` ICPC-style standings with penalty per wrong submission on DIU ContestHub.`;
+    ` ICPC-style standings with penalty per wrong submission on CodeHub.`;
   return buildPageMetadata({
     title: `${contest.title} — ${archived ? "Past contest & final standings" : "Live C programming contest"}`,
     description,

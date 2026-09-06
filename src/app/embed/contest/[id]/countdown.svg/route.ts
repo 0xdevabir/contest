@@ -45,7 +45,7 @@ export async function GET(req: Request, { params }: Params) {
   const contest = await prisma.contest.findUnique({ where: { id }, select: { title: true, startsAt: true, endsAt: true, status: true } });
 
   let label = "unknown";
-  let title = "ContestHub";
+  let title = "CodeHub";
   if (contest) {
     title = contest.title;
     const now = Date.now();

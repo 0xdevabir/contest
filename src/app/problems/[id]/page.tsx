@@ -47,7 +47,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description =
     `Solve "${problem.title}" — a ${problem.difficulty.toLowerCase()} C programming practice problem` +
     (problem.topic ? ` on ${problem.topic}` : "") +
-    ` on DIU ContestHub online judge. ${summary}`;
+    ` on CodeHub online judge. ${summary}`;
   const title = `${problem.title} — ${problem.difficulty} C programming problem`;
   return {
     ...buildPageMetadata({

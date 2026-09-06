@@ -19,7 +19,7 @@ import { isEnabled } from "@/lib/flags";
 export const metadata: Metadata = buildPageMetadata({
   title: "Leaderboard — Top C programmers across Bangladeshi universities",
   description:
-    "Live practice and contest leaderboards. See top C programmers ranked by problems solved, filterable by institution, on DIU ContestHub's national board.",
+    "Live practice and contest leaderboards. See top C programmers ranked by problems solved, filterable by institution, on CodeHub's national board.",
   path: "/leaderboard",
   keywords: [
     "C programming leaderboard",

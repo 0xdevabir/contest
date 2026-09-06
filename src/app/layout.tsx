@@ -210,7 +210,7 @@ export default async function RootLayout({
       "@context": "https://schema.org",
       "@type": "Organization",
       name: BRAND.name,
-      alternateName: ["ContestHub", "DIU Contest Hub", "DIU online judge"],
+      alternateName: ["DIU ContestHub", "ContestHub", "DIU online judge"],
       url: SITE_URL,
       logo: {
         "@type": "ImageObject",

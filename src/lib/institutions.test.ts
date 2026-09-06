@@ -55,7 +55,7 @@ describe("matchInstitutionByEmail", () => {
 
   it("handles a plus-tagged local part", async () => {
     findMany.mockResolvedValue([{ domain: "diu.edu.bd", institutionId: "inst-diu", roleHint: null }]);
-    const result = await matchInstitutionByEmail("abir+contesthub@diu.edu.bd");
+    const result = await matchInstitutionByEmail("abir+codehub@diu.edu.bd");
     expect(result).toEqual({ institutionId: "inst-diu", roleHint: null });
   });
 });

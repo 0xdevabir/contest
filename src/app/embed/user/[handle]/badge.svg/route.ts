@@ -17,7 +17,7 @@ function badgeSvg(opts: { name: string; solved: number; rating: number | null; t
   const height = 60;
   const name = escapeXml(opts.name.slice(0, 24));
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="ContestHub badge for ${name}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="CodeHub badge for ${name}">
 <rect width="${width}" height="${height}" rx="8" fill="${bg}"/>
 <text x="14" y="24" font-family="system-ui,sans-serif" font-size="14" font-weight="700" fill="${fg}">${name}</text>
 <text x="14" y="44" font-family="system-ui,sans-serif" font-size="12" fill="${accent}">${opts.solved} solved${opts.rating != null ? ` · rating ${opts.rating}` : ""}</text>
@@ -44,7 +44,7 @@ export async function GET(req: Request, { params }: Params) {
   const svg =
     user && user.profilePublic
       ? badgeSvg({ name: user.name, solved: user.solvedProblems.length, rating: user.rating?.displayed ?? null, theme })
-      : badgeSvg({ name: "ContestHub", solved: 0, rating: null, theme });
+      : badgeSvg({ name: "CodeHub", solved: 0, rating: null, theme });
 
   return new Response(svg, {
     headers: {

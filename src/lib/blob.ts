@@ -223,7 +223,7 @@ export function _resetBlobStoreForTests(): void {
 export async function blobHealthCheck(): Promise<{ ok: boolean; message?: string }> {
   const store = getBlobStore();
   const key = `_health/${Date.now()}-${Math.random().toString(36).slice(2)}.txt`;
-  const payload = "contesthub-blob-health-check";
+  const payload = "codehub-blob-health-check";
   try {
     await store.put(key, payload);
     const read = await store.get(key);

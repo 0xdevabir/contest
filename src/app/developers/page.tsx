@@ -10,7 +10,7 @@ export default async function DevelopersPage() {
     <div>
       <PageHeader
         eyebrow="Platform"
-        title="ContestHub API"
+        title="CodeHub API"
         lead="A versioned, key-authenticated REST API at /api/v1 — additive-only, with a machine-readable OpenAPI document."
       />
 

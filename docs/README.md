@@ -1,4 +1,4 @@
-# ContestHub Documentation
+# CodeHub Documentation
 
 ## Start here
 

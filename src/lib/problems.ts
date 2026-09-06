@@ -293,7 +293,7 @@ const getBankDb = cache(async (): Promise<ProblemBank> => {
 
   return {
     meta: {
-      title: "DIU ContestHub Problem Bank",
+      title: "CodeHub Problem Bank",
       subtitle: "Teacher-authored problems, database-backed",
       language: "C",
       sets: sets.length,

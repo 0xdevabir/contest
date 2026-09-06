@@ -8,9 +8,9 @@ import { PageHeader } from "@/components/PageHeader";
 import { breadcrumbJsonLd, buildPageMetadata, JsonLd } from "@/lib/seo";
 
 export const metadata: Metadata = buildPageMetadata({
-  title: "Institutions — Bangladeshi universities on DIU ContestHub",
+  title: "Institutions — Bangladeshi universities on CodeHub",
   description:
-    "Browse every institution ranked on DIU ContestHub's national leaderboard — public and private universities, polytechnics, and colleges across Bangladesh.",
+    "Browse every institution ranked on CodeHub's national leaderboard — public and private universities, polytechnics, and colleges across Bangladesh.",
   path: "/institutions",
   keywords: ["Bangladesh university programming ranking", "institution leaderboard", "CS department ranking Bangladesh"],
 });

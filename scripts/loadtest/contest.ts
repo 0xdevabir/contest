@@ -8,7 +8,7 @@
  *
  * Usage:
  *   npm run loadtest -- --scenario lab-quiz --base-url http://localhost:3000 \
- *     --cookie "diu_contesthub_session=<token>" --problem-id <id>
+ *     --cookie "codehub_session=<token>" --problem-id <id>
  *
  * A single authenticated session cookie is reused across "users" for
  * simplicity — the point of these scenarios is queue/worker throughput

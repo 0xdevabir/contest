@@ -6,7 +6,7 @@
  */
 
 export const PLATFORM_CONVENTIONS = `You are assisting a competitive-programming and classroom judging platform
-(DIU ContestHub). Every problem statement uses Markdown with KaTeX math
+(CodeHub). Every problem statement uses Markdown with KaTeX math
 ($...$ inline, $$...$$ display). Time/memory limits are per the platform's
 judge sandbox (g++ -O2, C++17/20). Constraints and I/O formats always come
 from the problem's own "Constraints" and "Input/Output" sections — never

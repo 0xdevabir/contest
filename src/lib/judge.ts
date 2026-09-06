@@ -165,7 +165,7 @@ async function compileCode(
     };
   }
 
-  const dir = await mkdtemp(path.join(tmpdir(), "diu-contesthub-"));
+  const dir = await mkdtemp(path.join(tmpdir(), "codehub-"));
   const src = path.join(dir, "main.c");
   const bin = path.join(dir, "main");
 

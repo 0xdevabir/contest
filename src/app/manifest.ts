@@ -5,7 +5,7 @@ import { THEMES } from "@/lib/theme";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: BRAND.name,
-    short_name: "ContestHub",
+    short_name: "CodeHub",
     description: BRAND.shortDescription,
     start_url: "/",
     display: "standalone",

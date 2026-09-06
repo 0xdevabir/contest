@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return buildPageMetadata({
     title: "Certificate verification",
     path: `/verify/${certificateId}`,
-    description: "Verify the authenticity of a DIU ContestHub certificate.",
+    description: "Verify the authenticity of a CodeHub certificate.",
   });
 }
 
@@ -36,7 +36,7 @@ export default async function VerifyCertificatePage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6">
-      <PageHeader eyebrow="DIU ContestHub" title="Certificate verification" />
+      <PageHeader eyebrow="CodeHub" title="Certificate verification" />
 
       {!result.valid ? (
         <div className="panel mt-8 flex flex-col items-center gap-3 p-10 text-center">

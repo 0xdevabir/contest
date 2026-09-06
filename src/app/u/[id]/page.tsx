@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const institutionName = profile.institutionName ?? "Unaffiliated";
   return buildPageMetadata({
     title: `${profile.name} — ${institutionName} · C practice profile`,
-    description: `${profile.name} has solved ${profile.stats.solved} C problems on DIU ContestHub${
+    description: `${profile.name} has solved ${profile.stats.solved} C problems on CodeHub${
       profile.stats.globalRank ? ` (global rank #${profile.stats.globalRank})` : ""
     }.`,
     path: `/u/${id}`,
@@ -85,7 +85,7 @@ export default async function PublicProfilePage({ params }: Props) {
         }
         lead={
           profile.bio?.trim() ||
-          `C programming practice on DIU ContestHub · ${stats.solved} solved`
+          `C programming practice on CodeHub · ${stats.solved} solved`
         }
         actions={
           isOwner ? (

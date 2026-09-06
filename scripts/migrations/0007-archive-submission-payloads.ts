@@ -26,7 +26,7 @@
  * This script does no scheduling of its own — it is meant to be invoked
  * manually or from an off-peak cron entry, e.g.:
  *   # crontab, 03:00 daily, off-peak for this platform's contest schedule
- *   0 3 * * * cd /path/to/contest-hub && npx tsx scripts/migrations/0007-archive-submission-payloads.ts >> /var/log/contest-hub/archive-payloads.log 2>&1
+ *   0 3 * * * cd /path/to/codehub && npx tsx scripts/migrations/0007-archive-submission-payloads.ts >> /var/log/codehub/archive-payloads.log 2>&1
  *
  * Usage:
  *   npx tsx scripts/migrations/0007-archive-submission-payloads.ts

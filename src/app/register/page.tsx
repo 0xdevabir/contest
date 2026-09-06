@@ -5,7 +5,7 @@ import { listInstitutions } from "@/lib/institutions";
 export const metadata: Metadata = {
   title: "Create your account",
   description:
-    "Register for DIU ContestHub with your institution profile. Free account unlocks submissions, contest registration, leaderboard rankings, and progress tracking.",
+    "Register for CodeHub with your institution profile. Free account unlocks submissions, contest registration, leaderboard rankings, and progress tracking.",
   robots: { index: false, follow: true },
   alternates: { canonical: "/register" },
 };

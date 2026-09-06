@@ -1,4 +1,4 @@
-# Contest Hub runner
+# CodeHub runner
 
 Compiles and executes untrusted student code inside locked-down Docker
 containers, and streams interactive runs to the browser over a WebSocket so
@@ -94,7 +94,7 @@ killed, and fork bombs are contained.
 ## Deploying to a VPS
 
 Any small Ubuntu box works. Below assumes Ubuntu 24.04 and a subdomain such as
-`runner.diucode.devabir.me` pointed at the server's IP.
+`runner.codehub.devabir.me` pointed at the server's IP.
 
 ### 1. Install Docker and Node
 
@@ -107,9 +107,9 @@ sudo apt-get install -y nodejs
 ### 2. Deploy the code
 
 ```bash
-sudo mkdir -p /opt/contest-hub-runner
+sudo mkdir -p /opt/codehub-runner
 # copy this runner/ directory there, then:
-cd /opt/contest-hub-runner
+cd /opt/codehub-runner
 npm ci --omit=dev
 npm run build:images
 ```
@@ -123,18 +123,18 @@ Vercel project's environment variables.
 
 ```ini
 [Unit]
-Description=Contest Hub runner
+Description=CodeHub runner
 After=docker.service
 Requires=docker.service
 
 [Service]
-WorkingDirectory=/opt/contest-hub-runner
+WorkingDirectory=/opt/codehub-runner
 ExecStart=/usr/bin/node server.js
 Restart=always
 RestartSec=3
 Environment=PORT=8080
 Environment=RUNNER_TOKEN=<paste-token>
-Environment=ALLOWED_ORIGINS=https://diucode.devabir.me
+Environment=ALLOWED_ORIGINS=https://codehub.devabir.me
 Environment=MAX_SESSIONS=12
 
 [Install]
@@ -160,7 +160,7 @@ sudo apt-get install -y caddy
 `/etc/caddy/Caddyfile`:
 
 ```
-runner.diucode.devabir.me {
+runner.codehub.devabir.me {
     reverse_proxy localhost:8080
 }
 ```
@@ -184,7 +184,7 @@ In Vercel's environment variables:
 
 ```
 RUNNER_TOKEN=<same token as the service>
-NEXT_PUBLIC_RUNNER_URL=https://runner.diucode.devabir.me
+NEXT_PUBLIC_RUNNER_URL=https://runner.codehub.devabir.me
 ```
 
 `NEXT_PUBLIC_RUNNER_URL` is inlined at build time, so **redeploy** after setting
@@ -194,7 +194,7 @@ it. The app converts the scheme to `wss://` for the socket and calls
 Check it is live:
 
 ```bash
-curl https://runner.diucode.devabir.me/health
+curl https://runner.codehub.devabir.me/health
 ```
 
 ## How the app uses it

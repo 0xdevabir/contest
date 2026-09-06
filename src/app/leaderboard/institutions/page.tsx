@@ -10,7 +10,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { buildPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildPageMetadata({
-  title: "Institution leaderboard — DIU ContestHub",
+  title: "Institution leaderboard — CodeHub",
   description: "Universities ranked by the combined rating of their top 10 verified members.",
   path: "/leaderboard/institutions",
 });

@@ -9,7 +9,7 @@
  *
  * Usage:
  *   npm run loadtest:live -- --base-url http://localhost:3000 \
- *     --cookie "diu_contesthub_session=<token>" --contest-id <id> \
+ *     --cookie "codehub_session=<token>" --contest-id <id> \
  *     --clients 300 --duration-sec 120
  */
 

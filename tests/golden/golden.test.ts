@@ -49,7 +49,7 @@ describe.skipIf(!hasDocker)("judge conformance (Docker sandbox)", () => {
     sandboxReady = await imageExists();
     if (!sandboxReady) {
       console.warn(
-        "contest-hub-sandbox image not found — build it with `npm run build:image` in runner/ to run the golden suite."
+        "codehub-sandbox image not found — build it with `npm run build:image` in runner/ to run the golden suite."
       );
     }
   }, 30_000);

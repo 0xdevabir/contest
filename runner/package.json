@@ -1,15 +1,15 @@
 {
-  "name": "contest-hub-runner",
+  "name": "codehub-runner",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Sandboxed multi-language execution service for Contest Hub",
+  "description": "Sandboxed multi-language execution service for CodeHub",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node --env-file=.env server.js",
     "build:images": "./build-images.sh",
-    "build:image": "docker build -t contesthub-sandbox-c -f images/c.Dockerfile .",
+    "build:image": "docker build -t codehub-sandbox-c -f images/c.Dockerfile .",
     "test": "node test-runner.js",
     "test:e2e": "node --env-file=.env test-e2e.js",
     "test:integration": "node test-integration.js"

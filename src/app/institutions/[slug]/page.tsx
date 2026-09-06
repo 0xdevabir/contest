@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
   return buildPageMetadata({
     title: `${institution.name} — C programming leaderboard`,
-    description: `Top verified C programmers at ${institution.name} on DIU ContestHub, ranked by problems solved.`,
+    description: `Top verified C programmers at ${institution.name} on CodeHub, ranked by problems solved.`,
     path: `/institutions/${slug}`,
     keywords: [`${institution.name} programming`, `${institution.shortName} coding leaderboard`],
   });

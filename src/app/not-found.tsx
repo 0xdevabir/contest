@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Page not found",
   description:
-    "The page you were looking for is not on DIU ContestHub. Try the home page or browse problems.",
+    "The page you were looking for is not on CodeHub. Try the home page or browse problems.",
   robots: { index: false, follow: true },
 };
 

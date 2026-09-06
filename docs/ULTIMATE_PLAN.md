@@ -1,4 +1,4 @@
-# ContestHub — Master Plan (v2)
+# CodeHub — Master Plan (v2)
 
 > **Status**: living document. Supersedes `docs/archive/ULTIMATE_PLAN-v1-sonnet.md`.
 > **Last revised**: 2026-08-30.
@@ -32,7 +32,7 @@
 
 ## 1. What this is
 
-ContestHub is a **competitive-programming judge + classroom practice platform for
+CodeHub is a **competitive-programming judge + classroom practice platform for
 Bangladeshi universities**. It merges three products that today are separate:
 
 | Product it replaces | What we take from it |
@@ -572,7 +572,7 @@ Single source of truth. Every phase that adds a variable adds a row here and to
 | `BLOB_DRIVER` | 2 | no | `s3` (default) or `fs` for local dev |
 | `JUDGE_WORKER_CONCURRENCY` | 4 | no | Parallel sandboxes per worker; default = cores − 1 |
 | `JUDGE_SHARED_SECRET` | 4 | yes (from P4) | HMAC between worker and web for report writes |
-| `SANDBOX_IMAGE_PREFIX` | 3 | no | e.g. `contesthub-sandbox-` → `contesthub-sandbox-cpp` |
+| `SANDBOX_IMAGE_PREFIX` | 3 | no | e.g. `codehub-sandbox-` → `codehub-sandbox-cpp` |
 | `ANON_RUN_RPM` / `ANON_RUN_BURST` | 0 | no | Anonymous execution quota |
 | `ANTHROPIC_API_KEY` | 15 | no | Intelligence layer |
 | `WEB_PUSH_PUBLIC_KEY` / `WEB_PUSH_PRIVATE_KEY` | 11 | no | VAPID keys |
@@ -636,7 +636,7 @@ breaking changes bump `protocol`.
   "tests":  [ { "index": 0, "verdict": "AC", "cpuMs": 12, "wallMs": 15, "memoryKb": 3200 } ],
   "maxCpuMs": 1840, "maxMemoryKb": 12800,
   "fingerprint": "sha256:...",       // winnowing digest, Phase 10
-  "judge": { "workerId": "w-3", "image": "contesthub-sandbox-cpp:2026-08-01", "durationMs": 2310 }
+  "judge": { "workerId": "w-3", "image": "codehub-sandbox-cpp:2026-08-01", "durationMs": 2310 }
 }
 ```
 

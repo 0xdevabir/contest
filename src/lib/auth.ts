@@ -6,8 +6,8 @@ import { normalizeThemeMode, type ThemeMode } from "./theme";
 import { normalizeLocale, type Locale } from "@/i18n";
 import { hashToken, rawToken } from "./password";
 
-const COOKIE = "diu_contesthub_session";
-const REFRESH_COOKIE = "diu_contesthub_refresh";
+const COOKIE = "codehub_session";
+const REFRESH_COOKIE = "codehub_refresh";
 const ACCESS_TTL_SEC = 60 * 30; // 30 minutes
 const REFRESH_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
 

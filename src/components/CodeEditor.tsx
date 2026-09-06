@@ -31,7 +31,7 @@ type Props = {
   height?: string;
 };
 
-const editorThemeName = (theme: Theme) => `contesthub-${theme.id}`;
+const editorThemeName = (theme: Theme) => `codehub-${theme.id}`;
 
 /** Monaco wants bare hex for token rules and `#rrggbb` for workbench colours. */
 const bare = (hex: string) => hex.replace("#", "");

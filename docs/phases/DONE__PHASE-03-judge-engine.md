@@ -51,7 +51,7 @@ export type LanguageSpec = {
   name: string;                  // "C++20 (GCC 13)"
   family: "c" | "cpp" | "python" | "java" | "js" | string;
   version: string;               // "gcc 13.2"
-  image: string;                 // "contesthub-sandbox-cpp:2026-08-01"
+  image: string;                 // "codehub-sandbox-cpp:2026-08-01"
   sourceFile: string;            // "main.cpp"
   /// null = interpreted; no compile step.
   compile: { argv: string[]; timeoutMs: number; outputFile: string } | null;

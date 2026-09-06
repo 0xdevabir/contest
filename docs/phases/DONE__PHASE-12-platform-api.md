@@ -89,7 +89,7 @@ validator, generators), and `solutions/` with expected verdicts.
 
 Mapping to the Phase 2 model:
 
-| Polygon | ContestHub |
+| Polygon | CodeHub |
 |---|---|
 | `problem.xml` → names/`time-limit`/`memory-limit` | `ProblemVersion` limits |
 | `statements/.../problem.tex` or `problem-properties.json` | `statementMd` (LaTeX → Markdown; keep math verbatim) |
@@ -256,8 +256,8 @@ Documentation: an OpenAPI 3.1 document generated from the zod schemas (via
 Events: `contest.started`, `contest.ended`, `submission.judged`,
 `assignment.due_soon`, `problem.published`, `rating.updated`.
 
-Delivery: `POST` with `X-ContestHub-Signature: sha256=<hmac>` over the raw body
-and `X-ContestHub-Timestamp` (reject deliveries older than 5 minutes on the
+Delivery: `POST` with `X-CodeHub-Signature: sha256=<hmac>` over the raw body
+and `X-CodeHub-Timestamp` (reject deliveries older than 5 minutes on the
 receiving end — document this). Retries at 1 s, 10 s, 1 m, 10 m, 1 h; after 5
 consecutive failures the webhook is disabled and the owner notified.
 

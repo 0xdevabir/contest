@@ -8,7 +8,7 @@ jobs:
     services:
       postgres:
         image: postgres:16
-        env: { POSTGRES_PASSWORD: test, POSTGRES_DB: contesthub_test }
+        env: { POSTGRES_PASSWORD: test, POSTGRES_DB: codehub_test }
         options: >-
           --health-cmd pg_isready --health-interval 5s
           --health-timeout 5s --health-retries 10
@@ -26,9 +26,9 @@ jobs:
       # TEST_DATABASE_URL into these two at test time for local/dev parity, but
       # `npx prisma migrate deploy` and `npm run build` here run outside vitest
       # entirely, so they need the real vars set at the job level.
-      DATABASE_URL: postgresql://postgres:test@localhost:5432/contesthub_test
-      DIRECT_URL: postgresql://postgres:test@localhost:5432/contesthub_test
-      TEST_DATABASE_URL: postgresql://postgres:test@localhost:5432/contesthub_test
+      DATABASE_URL: postgresql://postgres:test@localhost:5432/codehub_test
+      DIRECT_URL: postgresql://postgres:test@localhost:5432/codehub_test
+      TEST_DATABASE_URL: postgresql://postgres:test@localhost:5432/codehub_test
       AUTH_SECRET: test-secret-not-used-anywhere-real
       # Enables the Phase 4 judge-queue-gated tests (src/lib/ratelimit-redis.test.ts,
       # src/lib/queue/fairness.test.ts, tests/integration/judge-queue.test.ts) —
@@ -75,7 +75,7 @@ jobs:
           else
             echo "matched=false" >> "$GITHUB_OUTPUT"
           fi
-      - run: docker build -t contesthub-sandbox-c -f runner/images/c.Dockerfile runner/
+      - run: docker build -t codehub-sandbox-c -f runner/images/c.Dockerfile runner/
         if: steps.touches-judge.outputs.matched == 'true' || github.event_name == 'schedule' || contains(github.event.head_commit.message, '[judge]')
       - run: npm ci && npm run test:golden
         if: steps.touches-judge.outputs.matched == 'true' || github.event_name == 'schedule' || contains(github.event.head_commit.message, '[judge]')

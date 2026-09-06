@@ -299,13 +299,13 @@ jobs:
     services:
       postgres:
         image: postgres:16
-        env: { POSTGRES_PASSWORD: test, POSTGRES_DB: contesthub_test }
+        env: { POSTGRES_PASSWORD: test, POSTGRES_DB: codehub_test }
         options: >-
           --health-cmd pg_isready --health-interval 5s
           --health-timeout 5s --health-retries 10
         ports: ["5432:5432"]
     env:
-      TEST_DATABASE_URL: postgresql://postgres:test@localhost:5432/contesthub_test
+      TEST_DATABASE_URL: postgresql://postgres:test@localhost:5432/codehub_test
       AUTH_SECRET: test-secret-not-used-anywhere-real
     steps:
       - uses: actions/checkout@v4
@@ -324,7 +324,7 @@ jobs:
     if: github.event_name == 'schedule' || contains(github.event.head_commit.message, '[judge]')
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -t contest-hub-sandbox -f runner/sandbox.Dockerfile runner/
+      - run: docker build -t codehub-sandbox -f runner/sandbox.Dockerfile runner/
       - run: npm ci && npm run test:golden
 ```
 

@@ -261,7 +261,7 @@ export function buildOpenApiDocument() {
   return generator.generateDocument({
     openapi: "3.1.0",
     info: {
-      title: "ContestHub Platform API",
+      title: "CodeHub Platform API",
       version: "1.0.0",
       description:
         "Additive-only, versioned REST API. Errors reuse the same codes as the internal app (see the `code` field on every error response).",

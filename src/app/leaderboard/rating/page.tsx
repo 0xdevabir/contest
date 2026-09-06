@@ -18,7 +18,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { breadcrumbJsonLd, buildPageMetadata, JsonLd } from "@/lib/seo";
 
 export const metadata: Metadata = buildPageMetadata({
-  title: "Rating leaderboard — DIU ContestHub",
+  title: "Rating leaderboard — CodeHub",
   description: "National, institution, and department rating leaderboards computed with an Elo-MMR rating system.",
   path: "/leaderboard/rating",
 });

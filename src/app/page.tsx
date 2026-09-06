@@ -31,8 +31,8 @@ export const metadata: Metadata = buildPageMetadata({
 
 const FAQS = [
   {
-    q: "What is DIU ContestHub?",
-    a: "DIU ContestHub is a free online judge for C programming from Daffodil International University. It offers 700 exam-style C practice problems, instant gcc/clang judging, and live inter-university contests for DIU, NSU, AIUB, and BRAC.",
+    q: "What is CodeHub?",
+    a: "CodeHub is a free online judge for C programming from Daffodil International University. It offers 700 exam-style C practice problems, instant gcc/clang judging, and live inter-university contests for DIU, NSU, AIUB, and BRAC.",
   },
   {
     q: "Do I need an account to practice C problems?",
@@ -47,7 +47,7 @@ const FAQS = [
     a: "Students from Daffodil International University, North South University, AIUB, and BRAC University can register for live contests when an admin activates them. Contests use ICPC-style scoring with penalty for wrong submissions.",
   },
   {
-    q: "Is DIU ContestHub free?",
+    q: "Is CodeHub free?",
     a: "Yes. The problem bank, online C compiler/judge, and practice leaderboards are free. Contests are also free when faculty or admins run them.",
   },
 ];

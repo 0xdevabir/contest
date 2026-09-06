@@ -199,7 +199,7 @@ const categories = TIERS.map((tier) => {
 
 const bank = {
   meta: {
-    title: "DIU ContestHub Problem Bank",
+    title: "CodeHub Problem Bank",
     subtitle: "7 difficulty tiers × 100 problems — exam-style C practice",
     language: "C",
     sets: sets.length,

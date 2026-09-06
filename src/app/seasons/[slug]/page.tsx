@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return buildPageMetadata({
     title: `${slug} season standings`,
     path: `/seasons/${slug}`,
-    description: "Final rating standings for a DIU ContestHub competitive season.",
+    description: "Final rating standings for a CodeHub competitive season.",
   });
 }
 

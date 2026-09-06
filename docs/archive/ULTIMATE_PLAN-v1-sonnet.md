@@ -1,4 +1,4 @@
-# DIU ContestHub — Ultimate Platform Plan
+# CodeHub — Ultimate Platform Plan
 
 > Living document. Update as decisions change. Each phase below is meant to be
 > handed back to Claude verbatim ("execute Phase N") and implemented without
@@ -27,7 +27,7 @@
 
 ## 1. Vision
 
-DIU ContestHub becomes a **university-grade competitive programming + classroom
+CodeHub becomes a **university-grade competitive programming + classroom
 practice platform** combining:
 
 - **Toph/Codeforces-style** public contests, ratings, editorials, virtual

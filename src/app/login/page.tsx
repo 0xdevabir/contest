@@ -4,7 +4,7 @@ import { LoginForm } from "@/components/auth/LoginForm";
 export const metadata: Metadata = {
   title: "Log in",
   description:
-    "Log in to DIU ContestHub to submit solutions, enter contests, and track your ranking on university leaderboards.",
+    "Log in to CodeHub to submit solutions, enter contests, and track your ranking on university leaderboards.",
   robots: { index: false, follow: true },
   alternates: { canonical: "/login" },
 };

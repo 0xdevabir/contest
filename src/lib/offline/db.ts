@@ -4,7 +4,7 @@
  * lab-wifi dropout never loses a student's queued submission or in-progress
  * code.
  */
-const DB_NAME = "diu-contesthub-offline";
+const DB_NAME = "codehub-offline";
 const DB_VERSION = 1;
 
 export const SUBMISSIONS_STORE = "submissions";

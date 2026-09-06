@@ -27,7 +27,7 @@ carry it through `JUDGING` to a final verdict.
 ## Production deployment (VPS)
 
 1. Provision a VPS. Install Docker.
-2. `docker build -t contesthub-worker -f worker/Dockerfile .`
+2. `docker build -t codehub-worker -f worker/Dockerfile .`
 3. Run it with the host's Docker socket mounted so it can orchestrate
    sibling sandbox containers (the same `runner/images/*` images the
    synchronous path uses) without nesting Docker-in-Docker:
@@ -41,7 +41,7 @@ carry it through `JUDGING` to a final verdict.
      -e DIRECT_URL=... \
      -e JUDGE_SHARED_SECRET=... \
      -e WORKER_CONCURRENCY=4 \
-     contesthub-worker
+     codehub-worker
    ```
 
 ## Security — this box runs nothing else

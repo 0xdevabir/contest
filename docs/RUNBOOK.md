@@ -1,6 +1,6 @@
 # Runbook
 
-Incident procedures for ContestHub. Starts thin in Phase 0 and grows with
+Incident procedures for CodeHub. Starts thin in Phase 0 and grows with
 each phase — add an entry here whenever a phase introduces a new failure mode
 an on-call person would need to diagnose without reading the source first.
 
@@ -27,7 +27,7 @@ running untrusted code with the server's own environment and no sandbox.
 **Fix**: configure exactly one real backend, in order of preference:
 
 1. **Runner** (preferred): set `NEXT_PUBLIC_RUNNER_URL` and `RUNNER_TOKEN` to
-   point at a running `runner/` service with `contest-hub-sandbox` built
+   point at a running `runner/` service with `codehub-sandbox` built
    (`npm run build:image` in `runner/`). Redeploy — `NEXT_PUBLIC_RUNNER_URL`
    is inlined at build time.
 2. **Remote judge**: set `JUDGE0_URL` (and `JUDGE0_KEY`/`JUDGE0_HOST` if using
@@ -59,7 +59,7 @@ that request.
 
 **Fix**: check the runner service's `/health` endpoint and process status.
 Confirm `RUNNER_TOKEN` matches between the app and the runner's own env.
-Confirm the sandbox image exists (`docker image inspect contest-hub-sandbox`
+Confirm the sandbox image exists (`docker image inspect codehub-sandbox`
 on the runner host) — the runner refuses to start without it.
 
 ---

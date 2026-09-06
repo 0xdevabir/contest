@@ -63,7 +63,7 @@ export async function renderCertificatePdf(opts: {
       createElement(
         View,
         { style: s.border },
-        createElement(Text, { style: s.eyebrow }, "DIU ContestHub"),
+        createElement(Text, { style: s.eyebrow }, "CodeHub"),
         createElement(Text, { style: s.title }, TYPE_LABELS[opts.type] ?? "Certificate"),
         createElement(Text, { style: s.name }, opts.userName),
         createElement(Text, { style: s.body }, describePayload(opts.type, opts.payload)),

@@ -9,12 +9,12 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 
 DATE_TAG="$(date -u +%Y-%m-%d)"
 declare -A IMAGES=(
-  [c]="contesthub-sandbox-c"
-  [cpp17]="contesthub-sandbox-cpp"
-  [cpp20]="contesthub-sandbox-cpp"
-  [py311]="contesthub-sandbox-python"
-  [java17]="contesthub-sandbox-java"
-  [js]="contesthub-sandbox-js"
+  [c]="codehub-sandbox-c"
+  [cpp17]="codehub-sandbox-cpp"
+  [cpp20]="codehub-sandbox-cpp"
+  [py311]="codehub-sandbox-python"
+  [java17]="codehub-sandbox-java"
+  [js]="codehub-sandbox-js"
 )
 declare -A DOCKERFILES=(
   [c]="images/c.Dockerfile"

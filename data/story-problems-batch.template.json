@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "title": "Contest Hub Story Batch",
+    "subtitle": "Story-driven C practice — campus narratives",
+    "language": "C",
+    "sets": 10,
+    "problemsPerSet": 8,
+    "total": 80,
+    "tiers": [
+      "VERY EASY",
+      "EASY",
+      "MEDIUM",
+      "MEDIUM-HARD",
+      "HARD",
+      "VERY HARD",
+      "EXTREME"
+    ]
+  },
+  "sets": [],
+  "problems": {}
+}
