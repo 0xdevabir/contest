@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { ProblemArchiveClient } from "@/components/ProblemArchiveClient";
 import { PageHeader } from "@/components/PageHeader";
+import { ListSkeleton } from "@/components/Skeleton";
 import { getMeta } from "@/lib/problems";
 import { listTags } from "@/lib/tags";
 import { getSession } from "@/lib/auth";
@@ -46,9 +47,9 @@ export default async function ProblemsPage() {
       <PageHeader
         eyebrow="Always-open C practice"
         title={`All ${meta.total} C programming problems`}
-        lead="Filter by difficulty and topic tag, search by title, and — once signed in — filter to what you've solved."
+        lead="Search the bank, then narrow by difficulty, topic, or solve status. Filters stay in the URL so you can share a view."
       />
-      <Suspense fallback={null}>
+      <Suspense fallback={<ListSkeleton rows={10} />}>
         <ProblemArchiveClient tags={tags} loggedIn={Boolean(session)} />
       </Suspense>
     </div>
