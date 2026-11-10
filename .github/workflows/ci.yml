@@ -35,7 +35,7 @@ jobs:
       # they self-skip via describe.skipIf(!process.env.REDIS_URL) without it.
       REDIS_URL: redis://localhost:6379
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
@@ -59,7 +59,7 @@ jobs:
       contains(github.event.head_commit.message, '[judge]') ||
       contains(github.event.pull_request.title, '[judge]')
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
