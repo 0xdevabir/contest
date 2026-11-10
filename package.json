@@ -90,7 +90,7 @@
     "remark-rehype": "^11.1.2",
     "unified": "^11.0.5",
     "unzipper": "^0.12.5",
-    "web-push": "^3.6.7",
+    "web-push": "^4.0.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^4.4.3"
   },
