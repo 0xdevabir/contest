@@ -12,22 +12,22 @@
 
 | # | Phase | Days | Ships |
 |---|---|---|---|
-| [00](phases/PHASE-00-foundation.md) | Foundation & Safety Net | 6–8 | Security hotfixes, tests, CI, flags, errors, authz, migrations |
-| [01](phases/PHASE-01-identity-institutions.md) | Identity, Institutions & RBAC | 8–10 | `Institution` table, teacher/TA roles, domain verification, sessions |
-| [02](phases/PHASE-02-problem-domain.md) | Problem Domain | 14–18 | Versioned DB problems, test data in R2, tags, authoring UI, 700-bank import |
-| [03](phases/PHASE-03-judge-engine.md) | Judge v2 — Engine | 12–16 | Language registry, hardened sandbox, CPU/MLE/OLE, checkers |
-| [04](phases/PHASE-04-judge-queue.md) | Judge v2 — Queue & Realtime | 10–14 | Redis + BullMQ, worker tier, SSE verdicts, rejudge |
-| [05](phases/PHASE-05-contest-engine.md) | Contest Engine v2 | 12–16 | Participation model, pluggable scoring, visibility, snapshots |
-| [06](phases/PHASE-06-classroom.md) | Classroom & Courses | 14–18 | Courses/sections/rosters, assignments, gradebook, rollover |
+| [00](phases/DONE__PHASE-00-foundation.md) | Foundation & Safety Net | 6–8 | Security hotfixes, tests, CI, flags, errors, authz, migrations |
+| [01](phases/DONE__PHASE-01-identity-institutions.md) | Identity, Institutions & RBAC | 8–10 | `Institution` table, teacher/TA roles, domain verification, sessions |
+| [02](phases/DONE__PHASE-02-problem-domain.md) | Problem Domain | 14–18 | Versioned DB problems, test data in R2, tags, authoring UI, 700-bank import |
+| [03](phases/DONE__PHASE-03-judge-engine.md) | Judge v2 — Engine | 12–16 | Language registry, hardened sandbox, CPU/MLE/OLE, checkers |
+| [04](phases/DONE__PHASE-04-judge-queue.md) | Judge v2 — Queue & Realtime | 10–14 | Redis + BullMQ, worker tier, SSE verdicts, rejudge |
+| [05](phases/DONE__PHASE-05-contest-engine.md) | Contest Engine v2 | 12–16 | Participation model, pluggable scoring, visibility, snapshots |
+| [06](phases/DONE__PHASE-06-classroom.md) | Classroom & Courses | 14–18 | Courses/sections/rosters, assignments, gradebook, rollover |
 | [07](phases/DONE__PHASE-07-live-contest.md) | Live Contest Experience | 10–14 | Clarifications, live standings, teams, balloons, projector mode |
-| [08](phases/PHASE-08-analytics.md) | Analytics & Reporting | 10–12 | Heatmap, tag mastery, at-risk detection, CSV/PDF exports |
-| [09](phases/PHASE-09-ratings-leaderboards.md) | Ratings & Leaderboards | 10–14 | Elo-MMR, national board, seasons, badges, certificates |
-| [10](phases/PHASE-10-integrity.md) | Academic Integrity | 12–16 | Fingerprint plagiarism, proctoring-lite, **exam variants** |
-| [11](phases/PHASE-11-community.md) | Community & Notifications | 10–12 | Editorials, discussion, notification centre, push |
-| [12](phases/PHASE-12-platform-api.md) | Platform API & Federation | 10–14 | Public API, webhooks, Polygon import, remote judge |
-| [13](phases/PHASE-13-scale-ops.md) | Scale, Performance & Ops | 10–14 | Read models, partitioning, autoscaling, SLOs, DR |
-| [14](phases/PHASE-14-i18n-pwa.md) | Localization, A11y & PWA | 8–12 | Bangla, WCAG AA, offline lab mode |
-| [15](phases/PHASE-15-intelligence.md) | Intelligence Layer | 12–16 | AI test-gen, editorials, variants, adaptive ladder, hints |
+| [08](phases/DONE__PHASE-08-analytics.md) | Analytics & Reporting | 10–12 | Heatmap, tag mastery, at-risk detection, CSV/PDF exports |
+| [09](phases/DONE__PHASE-09-ratings-leaderboards.md) | Ratings & Leaderboards | 10–14 | Elo-MMR, national board, seasons, badges, certificates |
+| [10](phases/DONE__PHASE-10-integrity.md) | Academic Integrity | 12–16 | Fingerprint plagiarism, proctoring-lite, **exam variants** |
+| [11](phases/DONE__PHASE-11-community.md) | Community & Notifications | 10–12 | Editorials, discussion, notification centre, push |
+| [12](phases/DONE__PHASE-12-platform-api.md) | Platform API & Federation | 10–14 | Public API, webhooks, Polygon import, remote judge |
+| [13](phases/DONE__PHASE-13-scale-ops.md) | Scale, Performance & Ops | 10–14 | Read models, partitioning, autoscaling, SLOs, DR |
+| [14](phases/DONE__PHASE-14-i18n-pwa.md) | Localization, A11y & PWA | 8–12 | Bangla, WCAG AA, offline lab mode |
+| [15](phases/DONE__PHASE-15-intelligence.md) | Intelligence Layer | 12–16 | AI test-gen, editorials, variants, adaptive ladder, hints |
 
 **Backbone**: 0 → 1 → 2 → 3 → 4 → 5 → 6 (~62–82 days). Usable by a department
 after Phase 6. Phases 7–15 reprioritise freely on teacher feedback.
@@ -68,7 +68,7 @@ no additional context:
 | File | Created in | Contents |
 |---|---|---|
 | `RUNBOOK.md` | Phase 0, grown thereafter | One entry per alert: meaning, diagnosis, fix, verification |
-| `DEPLOYMENT.md` | Phase 4 | Web + worker topology, provisioning, secrets |
+| [`worker/README.md`](../worker/README.md) | Phase 4 | Web + worker topology, provisioning, secrets (no separate `DEPLOYMENT.md`) |
 | `CAPACITY.md` | Phase 4 | Measured throughput per worker; workers needed per exam size |
 | `DR.md` | Phase 13 | Disaster scenarios and decision trees |
 | `DR-DRILL.md` | Phase 13 | Restore drill log |
