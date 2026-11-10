@@ -1,0 +1,23 @@
+# Keeps dependencies patched. Minor/patch npm updates are grouped into one
+# weekly PR per directory so they don't flood the queue; majors arrive as
+# individual PRs since they need review. Security updates are always separate.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 10
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /runner
+    schedule: { interval: weekly }
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }
