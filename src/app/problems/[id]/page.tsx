@@ -94,7 +94,6 @@ export default async function ProblemPage({ params, searchParams }: Props) {
     slug: string;
     problemIds: string[];
     strictMode: boolean;
-    participationId: string | null;
   } | null = null;
 
   if (contest) {
@@ -120,11 +119,6 @@ export default async function ProblemPage({ params, searchParams }: Props) {
         },
         registrations: {
           where: { userId: session.id },
-          take: 1,
-          select: { id: true },
-        },
-        participations: {
-          where: { userId: session.id, mode: "LIVE" },
           take: 1,
           select: { id: true },
         },
@@ -156,7 +150,6 @@ export default async function ProblemPage({ params, searchParams }: Props) {
       slug: liveContest.slug,
       problemIds: liveContest.problems.map((entry) => entry.problemId),
       strictMode: parseRules(liveContest.rules).strictMode,
-      participationId: liveContest.participations[0]?.id ?? null,
     };
   }
 
@@ -269,7 +262,6 @@ export default async function ProblemPage({ params, searchParams }: Props) {
         }
         contestTitle={contestContext?.title ?? null}
         strictMode={contestContext?.strictMode ?? false}
-        participationId={contestContext?.participationId ?? null}
         assignmentId={assignmentContext?.id ?? null}
         variantProblemVersionId={variantProblemVersionId}
         loggedIn={Boolean(session)}

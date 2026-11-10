@@ -189,7 +189,6 @@ type Props = {
   contestTitle?: string | null;
   assignmentId?: string | null;
   strictMode?: boolean;
-  participationId?: string | null;
   /** Phase 10 D3 — the frozen ProblemVersion behind this student's own
    * variant, when this problem has one. Reference only; the judge route
    * re-resolves the variant server-side rather than trusting this. */
@@ -210,7 +209,6 @@ export function ProblemWorkspace({
   contestTitle = null,
   assignmentId = null,
   strictMode = false,
-  participationId = null,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- reference-only, see Props doc.
   variantProblemVersionId = null,
   loggedIn = false,
